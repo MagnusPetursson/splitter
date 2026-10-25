@@ -1,0 +1,10 @@
+{
+  "name": "splitter-tools",
+  "private": true,
+  "type": "module",
+  "description": "Generates the procedural sample models (node tools/make_samples.mjs web/samples)",
+  "license": "MIT",
+  "dependencies": {
+    "manifold-3d": "3.5.4"
+  }
+}
