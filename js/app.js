@@ -33,6 +33,7 @@ function busy(text, frac = null) {
   if (frac != null) $('busyFill').style.width = Math.round(100 * Math.max(0.02, Math.min(1, frac))) + '%';
 }
 let BE = null; // planner backend (local WASM or server)
+let DEFAULTS = null; // form values before any saved settings are applied
 function save() {
   const s = {
     printer: $('printer').value, bedX: $('bedX').value, bedY: $('bedY').value, bedZ: $('bedZ').value,
@@ -108,7 +109,11 @@ async function init() {
   S.kinds = await BE.kinds();
   const ak = $('addKind');
   for (const k of S.kinds.point) { const op = document.createElement('option'); op.value = k.kind; op.textContent = k.label; ak.appendChild(op); }
+  DEFAULTS = { margin: $('margin').value, minPiece: $('minPiece').value, style: 'glued' };
+  const bv = $('buildVer');
+  if (bv.dataset.v.startsWith('__')) bv.textContent = BE.mode === 'local' ? 'dev build' : 'server build';
   const saved = load();
+  $('restoredNote').classList.toggle('hidden', !saved);
   if (saved) {
     sel.value = saved.printer || 'prusa-core-one';
     for (const k of ['bedX', 'bedY', 'bedZ', 'margin', 'nozzle', 'minPiece']) if (saved[k]) $(k).value = saved[k];
@@ -122,6 +127,30 @@ async function init() {
   }
   updateBed();
   bind();
+}
+
+function styleLabel(v) { const o = [...$('jointStyle').options].find((x) => x.value === v); return o ? o.textContent : v; }
+function resetDefaults() {
+  localStorage.removeItem('ps.settings');
+  $('printer').value = 'prusa-core-one';
+  $('margin').value = DEFAULTS.margin; $('minPiece').value = DEFAULTS.minPiece;
+  const changed = $('jointStyle').value !== DEFAULTS.style;
+  $('jointStyle').value = DEFAULTS.style;
+  $('upright').checked = false; $('tilted').checked = false;
+  applyPrinter(true);
+  updateBed();
+  $('restoredNote').classList.add('hidden');
+  toast(`Defaults restored: ${styleLabel(DEFAULTS.style)}, ${$('printer').selectedOptions[0].textContent}`);
+  if (S.plan && changed) runPlan('joints');
+}
+function onStyleChange() {
+  save();
+  if (!S.plan) return;
+  const n = S.plan.joints.filter((j) => j.locked).length + S.plan.patches.filter((p) => p.seam && p.seam.locked && p.seam.kind !== 'none').length;
+  const note = $('styleNote');
+  note.textContent = `Joints re-placed as ${styleLabel($('jointStyle').value)} on the current cuts${n ? `; ${n} manual joint${n > 1 ? 's' : ''} kept` : ''}.`;
+  note.classList.remove('hidden');
+  runPlan('joints');
 }
 
 function applyPrinter(resetFits) {
@@ -161,7 +190,9 @@ function bind() {
   $('printer').addEventListener('change', () => { if ($('printer').value !== 'custom') applyPrinter(true); updateBed(); save(); });
   for (const id of ['bedX', 'bedY', 'bedZ', 'margin']) $(id).addEventListener('input', () => { if (id.startsWith('bed')) $('printer').value = 'custom'; updateBed(); save(); });
   $('nozzle').addEventListener('change', () => { setFits(); save(); });
-  for (const id of ['minPiece', 'jointStyle', 'upright', 'tilted']) $(id).addEventListener('change', save);
+  for (const id of ['minPiece', 'upright', 'tilted']) $(id).addEventListener('change', save);
+  $('jointStyle').addEventListener('change', onStyleChange);
+  $('resetDefaults').addEventListener('click', resetDefaults);
   for (const i of document.querySelectorAll('[data-fit]')) i.addEventListener('change', save);
   $('autoSplit').addEventListener('click', () => runPlan('auto'));
   $('buildBtn').addEventListener('click', build);
@@ -302,6 +333,19 @@ function seamOverrides() {
   // section lies in the hole and would not find the patch again
   return S.plan.patches.filter((p) => p.seam && p.seam.locked).map((p) => ({ at: p.anchor, seam: p.seam }));
 }
+// per-contact joint style choices ("use seam here", "use dowels anyway")
+function styleOverrides() {
+  if (!S.plan) return [];
+  return S.plan.patches.filter((p) => p.style || p.force).map((p) => ({ at: p.anchor, style: p.style || '', force: !!p.force }));
+}
+function setPatchStyle(p, style, force) {
+  // an explicit per-contact choice replaces that contact's joints
+  S.plan.joints = S.plan.joints.filter((j) => j.patch !== p.id);
+  p.seam = null;
+  p.style = style; p.force = force;
+  S.sel = { cut: p.node, patch: p.id };
+  runPlan('joints');
+}
 
 async function runPlan(mode, opts = {}) {
   if (!S.model) return;
@@ -315,6 +359,7 @@ async function runPlan(mode, opts = {}) {
     body.tree = opts.tree || S.plan.tree;
     body.joints = opts.joints || lockedJoints();
     body.seams = opts.seams || seamOverrides();
+    body.styles = styleOverrides();
   }
   busy(mode === 'auto' ? 'Planning cuts' : 'Updating plan', null);
   try {
@@ -328,7 +373,7 @@ async function runPlan(mode, opts = {}) {
 function onPlan(plan, fresh) {
   S.plan = plan;
   S.built = null; S.export = null;
-  if (fresh) S.sel = {};
+  if (fresh) { S.sel = {}; $('styleNote').classList.add('hidden'); }
   viewer.setPlan(plan);
   viewer.clear('parts'); viewer.clear('plates');
   setView('cuts');
@@ -361,18 +406,23 @@ function renderPlan() {
     return `<div class="chip ${l.fits ? 'ok' : 'bad'} ${S.sel.leaf === l.id ? 'sel' : ''}" data-leaf="${l.id}" title="${esc(l.printFace)} down · ${fmt(l.extent[0])}×${fmt(l.extent[1])}×${fmt(l.extent[2])} mm${l.warnings ? ' · ' + esc(l.warnings.join('; ')) : ''}"><span class="sw" style="background:${partColor(i)}"></span>${l.label}<span class="x">${l.fits ? '✓' : '✗'} ↕${fmt(l.extent[2], 0)}</span></div>`;
   }).join('');
   const cutChips = cuts.map((n) => `<div class="chip ${S.sel.cut === n.id ? 'sel' : ''}" data-cut="${n.id}" title="${esc(n.reason || 'manual cut')}"><span class="sw" style="background:#e07a3f"></span>${cutName(n.id)}<span class="x">${axisName(n.cut.n)} ${fmt(n.cut.d, 0)}</span></div>`).join('');
-  const seamFallback = p.patches.filter((x) => (x.notes || []).some((n) => /seam/.test(n))).length;
-  const fallbackNote = seamFallback ? `<div class="small warnc">${seamFallback} contact face${seamFallback > 1 ? 's are' : ' is'} too thin for pins: ${seamFallback > 1 ? 'they use' : 'it uses'} a seam joint along the wall instead (step 4).</div>` : '';
+  const fbs = p.patches.filter((x) => x.fallback || x.single);
+  const fallbackNote = fbs.length ? `<div class="fblist">${fbs.map((x) => `<button class="fbitem ${x.fallback ? '' : 'single'}" data-fbpatch="${x.id}" title="${esc(x.fallback ? x.fallback.why : (x.notes || []).join('; '))}">⚠ ${cutName(x.node)} ${contactName(x)}: ${x.fallback ? `${esc(fbText(x.fallback))}` : esc(singleNote(x))}</button>`).join('')}</div>` : '';
   $('planSummary').innerHTML = `${fallbackNote}<div><span class="big">${leaves.length}</span> parts · ${bad.length ? `<span class="badc">${bad.length} do not fit</span> <button class="small" id="autoComplete">Auto-complete</button>` : '<span class="okc">all fit</span>'} · plan ${fmt(p.timing.total, 1)} s</div>
     <div class="small mute" style="margin-top:6px">Parts (click to select, then add a cut through it)</div><div class="partlist">${chips}</div>
     <div class="small mute" style="margin-top:6px">Cuts (click, then drag the arrow in the 3D view or edit below)</div><div class="partlist">${cutChips || '<span class="mute small">none — the model fits as one part</span>'}</div>`;
   $('planSummary').classList.remove('hidden');
   for (const c of $('planSummary').querySelectorAll('[data-leaf]')) c.addEventListener('click', () => select({ leaf: +c.dataset.leaf }));
   for (const c of $('planSummary').querySelectorAll('[data-cut]')) c.addEventListener('click', () => select({ cut: +c.dataset.cut }));
+  for (const c of $('planSummary').querySelectorAll('[data-fbpatch]')) c.addEventListener('click', () => { const x = S.plan.patches[+c.dataset.fbpatch]; select({ cut: x.node, patch: x.id }); });
   const ac = $('autoComplete');
   if (ac) ac.addEventListener('click', () => runPlan('tree', { autoSplit: true }));
 }
 
+function leafName(id) { const l = S.plan.leaves.find((x) => x.id === id); return l ? l.label : '?'; }
+function contactName(p) { return `${leafName(p.negLeaf)}↔${leafName(p.posLeaf)}`; }
+function fbText(fb) { return `${fb.want} → ${fb.got}: ${fb.reason}`; }
+function singleNote(p) { return ((p.notes || []).find((n) => n.startsWith('only one')) || 'only one joint fits').split(':')[0]; }
 function cutName(id) { const n = S.plan && S.plan.tree.nodes[id]; return (n && n.label) || `Cut ${id}`; }
 
 function axisName(n) {
@@ -531,7 +581,8 @@ function renderFaces() {
   fl.innerHTML = faces.map((f) => {
     const js = S.plan.joints.filter((j) => f.patches.includes(j.patch)).length;
     const sm = S.plan.patches.filter((p) => p.node === f.node && p.seam && p.seam.kind !== 'none').length;
-    return `<button data-face="${f.node}" class="${S.face === f.node ? 'sel' : ''}">${cutName(f.node)} · ${js ? js + ' joints' : ''}${js && sm ? ' + ' : ''}${sm ? sm + ' seam' : ''}${!js && !sm ? 'butt' : ''}</button>`;
+    const warn = S.plan.patches.some((p) => p.node === f.node && (p.fallback || p.single));
+    return `<button data-face="${f.node}" class="${S.face === f.node ? 'sel' : ''} ${warn ? 'warn' : ''}">${warn ? '⚠ ' : ''}${cutName(f.node)} · ${js ? js + ' joints' : ''}${js && sm ? ' + ' : ''}${sm ? sm + ' seam' : ''}${!js && !sm ? 'butt' : ''}</button>`;
   }).join('');
   for (const b of fl.querySelectorAll('[data-face]')) b.addEventListener('click', () => { selectFace(+b.dataset.face, true); });
   if (S.face == null || !faces.find((f) => f.node === S.face)) selectFace(faces[0].node, false);
@@ -601,13 +652,16 @@ function renderJointPanel() {
     const opts = ['none', ...S.kinds.seam.map((k) => k.kind)].map((k) => `<option value="${k}" ${sm.kind === k ? 'selected' : ''}>${k === 'none' ? 'No seam joint' : S.kinds.seam.find((x) => x.kind === k).label}</option>`).join('');
     se.innerHTML = `<h3>Contact ${ln(p.negLeaf)} ↔ ${ln(p.posLeaf)}</h3>
       <div class="small mute">${fmt(p.area, 0)} mm² · wall ≈ ${fmt(p.thickness)} mm · largest inscribed Ø${fmt(2 * p.rmax)} mm${p.ring ? ' · shell section' : ''}</div>
-      ${(p.notes || []).map((n) => `<div class="small warnc">${esc(n)}</div>`).join('')}
+      ${fallbackBlock(p)}
+      ${(p.notes || []).filter((n) => !(p.single && n.startsWith('only one'))).map((n) => `<div class="small warnc">${esc(n)}</div>`).join('')}
+      ${seamWallWarn(p, sm)}
       <div class="row two"><label>Seam joint<select id="seamKind">${opts}</select></label><label>Depth (mm)<input id="seamDepth" type="number" step="0.5" min="1" max="40" value="${fmt(sm.depth || 6, 1)}"></label></div>
       <div class="row three"><label>Finger width<input id="seamPitch" type="number" step="0.5" min="2" max="60" value="${fmt(sm.pitch || 8, 1)}"></label>
         <label>Clearance<input id="seamClear" type="number" step="0.01" min="0" max="1" value="${fmt(sm.clear || settings().fits.seam, 2)}"></label>
         <label>Male side<select id="seamMale"><option value="neg" ${sm.male !== 'pos' ? 'selected' : ''}>${ln(p.negLeaf)}</option><option value="pos" ${sm.male === 'pos' ? 'selected' : ''}>${ln(p.posLeaf)}</option></select></label></div>
       <div class="btns"><button class="small primary" id="seamApply">Apply seam</button></div>`;
     $('seamApply').addEventListener('click', () => applySeam(p));
+    for (const b of se.querySelectorAll('[data-pstyle]')) b.addEventListener('click', () => setPatchStyle(p, b.dataset.pstyle, b.dataset.force === '1'));
   } else se.innerHTML = '';
   // joint editor
   const je = $('jointEditor');
@@ -642,6 +696,29 @@ function renderJointPanel() {
     updateJoint(j);
   });
   $('jDel').addEventListener('click', () => deleteJoint(j.id));
+}
+
+function minWall() { return Math.max(1.2, 2 * +$('nozzle').value * 1.05); }
+// badge + actions for a contact that did not get the chosen style
+function fallbackBlock(p) {
+  const fb = p.fallback;
+  const own = p.style || p.force ? `<button class="small" data-pstyle="" data-force="0">Back to automatic (${esc(styleLabel($('jointStyle').value))})</button>` : '';
+  if (fb) {
+    const btn = fb.forced
+      ? `<div class="small why">Forcing ${esc(fb.want.toLowerCase())} does not work here either.</div>`
+      : `<button class="small" data-pstyle="${esc(p.style || '')}" data-force="1" title="Try ${esc(fb.want.toLowerCase())} again with relaxed limits (2 mm minimum hole depth, 2-perimeter walls)">Use ${esc(fb.want.toLowerCase())} here anyway</button>`;
+    return `<div class="fb small"><div class="head">⚠ ${esc(fbText(fb))}</div><div class="why">${esc(fb.why)}</div><div class="btns">${btn}${own}</div></div>`;
+  }
+  if (p.single) {
+    return `<div class="fb small"><div class="head">⚠ ${esc(singleNote(p))}</div><div class="why">One pin is a pivot: the parts can rotate about it. Keyed pegs or a seam stop that.</div>
+      <div class="btns"><button class="small" data-pstyle="seam" data-force="0">Use seam here</button><button class="small" data-pstyle="keyed" data-force="0">Use keyed peg here</button>${own}</div></div>`;
+  }
+  return own ? `<div class="btns">${own}</div>` : '';
+}
+function seamWallWarn(p, sm) {
+  const need = { tongue: 3, lap: 2 }[sm.kind];
+  if (!need || !sm.locked || p.thickness >= need * minWall()) return '';
+  return `<div class="small warnc">⚠ ${sm.kind === 'tongue' ? 'Tongue and groove' : 'Half lap'} wants a wall ≥ ${fmt(need * minWall())} mm; this one is ${fmt(p.thickness)} mm.</div>`;
 }
 
 // any edit makes the whole patch manual so its other joints stay put

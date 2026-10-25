@@ -123,3 +123,14 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 4
 .ver td:first-child { white-space: nowrap; }
 .okc { color: var(--ok); } .badc { color: var(--bad); } .warnc { color: var(--warn); }
 @media (max-width: 900px) { :root { --side: 100%; } body { grid-template-columns: 1fr; grid-template-rows: 48px 50vh 1fr; } .side { grid-row: 3; } .stage { grid-row: 2; } }
+
+/* joint fallbacks */
+.settings-note { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 4px; }
+.fb { margin-top: 6px; padding: 6px 8px; border: 1px solid #5a4a26; border-radius: 6px; background: #2a2418; }
+.fb .head { color: var(--warn); font-weight: 600; }
+.fb .why { color: #c9b98f; }
+.fb .btns { margin-top: 4px; display: flex; gap: 5px; flex-wrap: wrap; }
+.fblist { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+.fbitem { cursor: pointer; text-align: left; font-size: 12px; padding: 3px 8px; border: 1px solid #5a4a26; background: #2a2418; color: var(--warn); border-radius: 6px; }
+.fbitem.single { border-color: #4a4f26; }
+.facelist button.warn { border-color: #5a4a26; color: var(--warn); }
