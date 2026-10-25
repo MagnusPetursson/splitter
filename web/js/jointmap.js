@@ -134,7 +134,13 @@ export class JointMap {
     const fpx = Math.round(12 * dpr);
     ctx.font = `600 ${fpx}px system-ui`;
     ctx.lineJoin = 'round';
-    const label = (t, x, y, col) => { ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#0b0e12'; ctx.strokeText(t, x, y); ctx.fillStyle = col; ctx.fillText(t, x, y); };
+    const label = (t, x, y, col) => {
+      // keep labels inside the canvas (shell sections put centroids near the edge)
+      const hw = ctx.measureText(t).width / 2 + 4 * dpr;
+      x = Math.max(hw, Math.min(this.c.width - hw, x));
+      y = Math.max(fpx, Math.min(this.c.height - 4 * dpr, y));
+      ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#0b0e12'; ctx.strokeText(t, x, y); ctx.fillStyle = col; ctx.fillText(t, x, y);
+    };
     ctx.textAlign = 'center';
     for (const pid of this.face.patches) {
       const p = this.plan.patches[pid];
@@ -144,6 +150,8 @@ export class JointMap {
       if (p.seam && p.seam.kind !== 'none') t += ` · ${p.seam.kind}`;
       label(t, q[0], q[1] - fpx * 0.6, pid === this.opts.patch ? '#ffffff' : '#dbe3ea');
       label(`wall ${p.thickness.toFixed(1)} mm · max Ø${(2 * p.rmax).toFixed(1)}`, q[0], q[1] + fpx * 0.8, '#aab6c2');
+      if (p.fallback) label(`⚠ ${p.fallback.want} → ${p.fallback.got.replace('tongue-and-groove', 'T&G')}: ${p.fallback.reason}`, q[0], q[1] + fpx * 2.2, '#e8b04a');
+      else if (p.single) label('⚠ only one joint fits: can rotate', q[0], q[1] + fpx * 2.2, '#e8b04a');
     }
     // joints
     for (const j of this.joints()) {

@@ -62,6 +62,14 @@ type Patch struct {
 	Seam      *Seam       `json:"seam,omitempty"`
 	Anchor    geom.Vec3   `json:"anchor"`
 	Notes     []string    `json:"notes,omitempty"`
+	// Style is a per-contact joint style chosen by the user ("" = the
+	// global style); Force asks for that style even below the recommended
+	// wall/depth. Fallback says what was used instead and why; Single
+	// marks a contact where only one point joint fits.
+	Style    string         `json:"style,omitempty"`
+	Force    bool           `json:"force,omitempty"`
+	Fallback *JointFallback `json:"fallback,omitempty"`
+	Single   bool           `json:"single,omitempty"`
 
 	pixels []int32
 }

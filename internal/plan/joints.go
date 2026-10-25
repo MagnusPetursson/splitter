@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 
 	"github.com/MagnusPetursson/splitter/internal/geom"
 )
@@ -87,6 +88,16 @@ type Joint struct {
 	UpPos    *geom.Vec2 `json:"upPos,omitempty"`
 	Glue     bool       `json:"glue"`
 	Warnings []string   `json:"warnings,omitempty"`
+	// MinWall overrides the settings' minimum wall around this joint (set
+	// when the user forces a style onto a thin contact).
+	MinWall float64 `json:"minWall,omitempty"`
+}
+
+func (j *Joint) wall(s *Settings) float64 {
+	if j.MinWall > 0 {
+		return j.MinWall
+	}
+	return s.MinWall
 }
 
 // Seam is a joint that runs along the whole patch.
@@ -156,7 +167,7 @@ func Screw(size string) (clear, head, insertD, insertL, nutAF, nutH float64) {
 // parameters. It does not measure the geometry.
 func (j *Joint) resolve(s *Settings) {
 	j.Clear = s.Fits.Get(j.Fit)
-	w := s.MinWall
+	w := j.wall(s)
 	c := j.Clear
 	switch j.Kind {
 	case "dowel", "press":
@@ -363,27 +374,140 @@ func (fc *faceCtx) avail(p geom.Vec2, r float64, side float64) float64 {
 	return best
 }
 
-// placeAuto chooses point joints (or a seam) for a patch.
+// JointFallback records that a patch could not get the joint style the user
+// chose, what it got instead and why. The UI shows it as a badge; it is
+// never applied silently.
+type JointFallback struct {
+	Style  string `json:"style"`            // requested style (settings value)
+	Want   string `json:"want"`             // e.g. "Dowels"
+	Got    string `json:"got"`              // e.g. "lap seam", "butt joint (glue only)"
+	Reason string `json:"reason"`           // short, e.g. "wall 2.3 mm"
+	Why    string `json:"why"`              // full explanation with numbers
+	Forced bool   `json:"forced,omitempty"` // the user asked to force the style and it still cannot be placed
+}
+
+// StyleLabel is the plural display name of a joint style.
+func StyleLabel(style string) string {
+	switch style {
+	case "glued", "dowel", "":
+		return "Dowels"
+	case "filament":
+		return "Filament pins"
+	case "pegs":
+		return "Pegs"
+	case "keyed":
+		return "Keyed pegs"
+	case "press":
+		return "Press-fit pins"
+	case "snap":
+		return "Snap clips"
+	case "magnets":
+		return "Magnets"
+	case "screws":
+		return "Inserts + screws"
+	case "bolts":
+		return "Bolts"
+	case "finger":
+		return "Finger joint"
+	case "tongue":
+		return "Tongue and groove"
+	case "lap":
+		return "Half lap"
+	case "dovetail":
+		return "Dovetail"
+	case "seam", "auto":
+		return "Seam joint"
+	}
+	return style
+}
+
+func kindNoun(kind string, n int) string {
+	one := map[string]string{"dowel": "dowel", "filament": "filament pin", "press": "press-fit pin", "peg": "peg",
+		"keyed": "keyed peg", "magnet": "magnet", "insert": "insert", "bolt": "bolt", "snap": "snap clip"}[kind]
+	if one == "" {
+		one = kind
+	}
+	if n == 1 {
+		return one
+	}
+	return one + "s"
+}
+
+// hardWall is the absolute minimum skin (two perimeters) used when the user
+// forces a style below the recommended wall.
+func (s *Settings) hardWall() float64 { return math.Max(0.8, 2*s.Nozzle) }
+
+// seamMin is the wall thickness a seam kind needs (recommended or forced).
+func seamMin(kind string, s *Settings, force bool) float64 {
+	w := s.MinWall
+	if force {
+		w = s.hardWall()
+	}
+	switch kind {
+	case "tongue":
+		return 3 * w
+	case "lap":
+		return 2 * w
+	}
+	return 0.9 * w
+}
+
+// substituteSeamKind picks a seam by wall thickness: tongue, then lap, then
+// finger. Dovetail is only ever used when chosen.
+func substituteSeamKind(t float64, s *Settings) string {
+	switch {
+	case t >= seamMin("tongue", s, false):
+		return "tongue"
+	case t >= seamMin("lap", s, false):
+		return "lap"
+	case t >= seamMin("finger", s, false):
+		return "finger"
+	}
+	return ""
+}
+
+// patchStyle is the joint style in effect for this patch.
+func (fc *faceCtx) patchStyle() string {
+	if fc.patch.Style != "" {
+		return fc.patch.Style
+	}
+	return fc.s.JointStyle
+}
+
+// placeAuto chooses joints for a patch. The user's style wins: point
+// styles are placed wherever they physically fit (even a single one, with
+// a warning); a substitute is used only when the chosen style cannot be
+// placed at all, and that is recorded in patch.Fallback for the UI.
 func (fc *faceCtx) placeAuto(nextID *int) ([]*Joint, *Seam, []string) {
 	p := fc.patch
 	s := fc.s
+	style := fc.patchStyle()
+	force := p.Force
 	var notes []string
-	kinds, fit := styleKinds(s.JointStyle)
-	if fit == "seam" {
-		sm := fc.autoSeam(s.JointStyle)
-		if sm == nil {
-			notes = append(notes, "no seam joint fits this face")
-		}
-		return nil, sm, notes
+	p.Fallback, p.Single = nil, false
+	if p.Style != "" {
+		notes = append(notes, fmt.Sprintf("%s chosen for this contact", strings.ToLower(StyleLabel(style))))
 	}
-	// Shell sections (ring-shaped, thin): a couple of pins where the wall
-	// happens to be thick (e.g. a brim) would leave the rest of the seam
-	// unaligned. Joint the whole wall instead.
-	if p.Ring && p.Thickness < 3*s.MinWall {
-		if sm := fc.autoSeam("auto"); sm != nil {
-			notes = append(notes, fmt.Sprintf("shell wall %.1f mm: %s joint along the whole seam instead of pins", p.Thickness, sm.Kind))
+	kinds, fit := styleKinds(style)
+	if fit == "seam" {
+		kind := style
+		if kind == "seam" || kind == "auto" {
+			kind = substituteSeamKind(p.Thickness, s)
+			if kind == "" {
+				notes = append(notes, fmt.Sprintf("wall %.1f mm is too thin for any seam joint: butt-glue only", p.Thickness))
+				return nil, nil, notes
+			}
+		}
+		sm, why := fc.seam(kind, force)
+		if sm != nil {
+			if force && p.Thickness < seamMin(kind, s, false) {
+				notes = append(notes, fmt.Sprintf("forced: wall %.1f mm is below the recommended %.1f mm for %s", p.Thickness, seamMin(kind, s, false), strings.ToLower(StyleLabel(kind))))
+			}
 			return nil, sm, notes
 		}
+		sub := fc.substitute(kind)
+		fc.fallback(style, sub, nil, why, force)
+		return nil, sub, notes
 	}
 	targetK := 2
 	switch {
@@ -394,10 +518,11 @@ func (fc *faceCtx) placeAuto(nextID *int) ([]*Joint, *Seam, []string) {
 	case p.Area < 150:
 		targetK = 1
 	}
-	if s.JointStyle == "screws" || s.JointStyle == "bolts" {
+	if style == "screws" || style == "bolts" {
 		targetK = min(targetK, 3)
 	}
-	for _, kind := range kinds {
+	var firstWhy string
+	for ki, kind := range kinds {
 		kfit := fit
 		if kind == "dowel" {
 			kfit = "glue"
@@ -405,66 +530,145 @@ func (fc *faceCtx) placeAuto(nextID *int) ([]*Joint, *Seam, []string) {
 		if kind == "press" {
 			kfit = "press"
 		}
-		var sizeOpts []string
-		if kind == "insert" || kind == "bolt" {
-			sizeOpts = []string{"M4", "M3", "M2.5"}
+		out, why := fc.points(kind, kfit, targetK, force, nextID)
+		if len(out) == 0 {
+			if ki == 0 {
+				firstWhy = why
+			}
+			continue
 		}
-		ds := sizesFor(kind)
-		if sizeOpts != nil {
-			ds = make([]float64, len(sizeOpts))
+		if ki > 0 {
+			fc.fallback(style, nil, out, firstWhy, force)
+		} else if force && out[0].RReq+s.MinWall-s.hardWall() > p.RMax {
+			notes = append(notes, fmt.Sprintf("forced: %s with %.1f mm walls (recommended %.1f mm); print a coupon first", kindNoun(kind, len(out)), s.hardWall(), s.MinWall))
 		}
-		for si := range ds {
-			proto := &Joint{Kind: kind, Fit: kfit, D: ds[si], Auto: true}
-			if sizeOpts != nil {
-				proto.Size = sizeOpts[si]
-				proto.D = 0
-			}
-			if kind == "magnet" {
-				proto.Depth = map[float64]float64{10: 3, 8: 3, 6: 3, 5: 2}[ds[si]]
-			}
-			proto.resolve(s)
-			if p.RMax < proto.RReq {
-				continue
-			}
-			pts := fc.spread(proto, targetK)
-			if len(pts) == 0 {
-				continue
-			}
-			var out []*Joint
-			for _, pt := range pts {
-				j := *proto
-				j.ID = *nextID
-				*nextID++
-				j.Patch = p.ID
-				j.P = pt
-				j.Angle = p.Axis
-				out = append(out, &j)
-			}
-			if len(out) == 1 && kind != "keyed" && targetK > 1 {
-				// a single round pin lets the parts rotate: prefer a seam joint
-				if sm := fc.autoSeam("auto"); sm != nil {
-					*nextID--
-					notes = append(notes, fmt.Sprintf("only one pin fits; using a %s seam instead", sm.Kind))
-					return nil, sm, notes
-				}
-				notes = append(notes, "only one joint fits here; it can rotate – consider a keyed peg or glue")
-			}
-			return out, nil, notes
+		if len(out) == 1 && targetK > 1 && kind != "keyed" {
+			p.Single = true
+			notes = append(notes, fmt.Sprintf("only one %s fits: parts can rotate; consider keyed pegs or a seam", kindNoun(kind, 1)))
 		}
+		return out, nil, notes
 	}
-	// nothing fits as a point joint: thin shell or small face
-	sm := fc.autoSeam("auto")
-	if sm == nil {
-		notes = append(notes, fmt.Sprintf("face too thin (%.1f mm) for any joint: butt-glue only", p.Thickness))
+	sub := fc.substitute("")
+	fc.fallback(style, sub, nil, firstWhy, force)
+	return nil, sub, notes
+}
+
+// fallback records a substitution on the patch.
+func (fc *faceCtx) fallback(style string, sm *Seam, pts []*Joint, why string, force bool) {
+	p := fc.patch
+	fb := &JointFallback{Style: style, Want: StyleLabel(style), Why: why, Forced: force}
+	switch {
+	case sm != nil:
+		fb.Got = map[string]string{"finger": "finger seam", "tongue": "tongue-and-groove seam", "lap": "lap seam", "dovetail": "dovetail"}[sm.Kind]
+	case len(pts) > 0:
+		fb.Got = kindNoun(pts[0].Kind, len(pts))
+	default:
+		fb.Got = "butt joint (glue only)"
+	}
+	if p.Ring || p.Thickness < 3*fc.s.MinWall {
+		fb.Reason = fmt.Sprintf("wall %.1f mm", p.Thickness)
+	} else if strings.Contains(why, "inscribed") {
+		fb.Reason = fmt.Sprintf("face too small (max Ø%.1f mm)", 2*p.RMax)
 	} else {
-		notes = append(notes, fmt.Sprintf("thin wall (%.1f mm): using a %s seam instead of pins", p.Thickness, sm.Kind))
+		fb.Reason = "not enough depth"
 	}
-	return nil, sm, notes
+	p.Fallback = fb
+}
+
+// substitute picks the seam used when the chosen style cannot be placed.
+func (fc *faceCtx) substitute(exclude string) *Seam {
+	t := fc.patch.Thickness
+	for _, k := range []string{"tongue", "lap", "finger"} {
+		if k == exclude || t < seamMin(k, fc.s, false) {
+			continue
+		}
+		if sm, _ := fc.seam(k, false); sm != nil {
+			return sm
+		}
+	}
+	return nil
+}
+
+// points tries every size of a point kind and returns the joints of the
+// largest size that reaches min(2, k) placements, else the best single.
+func (fc *faceCtx) points(kind, kfit string, k int, force bool, nextID *int) ([]*Joint, string) {
+	p := fc.patch
+	s := fc.s
+	var sizeOpts []string
+	if kind == "insert" || kind == "bolt" {
+		sizeOpts = []string{"M4", "M3", "M2.5"}
+	}
+	ds := sizesFor(kind)
+	if sizeOpts != nil {
+		ds = make([]float64, len(sizeOpts))
+	}
+	want := min(2, k)
+	var single *Joint
+	var singleP []geom.Vec2
+	var smallest *Joint
+	shallow := false
+	for si := range ds {
+		proto := &Joint{Kind: kind, Fit: kfit, D: ds[si], Auto: true}
+		if force {
+			proto.MinWall = s.hardWall()
+		}
+		if sizeOpts != nil {
+			proto.Size = sizeOpts[si]
+			proto.D = 0
+		}
+		if kind == "magnet" {
+			proto.Depth = map[float64]float64{10: 3, 8: 3, 6: 3, 5: 2}[ds[si]]
+		}
+		proto.resolve(s)
+		smallest = proto
+		if p.RMax < proto.RReq {
+			continue
+		}
+		pts := fc.spread(proto, k, force)
+		if len(pts) == 0 {
+			shallow = true
+			continue
+		}
+		if len(pts) >= want {
+			return fc.emit(proto, pts, nextID), ""
+		}
+		if single == nil {
+			single, singleP = proto, pts
+		}
+	}
+	if single != nil {
+		return fc.emit(single, singleP, nextID), ""
+	}
+	if smallest == nil {
+		return nil, "no size available"
+	}
+	if shallow {
+		return nil, fmt.Sprintf("no spot has %.1f mm of material on both sides of the cut for %s", math.Min(smallest.HoleNeg, smallest.HolePos)+MinFloor, kindNoun(kind, 2))
+	}
+	sz := fmt.Sprintf("Ø%g mm", smallest.D)
+	if smallest.Size != "" {
+		sz = smallest.Size
+	}
+	return nil, fmt.Sprintf("wall %.1f mm, largest inscribed Ø%.1f mm; the smallest %s (%s) needs Ø%.1f mm", p.Thickness, 2*p.RMax, kindNoun(kind, 1), sz, 2*smallest.RReq)
+}
+
+func (fc *faceCtx) emit(proto *Joint, pts []geom.Vec2, nextID *int) []*Joint {
+	var out []*Joint
+	for _, pt := range pts {
+		j := *proto
+		j.ID = *nextID
+		*nextID++
+		j.Patch = fc.patch.ID
+		j.P = pt
+		j.Angle = fc.patch.Axis
+		out = append(out, &j)
+	}
+	return out
 }
 
 // spread picks up to k admissible points with maximal mutual spacing and
 // enough depth on both sides, adjusting pin depth down where needed.
-func (fc *faceCtx) spread(proto *Joint, k int) []geom.Vec2 {
+func (fc *faceCtx) spread(proto *Joint, k int, relax bool) []geom.Vec2 {
 	f := fc.face
 	g := f.grid
 	p := fc.patch
@@ -489,7 +693,7 @@ func (fc *faceCtx) spread(proto *Joint, k int) []geom.Vec2 {
 	for i, px := range cand {
 		pos[i] = g.Center(int(px)%g.W, int(px)/g.W)
 	}
-	rr := proto.RReq - fc.s.MinWall
+	rr := proto.RReq - proto.wall(fc.s)
 	minSpacing := math.Max(2.5*proto.RReq, 12)
 	needNeg := proto.HoleNeg + MinFloor
 	needPos := proto.HolePos + MinFloor
@@ -521,6 +725,13 @@ func (fc *faceCtx) spread(proto *Joint, k int) []geom.Vec2 {
 			if math.Min(an, ap) >= 4.3 {
 				return true
 			}
+		}
+		if relax {
+			// forced by the user: accept any spot with 2 mm of hole per
+			// side; finalize() reports what is short
+			an := fc.avail(q, rr, -1) - MinFloor
+			ap := fc.avail(q, rr, 1) - MinFloor
+			return math.Min(an, ap) >= 2
 		}
 		return false
 	}
@@ -568,39 +779,28 @@ func (fc *faceCtx) spread(proto *Joint, k int) []geom.Vec2 {
 	return chosen
 }
 
-// autoSeam picks a seam joint suitable for the patch thickness.
-func (fc *faceCtx) autoSeam(style string) *Seam {
+// seam builds a seam joint of the given kind, or returns why it cannot.
+func (fc *faceCtx) seam(kind string, force bool) (*Seam, string) {
 	p := fc.patch
 	s := fc.s
 	t := p.Thickness
-	kind := style
-	if style == "auto" || style == "seam" {
-		switch {
-		case t >= 2*s.MinWall:
-			kind = "finger"
-		default:
-			kind = "finger"
-		}
-	}
-	if t < s.MinWall*0.9 {
-		return nil
+	if need := seamMin(kind, s, force); t < need {
+		return nil, fmt.Sprintf("wall %.1f mm; %s needs ≥ %.1f mm", t, strings.ToLower(StyleLabel(kind)), need)
 	}
 	sm := &Seam{Kind: kind, Fit: "glue", Auto: true, Glue: true, Male: "neg", Center: p.Centroid, Axis: p.Axis, Wall: t}
 	switch kind {
 	case "tongue":
-		if t < 3*s.MinWall {
-			return fc.autoSeamFallback()
-		}
-		sm.Inset = math.Max(s.MinWall, t/3)
+		sm.Inset = t / 3 // = max(MinWall, t/3) above the recommended wall
 		sm.Depth = geom.Clamp(1.5*t, 3, 8)
 	case "lap":
-		if t < 2*s.MinWall {
-			return fc.autoSeamFallback()
-		}
 		sm.Depth = geom.Clamp(3*t, 5, 12)
 	case "dovetail":
-		if p.RMax < 6 {
-			return fc.autoSeamFallback()
+		minR := 6.0
+		if force {
+			minR = 4
+		}
+		if p.RMax < minR {
+			return nil, fmt.Sprintf("largest inscribed Ø%.1f mm; a dovetail needs Ø%.0f mm", 2*p.RMax, 2*minR)
 		}
 		sm.Width = geom.Clamp(p.RMax*0.8, 4, 14)
 		sm.Depth = geom.Clamp(p.RMax*0.6, 3, 8)
@@ -621,13 +821,7 @@ func (fc *faceCtx) autoSeam(style string) *Seam {
 			sm.Mode = "linear"
 		}
 	}
-	return sm
-}
-
-func (fc *faceCtx) autoSeamFallback() *Seam {
-	old := fc.s.JointStyle
-	_ = old
-	return fc.autoSeam("finger")
+	return sm, ""
 }
 
 // FinalizeJoint computes world frame, availability and warnings for a joint.
@@ -639,7 +833,7 @@ func (fc *faceCtx) finalize(j *Joint) {
 	j.X = fr.U.Scale(ca).Add(fr.V.Scale(sa))
 	j.Z = fr.N
 	j.Y = j.Z.Cross(j.X)
-	rr := j.RReq - fc.s.MinWall
+	rr := j.RReq - j.wall(fc.s)
 	j.AvailNeg = fc.avail(j.P, rr, -1)
 	j.AvailPos = fc.avail(j.P, rr, 1)
 	j.Warnings = nil

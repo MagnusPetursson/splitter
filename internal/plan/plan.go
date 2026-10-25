@@ -19,6 +19,16 @@ type Request struct {
 	Tree   *Tree          `json:"tree,omitempty"`
 	Joints []*Joint       `json:"joints,omitempty"` // locked/user joints to keep
 	Seams  []SeamOverride `json:"seams,omitempty"`
+	// Styles are per-contact joint style choices (located like seams).
+	Styles []StyleOverride `json:"styles,omitempty"`
+}
+
+// StyleOverride pins a joint style (or "" = the global style, forced) to
+// the contact patch at a location on a cut face.
+type StyleOverride struct {
+	At    geom.Vec3 `json:"at"`
+	Style string    `json:"style"`
+	Force bool      `json:"force,omitempty"`
 }
 
 // SeamOverride pins a user's seam choice to a location on a cut face.
@@ -161,6 +171,11 @@ func (md *Model) run(req *Request, allowance float64, progress func(string)) (*P
 			locked[pid] = true
 		}
 	}
+	for _, so := range req.Styles {
+		if pid, _ := locate(faces, patches, so.At); pid >= 0 {
+			patches[pid].Style, patches[pid].Force = so.Style, so.Force
+		}
+	}
 	for _, p := range patches {
 		if locked[p.ID] || !s.AutoJoints {
 			continue
@@ -198,7 +213,7 @@ func (md *Model) run(req *Request, allowance float64, progress func(string)) (*P
 			if j.Kind == "peg" || j.Kind == "keyed" || j.Kind == "snap" {
 				fr := faceOf[p.Node].fr
 				c := fr.To3(j.P)
-				r := j.RReq - s.MinWall
+				r := j.RReq - j.wall(&s)
 				for k := 0; k < 8; k++ {
 					a := float64(k) * math.Pi / 4
 					q := c.Add(fr.U.Scale(r * math.Cos(a))).Add(fr.V.Scale(r * math.Sin(a))).Add(out.Scale(j.Depth + 0.2))
@@ -306,7 +321,7 @@ func (md *Model) run(req *Request, allowance float64, progress func(string)) (*P
 			if ja.Patch != jb.Patch {
 				continue
 			}
-			need := (ja.RReq - s.MinWall) + (jb.RReq - s.MinWall) + s.MinWall
+			need := (ja.RReq - ja.wall(&s)) + (jb.RReq - jb.wall(&s)) + math.Min(ja.wall(&s), jb.wall(&s))
 			if d := ja.P.Sub(jb.P).Len(); d < need {
 				ja.Warnings = append(ja.Warnings, fmt.Sprintf("overlaps J%d (%.1f mm apart, needs %.1f)", jb.ID, d, need))
 				jb.Warnings = append(jb.Warnings, fmt.Sprintf("overlaps J%d (%.1f mm apart, needs %.1f)", ja.ID, d, need))

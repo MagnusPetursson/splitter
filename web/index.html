@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>print-splitter — split models to fit your printer</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='9' width='12' height='18' rx='2' fill='%23e07a3f'/%3E%3Crect x='17' y='5' width='12' height='22' rx='2' fill='%233fa7e0'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/app.css?v=__BUILD__">
 <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.js" } }</script>
 </head>
 <body>
@@ -102,6 +102,9 @@
       <label class="row" title="Every part prints the way the model is oriented (only rotated about Z). Good for cosmetic parts and anything with a natural base."><input type="checkbox" id="upright"> Keep upright</label>
       <label class="row" title="Also try tilted (principal-axis) orientations: can mean fewer parts, but usually more supports."><input type="checkbox" id="tilted"> Allow tilted</label>
     </div>
+    <div class="settings-note small"><span id="restoredNote" class="mute hidden">Restored your last settings.</span>
+      <button id="resetDefaults" class="link small" title="Prusa Core One, 3 mm margin, 0.4 nozzle, Dowel pins (glue), default clearances">Reset to defaults</button></div>
+    <div id="styleNote" class="small mute hidden"></div>
     <div id="planSummary" class="info hidden"></div>
     <div id="cutEditor" class="editor hidden"></div>
     <div id="partEditor" class="editor hidden"></div>
@@ -156,7 +159,7 @@
       <div id="couponInfo" class="info hidden"></div>
     </details>
   </section>
-  <footer class="credits mute small">Go planner (WebAssembly) · Manifold (Apache-2.0) booleans · both in Web Workers · three.js (MIT) · <a href="#" id="licLink">licenses</a></footer>
+  <footer class="credits mute small">Go planner (WebAssembly) · Manifold (Apache-2.0) booleans · both in Web Workers · three.js (MIT) · <a href="#" id="licLink">licenses</a> · <span id="buildVer" data-v="__BUILD__">build __BUILD__</span></footer>
 </aside>
 
 <main class="stage">
@@ -181,6 +184,6 @@
   <form method="dialog"><button>Close</button></form>
 </dialog>
 
-<script type="module" src="js/app.js"></script>
+<script type="module" src="js/app.js?v=__BUILD__"></script>
 </body>
 </html>

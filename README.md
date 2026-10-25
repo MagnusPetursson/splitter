@@ -24,7 +24,9 @@
 - A point joint may sit only where the distance is at least joint radius + clearance + minimum wall. The minimum wall is 2 × nozzle × 1.05 and never below 1.2 mm. This stops a joint from breaking through a visible surface.
 - **Depth** comes from ray casts into both parts from the centre and 8 rim points. Pins get shorter (down to 4 mm per side), or move elsewhere.
 - Joints are spread by farthest-point sampling: at least 2 per patch so parts cannot rotate, and 3–4 on large faces.
-- **Thin shells** are ring-shaped sections whose wall is thinner than 3 × the minimum wall. They get a seam joint around the whole wall, such as a finger joint, instead of a few pins.
+- **Your joint style wins.** The chosen point joint is placed wherever at least two fit, even on thin shells (in thicker spots such as rims). If only one fits, you get that one plus a warning, because a single pin lets the parts rotate; one click switches that contact to a seam or a keyed peg.
+- **Substitutions are never silent.** Only when the chosen style cannot be placed at all does a contact get a seam picked by wall thickness: tongue and groove if the wall is ≥ 3 × the minimum wall, half lap if ≥ 2 ×, else finger joint (dovetails only when you choose them). Each one shows a badge such as "Dowels → lap seam: wall 2.3 mm" in the plan summary and on the joint map, with the exact reason and a "use dowels here anyway" action that retries with 2-perimeter walls and 2 mm minimum hole depth (and says so if it still cannot work).
+- Changing the **Joints** selector re-places the automatic joints on the current cuts at once; cuts and manual joints are kept. The last settings are restored from browser storage (the page says so); **Reset to defaults** goes back to Dowel pins (glue).
 - Integrated pegs and seams go on the part that does **not** print on that face, so the face stays flat on the bed. Horizontal holes get teardrop roofs, and horizontal pegs get a flat underside.
 
 | | Glued | Unglued |
