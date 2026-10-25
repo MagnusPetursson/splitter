@@ -4,6 +4,7 @@ package server
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -41,6 +42,9 @@ type Server struct {
 	models map[string]*model
 	jobs   map[string]*job
 	sem    chan struct{}
+
+	buildOnce sync.Once
+	build     string
 }
 
 type model struct {
@@ -89,6 +93,26 @@ func New(cfg Config) *Server {
 	return s
 }
 
+// buildID is a short content hash of the UI (index, js, css): it replaces
+// the __BUILD__ placeholder, like scripts/build-static.sh does with the
+// commit id for the static site.
+func (s *Server) buildID() string {
+	s.buildOnce.Do(func() {
+		h := sha256.New()
+		fs.WalkDir(s.cfg.Web, ".", func(p string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() || !(p == "index.html" || strings.HasPrefix(p, "js/") || strings.HasPrefix(p, "css/")) {
+				return nil
+			}
+			b, _ := fs.ReadFile(s.cfg.Web, p)
+			h.Write([]byte(p))
+			h.Write(b)
+			return nil
+		})
+		s.build = "srv-" + hex.EncodeToString(h.Sum(nil))[:8]
+	})
+	return s.build
+}
+
 func newID() string {
 	b := make([]byte, 9)
 	rand.Read(b)
@@ -129,8 +153,12 @@ func (s *Server) Handler() http.Handler {
 			}
 			w.Header().Set("Cache-Control", "no-cache")
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write([]byte(strings.Replace(string(idx), "<head>", `<head><meta name="splitter-backend" content="server">`, 1)))
+			page := strings.Replace(string(idx), "<head>", `<head><meta name="splitter-backend" content="server">`, 1)
+			w.Write([]byte(strings.ReplaceAll(page, "__BUILD__", s.buildID())))
 			return
+		} else if strings.HasPrefix(r.URL.Path, "/js/") || strings.HasPrefix(r.URL.Path, "/css/") {
+			// the app's own modules change with every deploy
+			w.Header().Set("Cache-Control", "no-cache")
 		} else {
 			w.Header().Set("Cache-Control", "public, max-age=3600")
 		}

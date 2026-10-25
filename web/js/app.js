@@ -111,7 +111,7 @@ async function init() {
   for (const k of S.kinds.point) { const op = document.createElement('option'); op.value = k.kind; op.textContent = k.label; ak.appendChild(op); }
   DEFAULTS = { margin: $('margin').value, minPiece: $('minPiece').value, style: 'glued' };
   const bv = $('buildVer');
-  if (bv.dataset.v.startsWith('__')) bv.textContent = BE.mode === 'local' ? 'dev build' : 'server build';
+  if (bv.dataset.v.startsWith('__')) bv.textContent = 'dev build';
   const saved = load();
   $('restoredNote').classList.toggle('hidden', !saved);
   if (saved) {
