@@ -16,15 +16,19 @@ const supportGrid = 40
 const overhangCos = 0.7071067811865476 // cos(45°); strictly steeper only
 const bedContactTolerance = 0.6        // mm; suppress bed contact, not whole low faces
 
+// supportPoly is a triangle clipped to the cell. Triangles wholly inside
+// the cell keep only their index (p == nil): copying every vertex of a
+// million-triangle cell was the planner's largest transient allocation.
 type supportPoly struct {
-	p []geom.Vec3
-	n geom.Vec3
+	ti int32
+	p  []geom.Vec3
 }
 type supportCap struct {
 	sec *Section
 	n   geom.Vec3
 }
 type supportCell struct {
+	md    *Model
 	polys []supportPoly
 	caps  []supportCap
 }
@@ -32,9 +36,28 @@ type supportCell struct {
 // Clip actual triangles, not their centroids: large triangles frequently
 // straddle several parts (a twelve-triangle cube is the important case).
 func (md *Model) supportGeometry(hs []HalfSpace) *supportCell {
-	cell := &supportCell{}
+	cell := &supportCell{md: md}
 	for ti, f := range md.M.F {
-		p := []geom.Vec3{md.M.V[f[0]], md.M.V[f[1]], md.M.V[f[2]]}
+		a, b, c := md.M.V[f[0]], md.M.V[f[1]], md.M.V[f[2]]
+		inside, outside := true, false
+		for _, h := range hs {
+			da, db, dc := h.Side*h.P.Eval(a), h.Side*h.P.Eval(b), h.Side*h.P.Eval(c)
+			if da < 0 || db < 0 || dc < 0 {
+				inside = false
+			}
+			if da < 0 && db < 0 && dc < 0 {
+				outside = true
+				break
+			}
+		}
+		if outside {
+			continue
+		}
+		if inside {
+			cell.polys = append(cell.polys, supportPoly{ti: int32(ti)})
+			continue
+		}
+		p := []geom.Vec3{a, b, c}
 		for _, h := range hs {
 			if len(p) < 3 {
 				break
@@ -53,7 +76,7 @@ func (md *Model) supportGeometry(hs []HalfSpace) *supportCell {
 			p = out
 		}
 		if len(p) >= 3 {
-			cell.polys = append(cell.polys, supportPoly{p, md.Nrm[ti]})
+			cell.polys = append(cell.polys, supportPoly{int32(ti), p})
 		}
 	}
 	for i, h := range hs {
@@ -89,14 +112,21 @@ func (cell *supportCell) estimate(pts []geom.Vec3, down geom.Vec3) float64 {
 	}
 	// Rasterise each clipped convex triangle polygon as a fan. Max per pixel
 	// removes shared-edge hits and stacked duplicate support columns.
+	var tri [3]geom.Vec3
 	for _, poly := range cell.polys {
-		nd := poly.n.Dot(down)
+		nd := cell.md.Nrm[poly.ti].Dot(down)
 		if nd <= overhangCos+1e-9 {
 			continue
 		}
-		a := r.Apply(poly.p[0])
-		for i := 1; i+1 < len(poly.p); i++ {
-			b, c := r.Apply(poly.p[i]), r.Apply(poly.p[i+1])
+		pp := poly.p
+		if pp == nil {
+			f := cell.md.M.F[poly.ti]
+			tri = [3]geom.Vec3{cell.md.M.V[f[0]], cell.md.M.V[f[1]], cell.md.M.V[f[2]]}
+			pp = tri[:]
+		}
+		a := r.Apply(pp[0])
+		for i := 1; i+1 < len(pp); i++ {
+			b, c := r.Apply(pp[i]), r.Apply(pp[i+1])
 			den := (b[1]-c[1])*(a[0]-c[0]) + (c[0]-b[0])*(a[1]-c[1])
 			if math.Abs(den) < 1e-12 {
 				continue

@@ -109,8 +109,9 @@ func TestSupportRasterStrict45AndBedContact(t *testing.T) {
 		{"vertical", 0, false}, {"45 degrees", overhangCos, false}, {"steeper", overhangCos + 0.01, true}, {"horizontal", 1, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			poly.n = geom.Vec3{math.Sqrt(1 - tc.dot*tc.dot), 0, -tc.dot}
-			c := &supportCell{polys: []supportPoly{poly}}
+			// the clipped polygon's normal is its source triangle's (ti 0)
+			md := &Model{Nrm: []geom.Vec3{{math.Sqrt(1 - tc.dot*tc.dot), 0, -tc.dot}}}
+			c := &supportCell{md: md, polys: []supportPoly{poly}}
 			v := c.estimate(pts, geom.Vec3{0, 0, -1})
 			if (v > 0) != tc.want {
 				t.Fatalf("got %g at dot=%g", v, tc.dot)

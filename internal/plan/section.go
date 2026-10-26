@@ -41,25 +41,20 @@ type Section struct {
 	Thickness  float64 // 2A/P proxy
 }
 
-// Slicer precomputes per-normal vertex projections of the repaired model.
+// Slicer precomputes per-normal vertex projections of the repaired model
+// (8 bytes per vertex; no per-triangle arrays, so many normals can stay
+// cached even for million-triangle meshes).
 type Slicer struct {
-	M     *mesh.Mesh
-	N     geom.Vec3
-	S     []float64 // n·v per vertex
-	triLo []float64
-	triHi []float64
-	nrm   []geom.Vec3 // unit face normals
+	M   *mesh.Mesh
+	N   geom.Vec3
+	S   []float64   // n·v per vertex
+	nrm []geom.Vec3 // unit face normals
 }
 
 func NewSlicer(m *mesh.Mesh, n geom.Vec3, nrm []geom.Vec3) *Slicer {
-	s := &Slicer{M: m, N: n, S: make([]float64, len(m.V)), triLo: make([]float64, len(m.F)), triHi: make([]float64, len(m.F)), nrm: nrm}
+	s := &Slicer{M: m, N: n, S: make([]float64, len(m.V)), nrm: nrm}
 	for i, v := range m.V {
 		s.S[i] = n.Dot(v)
-	}
-	for i, f := range m.F {
-		a, b, c := s.S[f[0]], s.S[f[1]], s.S[f[2]]
-		s.triLo[i] = math.Min(a, math.Min(b, c))
-		s.triHi[i] = math.Max(a, math.Max(b, c))
 	}
 	return s
 }
@@ -98,8 +93,10 @@ func (s *Slicer) Slice(d float64, clip []HalfSpace) *Section {
 		}
 		return x
 	}
+	S := s.S
 	for ti, f := range m.F {
-		if s.triLo[ti] > d || s.triHi[ti] < d {
+		a, b, c := S[f[0]], S[f[1]], S[f[2]]
+		if (a > d && b > d && c > d) || (a < d && b < d && c < d) {
 			continue
 		}
 		v0, v1, v2 := sv(f[0]), sv(f[1]), sv(f[2])

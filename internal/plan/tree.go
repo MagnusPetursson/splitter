@@ -198,13 +198,15 @@ type Model struct {
 	Upright       bool // keep the model's +Z up for every part
 	supportWeight float64
 	slicers       map[[3]int64]*Slicer
+	slicerUse     map[[3]int64]int64
+	slicerTick    int64
 	bvh           *BVH
 	Area          []float64
 	cents         []geom.Vec3
 }
 
 func NewModel(m *mesh.Mesh) *Model {
-	md := &Model{M: m, Nrm: FaceNormals(m), Bounds: m.Bounds(), slicers: map[[3]int64]*Slicer{}}
+	md := &Model{M: m, Nrm: FaceNormals(m), Bounds: m.Bounds(), slicers: map[[3]int64]*Slicer{}, slicerUse: map[[3]int64]int64{}}
 	md.Diag = md.Bounds.Size().Len()
 	md.Area = make([]float64, len(m.F))
 	for i := range m.F {
@@ -213,16 +215,37 @@ func NewModel(m *mesh.Mesh) *Model {
 	return md
 }
 
+// SlicerBudget bounds the memory held by cached per-normal slicers (8
+// bytes per vertex each, ≈ 4 MB for a million-triangle mesh). The planner
+// asks for dozens of normals; the old cache (up to 64 slicers with
+// per-triangle arrays, ≈ 20 MB each per million triangles) was the largest
+// single allocation when planning big meshes in the browser.
+const SlicerBudget = 64 << 20
+
 func (md *Model) Slicer(n geom.Vec3) *Slicer {
 	k := [3]int64{int64(math.Round(n[0] * 1e9)), int64(math.Round(n[1] * 1e9)), int64(math.Round(n[2] * 1e9))}
+	md.slicerTick++
 	if s, ok := md.slicers[k]; ok {
+		md.slicerUse[k] = md.slicerTick
 		return s
 	}
-	if len(md.slicers) > 64 {
-		md.slicers = map[[3]int64]*Slicer{}
+	per := 8*len(md.M.V) + 1
+	keep := max(3, min(64, SlicerBudget/per))
+	for len(md.slicers) >= keep {
+		// evict the least recently used normal
+		var old [3]int64
+		oldT := int64(math.MaxInt64)
+		for kk, t := range md.slicerUse {
+			if t < oldT {
+				old, oldT = kk, t
+			}
+		}
+		delete(md.slicers, old)
+		delete(md.slicerUse, old)
 	}
 	s := NewSlicer(md.M, n, md.Nrm)
 	md.slicers[k] = s
+	md.slicerUse[k] = md.slicerTick
 	return s
 }
 
