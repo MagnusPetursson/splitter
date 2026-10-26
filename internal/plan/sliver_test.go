@@ -1,7 +1,9 @@
 package plan
 
 import (
+	"fmt"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/MagnusPetursson/splitter/internal/geom"
@@ -109,5 +111,40 @@ func TestNoStaggeredSiblingCuts(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Manual trees can still stagger cuts on purpose; the plan must then say
+// which contact is a sliver instead of silently giving it a seam.
+func TestSliverContactIsReported(t *testing.T) {
+	md := slopedShellModel(t, 300, 150, 300, 262, 7)
+	tr := NewTree()
+	_, _ = tr.SplitLeaf(0, Plane{N: geom.Vec3{1, 0, 0}, D: 150})
+	leaves := tr.Leaves()
+	tr.SplitLeaf(leaves[0], Plane{N: geom.Vec3{0, 0, 1}, D: 150})
+	tr.SplitLeaf(leaves[1], Plane{N: geom.Vec3{0, 0, 1}, D: 146})
+	s := Settings{Bed: Bed{180, 180, 180}, Margin: 3, AutoJoints: true, JointStyle: "filament"}
+	pl, err := md.Run(&Request{Mode: "tree", Tree: tr, Settings: s}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sliver *Patch
+	for _, p := range pl.Patches {
+		if p.Node == 0 && p.Area < 200 {
+			sliver = p
+		}
+	}
+	if sliver == nil {
+		t.Fatalf("expected a 4 mm strip contact on the first cut; patches: %d", len(pl.Patches))
+	}
+	want := fmt.Sprintf("contact C%d is a sliver", sliver.ID)
+	found := false
+	for _, w := range pl.Warnings {
+		if strings.Contains(w, want) {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("no warning %q; warnings: %q", want, pl.Warnings)
 	}
 }
