@@ -102,6 +102,8 @@ const jed = new JointEditor({
   protoJoint: (k) => protoJoint(k),
   mapOpts: () => mapOpts(),
   toast: (m, e) => toast(m, e),
+  // docking resizes the 3D view: re-frame it once the layout has settled
+  onLayout: () => requestAnimationFrame(() => requestAnimationFrame(() => { viewer.resize(); viewer.frame(); })),
 });
 
 async function init() {

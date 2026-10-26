@@ -53,6 +53,8 @@ export class JointEditor {
     $('jdDock').title = this.docked ? 'Use the whole window for the editor' : 'Show the 3D view beside the editor (changes appear there live)';
     $('jdDock').classList.toggle('hidden', this.isPhone());
     this.app.onLayout && this.app.onLayout();
+    // the canvas changed size: re-fit once the new layout is in place
+    if (this.open) requestAnimationFrame(() => this.map.fit());
   }
 
   // open on a face; focus = face point to zoom to (optional)

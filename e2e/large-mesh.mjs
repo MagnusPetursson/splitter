@@ -195,6 +195,9 @@ try {
   await page.waitForTimeout(400);
   const dock = await page.evaluate(() => ({ dlg: document.getElementById('jointDlg').getBoundingClientRect().width, vp: document.getElementById('viewport').getBoundingClientRect().width }));
   check(dock.vp > 300 && dock.dlg > 600, `beside-3D shows both (${Math.round(dock.dlg)} + ${Math.round(dock.vp)} px)`);
+  // the face must be fitted to the narrower canvas: its outline inside the canvas
+  const inView = await page.evaluate(() => { const m = window.__jed.map, V = m.view(); return m.face.loops.flat().every((p) => { const q = V.toC(p); return q[0] >= 0 && q[1] >= 0 && q[0] <= m.c.width && q[1] <= m.c.height; }); });
+  check(inView, 'beside-3D re-fits the face to the canvas');
   await shot('09-editor-beside-3d');
   await page.click('#jdDock');
   await page.keyboard.press('Escape');
@@ -227,11 +230,11 @@ try {
   await pp.waitForTimeout(400);
   const pm = await pp.evaluate(() => {
     const r = (id) => document.getElementById(id).getBoundingClientRect();
-    return { map: r('jdMap'), close: r('jdClose'), add: r('jdAdd'), zin: r('jdIn'), overflow: document.getElementById('jointDlg').scrollWidth > innerWidth + 1, dock: getComputedStyle(document.getElementById('jdDock')).display };
+    return { map: r('jdMap'), close: r('jdClose'), add: r('jdAdd'), zin: r('jdIn'), fit: r('jdFit'), overflow: document.getElementById('jointDlg').scrollWidth > innerWidth + 1, dock: getComputedStyle(document.getElementById('jdDock')).display };
   });
   lap(JSON.stringify(pm));
   check(pm.map.width >= 370 && pm.map.height >= 400, 'phone: editor map fills the width');
-  check(pm.close.width >= 36 && pm.add.height >= 40 && pm.zin.width >= 44, 'phone: hit targets ≥ 36–44 px');
+  check(pm.close.width >= 44 && pm.add.height >= 44 && pm.zin.width >= 44 && pm.fit.width >= 44, 'phone: hit targets ≥ 44 px');
   check(!pm.overflow, 'phone: no horizontal overflow');
   check(pm.dock === 'none', 'phone: no beside-3D option');
   await pp.screenshot({ path: path.join(out, '12-phone-editor.png') });

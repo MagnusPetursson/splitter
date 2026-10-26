@@ -202,10 +202,12 @@
         <button id="jdAdd" class="small" aria-pressed="false">+ Add joint</button>
         <select id="jdKind" aria-label="Joint type to add"></select>
         <span class="jd-sep"></span>
-        <button id="jdOut" class="small zb" aria-label="Zoom out (−)" title="Zoom out (−)">−</button>
-        <output id="jdZoom" aria-live="polite">100 %</output>
-        <button id="jdIn" class="small zb" aria-label="Zoom in (+)" title="Zoom in (+)">+</button>
-        <button id="jdFit" class="small" title="Fit the face (0)">Fit</button>
+        <span class="jd-zoom" role="group" aria-label="Zoom">
+          <button id="jdOut" class="small zb" aria-label="Zoom out (−)" title="Zoom out (−)">−</button>
+          <output id="jdZoom" aria-live="polite">100 %</output>
+          <button id="jdIn" class="small zb" aria-label="Zoom in (+)" title="Zoom in (+)">+</button>
+          <button id="jdFit" class="small" title="Fit the face (0)">Fit</button>
+        </span>
         <label class="small jd-field"><input type="checkbox" id="jdField" checked> distance field</label>
       </div>
       <div class="jd-canvas">

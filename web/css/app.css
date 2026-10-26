@@ -203,6 +203,7 @@ body.jd-docked .side { visibility: hidden; }
 .jd-tools .zb { width: 36px; height: 32px; font-size: 18px; padding: 0; }
 .jd-tools button { min-height: 32px; }
 .jd-tools output { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; color: var(--mute); }
+.jd-zoom { display: inline-flex; align-items: center; gap: 6px; }
 .jd-sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
 .jd-field { flex-direction: row; align-items: center; gap: 5px; color: var(--ink); margin-left: auto; }
 #jdAdd.on { background: #e07a3f22; }
@@ -231,8 +232,14 @@ body.jd-docked .side { visibility: hidden; }
   .jd-body { display: flex; flex-direction: column; overflow-y: auto; }
   .jd-mapcol { flex: none; padding: 6px; }
   .jd-canvas { flex: none; height: 56vh; }
-  .jd-tools button, .jd-tools select { min-height: 40px; }
-  .jd-tools .zb { width: 44px; height: 40px; }
+  .jd-tools .zb { width: 44px; height: 44px; }
+  .jd-tools button, .jd-tools select { min-height: 44px; }
+  #jdFit { min-width: 52px; }
+  .jd-sep { display: none; }
+  .jd-x { width: 44px !important; height: 44px !important; }
+  .jd-faces button { min-width: 48px; min-height: 44px !important; }
+  .jd-side select, .jd-side input, .jd-side button { min-height: 40px; }
+  .jd-side { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
   .jd-field { margin-left: 0; }
   .jd-keys { display: none; }
   .jchip { min-height: 40px; }

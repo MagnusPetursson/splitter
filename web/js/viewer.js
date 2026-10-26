@@ -171,7 +171,10 @@ export class Viewer {
     const c = box.getCenter(new THREE.Vector3());
     const r = box.getSize(new THREE.Vector3()).length() * 0.5 || 100;
     const dir = new THREE.Vector3(0.75, -1.05, 0.8).normalize();
-    this.camera.position.copy(c).addScaledVector(dir, r * 2.9);
+    // 2.9 r fits the vertical 40° field; a tall, narrow view (the 3D view
+    // beside the joint editor, phones) must back off by the aspect ratio
+    const aspect = this.camera.aspect || 1;
+    this.camera.position.copy(c).addScaledVector(dir, r * 2.9 * Math.max(1, 1.25 / aspect));
     this.camera.near = r / 50; this.camera.far = r * 60;
     this.camera.updateProjectionMatrix();
     this.controls.target.copy(c);
