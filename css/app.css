@@ -124,6 +124,24 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 4
 .okc { color: var(--ok); } .badc { color: var(--bad); } .warnc { color: var(--warn); }
 @media (max-width: 900px) { :root { --side: 100%; } body { grid-template-columns: 1fr; grid-template-rows: 48px 50vh 1fr; } .side { grid-row: 3; } .stage { grid-row: 2; } }
 
+/* Keep the four labelled views and help reachable without horizontal scrolling. */
+@media (max-width: 600px) {
+  .top { gap: 6px; padding: 0 8px; }
+  .brand { gap: 0; flex: none; }
+  .brand span, .model-title { display: none; }
+  .views { flex: none; }
+  .views button { padding: 5px 10px; }
+  .top .spacer { min-width: 0; }
+  .top .ghost { flex: none; }
+}
+
+.support-control { margin: 12px 0; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+.support-label { flex-direction: row; justify-content: space-between; flex-wrap: wrap; gap: 4px; color: var(--ink); }
+.support-label output { color: var(--acc); font-size: 11px; }
+.support-control input { margin: 8px 0 3px; min-height: 24px; }
+.support-ends { display: flex; justify-content: space-between; color: var(--mute); }
+.support-control p { margin: 7px 0 0; }
+.support-estimate { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
 /* joint fallbacks */
 .settings-note { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 4px; }
 .fb { margin-top: 6px; padding: 6px 8px; border: 1px solid #5a4a26; border-radius: 6px; background: #2a2418; }

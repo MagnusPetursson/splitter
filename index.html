@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>print-splitter — split models to fit your printer</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='9' width='12' height='18' rx='2' fill='%23e07a3f'/%3E%3Crect x='17' y='5' width='12' height='22' rx='2' fill='%233fa7e0'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/app.css?v=72237fb">
+<link rel="stylesheet" href="css/app.css?v=6b93459">
 <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.js" } }</script>
 </head>
 <body>
@@ -98,6 +98,13 @@
       </select></label>
       <button id="autoSplit" class="primary" disabled>Auto split</button>
     </div>
+    <div class="support-control">
+      <label for="supportWeight" class="support-label"><span>Fewer parts ↔ Less support</span><output id="supportValue" for="supportWeight">Balanced</output></label>
+      <input id="supportWeight" type="range" min="0" max="1" step="0.05" value="0.5" aria-describedby="supportHelp">
+      <div class="support-ends small"><span>Keep it together</span><span>Allow extra cuts</span></div>
+      <p id="supportHelp" class="small mute">Use Auto split to trade extra parts for a lower support estimate. Not filament volume or print time.</p>
+      <div id="supportPending" class="small warnc hidden" role="status">Preference changed. Press Auto split to replace the cuts; the current plan is unchanged.</div>
+    </div>
     <div class="row two small">
       <label class="row" title="Every part prints the way the model is oriented (only rotated about Z). Good for cosmetic parts and anything with a natural base."><input type="checkbox" id="upright"> Keep upright</label>
       <label class="row" title="Also try tilted (principal-axis) orientations: can mean fewer parts, but usually more supports."><input type="checkbox" id="tilted"> Allow tilted</label>
@@ -159,7 +166,7 @@
       <div id="couponInfo" class="info hidden"></div>
     </details>
   </section>
-  <footer class="credits mute small">Go planner (WebAssembly) · Manifold (Apache-2.0) booleans · both in Web Workers · three.js (MIT) · <a href="#" id="licLink">licenses</a> · <span id="buildVer" data-v="72237fb">build 72237fb</span></footer>
+  <footer class="credits mute small">Go planner (WebAssembly) · Manifold (Apache-2.0) booleans · both in Web Workers · three.js (MIT) · <a href="#" id="licLink">licenses</a> · <span id="buildVer" data-v="6b93459">build 6b93459</span></footer>
 </aside>
 
 <main class="stage">
@@ -184,6 +191,6 @@
   <form method="dialog"><button>Close</button></form>
 </dialog>
 
-<script type="module" src="js/app.js?v=72237fb"></script>
+<script type="module" src="js/app.js?v=6b93459"></script>
 </body>
 </html>

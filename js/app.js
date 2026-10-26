@@ -11,7 +11,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const S = {
   printers: [], kinds: null, fitsDefault: null,
   model: null, mesh: null, plan: null, built: null, export: null,
-  sel: {}, face: null, addMode: false, planSeq: 0, workerReady: false,
+  sel: {}, face: null, addMode: false, planSeq: 0, workerReady: false, planWasAuto: false, comparison: null,
 };
 
 // ---------------- infrastructure ----------------
@@ -38,7 +38,7 @@ function save() {
   const s = {
     printer: $('printer').value, bedX: $('bedX').value, bedY: $('bedY').value, bedZ: $('bedZ').value,
     margin: $('margin').value, nozzle: $('nozzle').value, minPiece: $('minPiece').value, style: $('jointStyle').value,
-    upright: $('upright').checked, tilted: $('tilted').checked,
+    upright: $('upright').checked, tilted: $('tilted').checked, supportWeight: $('supportWeight').value,
     fits: Object.fromEntries([...document.querySelectorAll('[data-fit]')].map((i) => [i.dataset.fit, i.value])),
   };
   localStorage.setItem('ps.settings', JSON.stringify(s));
@@ -118,6 +118,7 @@ async function init() {
     sel.value = saved.printer || 'prusa-core-one';
     for (const k of ['bedX', 'bedY', 'bedZ', 'margin', 'nozzle', 'minPiece']) if (saved[k]) $(k).value = saved[k];
     if (saved.style) $('jointStyle').value = saved.style;
+    if (saved.supportWeight != null && Number.isFinite(+saved.supportWeight)) $('supportWeight').value = saved.supportWeight;
     $('upright').checked = !!saved.upright; $('tilted').checked = !!saved.tilted;
     for (const i of document.querySelectorAll('[data-fit]')) if (saved.fits && saved.fits[i.dataset.fit]) i.value = saved.fits[i.dataset.fit];
     if (sel.value !== 'custom') applyPrinter(false);
@@ -126,6 +127,7 @@ async function init() {
     applyPrinter(true);
   }
   updateBed();
+  updateSupportPreference();
   bind();
 }
 
@@ -137,11 +139,18 @@ function resetDefaults() {
   const changed = $('jointStyle').value !== DEFAULTS.style;
   $('jointStyle').value = DEFAULTS.style;
   $('upright').checked = false; $('tilted').checked = false;
+  $('supportWeight').value = '0.5'; updateSupportPreference();
   applyPrinter(true);
   updateBed();
   $('restoredNote').classList.add('hidden');
   toast(`Defaults restored: ${styleLabel(DEFAULTS.style)}, ${$('printer').selectedOptions[0].textContent}`);
   if (S.plan && changed) runPlan('joints');
+}
+function supportPreference(w) { return w === 0 ? 'Parts first' : w === 1 ? 'Support first' : w === 0.5 ? 'Balanced' : `Support weight ${w.toFixed(2)}`; }
+function updateSupportPreference() {
+  const w = +$('supportWeight').value;
+  $('supportValue').textContent = supportPreference(w);
+  $('supportPending').classList.toggle('hidden', !S.plan || Math.abs((S.plan.settings.supportWeight ?? 0.5) - w) < 0.001);
 }
 function onStyleChange() {
   save();
@@ -170,7 +179,7 @@ function settings() {
   return {
     bed: { X: +$('bedX').value, Y: +$('bedY').value, Z: +$('bedZ').value }, margin: +$('margin').value,
     minPiece: +$('minPiece').value, nozzle: +$('nozzle').value, jointStyle: $('jointStyle').value, fits,
-    autoSplit: true, autoJoints: true, maxParts: 64, upright: $('upright').checked, tilted: $('tilted').checked,
+    autoSplit: true, autoJoints: true, maxParts: 64, upright: $('upright').checked, tilted: $('tilted').checked, supportWeight: +$('supportWeight').value,
   };
 }
 function usable() { const s = settings(); return { x: s.bed.X - 2 * s.margin, y: s.bed.Y - 2 * s.margin, z: s.bed.Z - s.margin }; }
@@ -192,6 +201,7 @@ function bind() {
   $('nozzle').addEventListener('change', () => { setFits(); save(); });
   for (const id of ['minPiece', 'upright', 'tilted']) $(id).addEventListener('change', save);
   $('jointStyle').addEventListener('change', onStyleChange);
+  $('supportWeight').addEventListener('input', () => { updateSupportPreference(); save(); });
   $('resetDefaults').addEventListener('click', resetDefaults);
   for (const i of document.querySelectorAll('[data-fit]')) i.addEventListener('change', save);
   $('autoSplit').addEventListener('click', () => runPlan('auto'));
@@ -245,7 +255,7 @@ async function loadSample(name) {
 
 async function onModel(info) {
   S.model = info;
-  S.plan = null; S.built = null; S.export = null; S.sel = {};
+  S.plan = null; S.built = null; S.export = null; S.sel = {}; S.comparison = null; S.planWasAuto = false;
   busy('Loading repaired mesh', null);
   const buf = await BE.mesh(info);
   const dv = new DataView(buf);
@@ -371,7 +381,12 @@ async function runPlan(mode, opts = {}) {
 }
 
 function onPlan(plan, fresh) {
+  const signature = (s) => JSON.stringify({ ...s, supportWeight: null });
+  S.comparison = fresh && S.planWasAuto && S.plan && signature(S.plan.settings) === signature(plan.settings)
+    ? { parts: S.plan.leaves.filter((l) => !l.empty).length, volume: S.plan.leaves.reduce((s, l) => s + (l.supportVolume || 0), 0), weight: S.plan.settings.supportWeight ?? 0.5 } : null;
+  S.planWasAuto = fresh;
   S.plan = plan;
+  updateSupportPreference();
   S.built = null; S.export = null;
   if (fresh) { S.sel = {}; $('styleNote').classList.add('hidden'); }
   viewer.setPlan(plan);
@@ -401,14 +416,16 @@ function renderPlan() {
   const leaves = p.leaves.filter((l) => !l.empty);
   const bad = leaves.filter((l) => !l.fits);
   const cuts = p.tree.nodes.filter((n) => n.cut);
+  const previous = S.comparison ? `<div class="small mute" style="margin-top:6px">Previous auto plan (${esc(supportPreference(S.comparison.weight))}): ${S.comparison.parts} part${S.comparison.parts === 1 ? '' : 's'} · proxy ≈ ${fmt(S.comparison.volume / 1000, 0)} cm³</div>` : '';
   const chips = leaves.map((l) => {
     const i = p.leaves.indexOf(l);
-    return `<div class="chip ${l.fits ? 'ok' : 'bad'} ${S.sel.leaf === l.id ? 'sel' : ''}" data-leaf="${l.id}" title="${esc(l.printFace)} down · ${fmt(l.extent[0])}×${fmt(l.extent[1])}×${fmt(l.extent[2])} mm${l.warnings ? ' · ' + esc(l.warnings.join('; ')) : ''}"><span class="sw" style="background:${partColor(i)}"></span>${l.label}<span class="x">${l.fits ? '✓' : '✗'} ↕${fmt(l.extent[2], 0)}</span></div>`;
+    return `<div class="chip ${l.fits ? 'ok' : 'bad'} ${S.sel.leaf === l.id ? 'sel' : ''}" data-leaf="${l.id}" title="${esc(l.printFace)} down · support proxy ≈ ${fmt((l.supportVolume || 0) / 1000)} cm³ · ${fmt(l.extent[0])}×${fmt(l.extent[1])}×${fmt(l.extent[2])} mm${l.warnings ? ' · ' + esc(l.warnings.join('; ')) : ''}"><span class="sw" style="background:${partColor(i)}"></span>${l.label}<span class="x">${l.fits ? '✓' : '✗'} ↕${fmt(l.extent[2], 0)}</span></div>`;
   }).join('');
   const cutChips = cuts.map((n) => `<div class="chip ${S.sel.cut === n.id ? 'sel' : ''}" data-cut="${n.id}" title="${esc(n.reason || 'manual cut')}"><span class="sw" style="background:#e07a3f"></span>${cutName(n.id)}<span class="x">${axisName(n.cut.n)} ${fmt(n.cut.d, 0)}</span></div>`).join('');
   const fbs = p.patches.filter((x) => x.fallback || x.single);
   const fallbackNote = fbs.length ? `<div class="fblist">${fbs.map((x) => `<button class="fbitem ${x.fallback ? '' : 'single'}" data-fbpatch="${x.id}" title="${esc(x.fallback ? x.fallback.why : (x.notes || []).join('; '))}">⚠ ${cutName(x.node)} ${contactName(x)}: ${x.fallback ? `${esc(fbText(x.fallback))}` : esc(singleNote(x))}</button>`).join('')}</div>` : '';
-  $('planSummary').innerHTML = `${fallbackNote}<div><span class="big">${leaves.length}</span> parts · ${bad.length ? `<span class="badc">${bad.length} do not fit</span> <button class="small" id="autoComplete">Auto-complete</button>` : '<span class="okc">all fit</span>'} · plan ${fmt(p.timing.total, 1)} s</div>
+  $('planSummary').innerHTML = `${fallbackNote}<div><span class="big">${leaves.length}</span> part${leaves.length === 1 ? '' : 's'} · ${bad.length ? `<span class="badc">${bad.length} do not fit</span> <button class="small" id="autoComplete">Auto-complete</button>` : '<span class="okc">all fit</span>'} · calculated in ${fmt(p.timing.total, 1)} s</div>
+    <div class="support-estimate"><b>Support proxy ≈ ${fmt(leaves.reduce((a, l) => a + (l.supportVolume || 0), 0) / 1000, 0)} cm³</b><br><span class="small mute">Downward faces steeper than 45° × height to bed. Before joints; excludes bridges and support density.<br>${esc(supportPreference(p.settings.supportWeight ?? 0.5))} · verify in your slicer.</span>${previous}</div>
     <div class="small mute" style="margin-top:6px">Parts (click to select, then add a cut through it)</div><div class="partlist">${chips}</div>
     <div class="small mute" style="margin-top:6px">Cuts (click, then drag the arrow in the 3D view or edit below)</div><div class="partlist">${cutChips || '<span class="mute small">none — the model fits as one part</span>'}</div>`;
   $('planSummary').classList.remove('hidden');
@@ -650,7 +667,7 @@ function renderJointPanel() {
     const ln = (id) => S.plan.leaves.find((l) => l.id === id).label;
     const sm = p.seam || { kind: 'none' };
     const opts = ['none', ...S.kinds.seam.map((k) => k.kind)].map((k) => `<option value="${k}" ${sm.kind === k ? 'selected' : ''}>${k === 'none' ? 'No seam joint' : S.kinds.seam.find((x) => x.kind === k).label}</option>`).join('');
-    se.innerHTML = `<h3>Contact ${ln(p.negLeaf)} ↔ ${ln(p.posLeaf)}</h3>
+    se.innerHTML = `<h3>Contact C${pid} · ${ln(p.negLeaf)} ↔ ${ln(p.posLeaf)}</h3>
       <div class="small mute">${fmt(p.area, 0)} mm² · wall ≈ ${fmt(p.thickness)} mm · largest inscribed Ø${fmt(2 * p.rmax)} mm${p.ring ? ' · shell section' : ''}</div>
       ${fallbackBlock(p)}
       ${(p.notes || []).filter((n) => !(p.single && n.startsWith('only one'))).map((n) => `<div class="small warnc">${esc(n)}</div>`).join('')}
