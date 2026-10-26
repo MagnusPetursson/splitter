@@ -199,10 +199,14 @@ type Model struct {
 	supportWeight float64
 	slicers       map[[3]int64]*Slicer
 	slicerUse     map[[3]int64]int64
-	slicerTick    int64
-	bvh           *BVH
-	Area          []float64
-	cents         []geom.Vec3
+	// Step, when set, reports fine-grained progress within a stage
+	// (e.g. "candidates": cut planes evaluated / to evaluate for the
+	// current cut).
+	Step       func(stage string, done, total int)
+	slicerTick int64
+	bvh        *BVH
+	Area       []float64
+	cents      []geom.Vec3
 }
 
 func NewModel(m *mesh.Mesh) *Model {
@@ -422,6 +426,7 @@ func (md *Model) AutoSplit(t *Tree, s *Settings, progress func(string)) []string
 	queue := t.Leaves()
 	var optional []int
 	supportPhase := false
+	estCuts := -1 // from the first (root) fit: estimated parts - 1
 	for len(queue) > 0 || len(optional) > 0 {
 		if len(queue) == 0 {
 			queue, optional = optional, nil
@@ -441,6 +446,9 @@ func (md *Model) AutoSplit(t *Tree, s *Settings, progress func(string)) []string
 		rep := Representative(pts, 2500)
 		downs := candidateDowns(rep, hs, s.Tilted, s.Upright, flatDirs(md, md.cellTris(hs), 6)...)
 		f := FitPoints(rep, downs, bed)
+		if estCuts < 0 {
+			estCuts = max(0, f.Est-1)
+		}
 		fits := false
 		if f.Fits || (f.Slack > -15 && len(pts) <= 400000) {
 			fits = FitPoints(pts, downs, bed).Fits
@@ -464,6 +472,9 @@ func (md *Model) AutoSplit(t *Tree, s *Settings, progress func(string)) []string
 		}
 		if progress != nil {
 			progress(fmt.Sprintf("searching cut %d", len(t.Internal())+1))
+		}
+		if md.Step != nil {
+			md.Step("cut", len(t.Internal())+1, max(estCuts, len(t.Internal())+1))
 		}
 		c := md.bestCut(rep, hs, downs, s, fits, t.cutPlanes())
 		if c == nil && fits {
@@ -551,6 +562,12 @@ func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *
 	ax := PCA(rep)
 	normals := dedupeDirs([]geom.Vec3{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, ax[0], ax[1], ax[2]}, false)
 	var cands []*cutCand
+	type job struct {
+		n      geom.Vec3
+		ds     []float64
+		lo, hi float64
+	}
+	var jobs []job
 	for _, n := range normals {
 		// canonical sign: largest component positive
 		mi := 0
@@ -593,12 +610,24 @@ func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *
 				ds = append(ds, od)
 			}
 		}
+		jobs = append(jobs, job{n, ds, lo, hi})
+	}
+	total, done := 0, 0
+	for _, jb := range jobs {
+		total += len(jb.ds)
+	}
+	for _, jb := range jobs {
+		n, ds, lo, hi := jb.n, jb.ds, jb.lo, jb.hi
 		sl := md.Slicer(n)
 		pdowns := append(append([]geom.Vec3{}, downs...), n)
 		if s.Upright {
 			pdowns = downs
 		}
 		for _, d := range ds {
+			done++
+			if md.Step != nil && (done%8 == 0 || done == total) {
+				md.Step("candidates", done, total)
+			}
 			sec := sl.Slice(d, hs)
 			var negPts, posPts []geom.Vec3
 			for _, p := range rep {
@@ -699,6 +728,13 @@ func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *
 				continue
 			}
 			seen[key] = true
+			shortlist = append(shortlist, c)
+		}
+		for i, c := range shortlist {
+			if md.Step != nil {
+				md.Step("support", i, len(shortlist))
+			}
+			n := c.plane.N
 			dirs := append(append([]geom.Vec3{}, downs...), n)
 			if s.Upright {
 				dirs = downs
@@ -722,7 +758,9 @@ func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *
 				c.support += v
 			}
 			c.cost += 100*float64(c.est-oldEst) + supportCost(c.support, s.supportWeight())
-			shortlist = append(shortlist, c)
+		}
+		if md.Step != nil {
+			md.Step("support", len(shortlist), len(shortlist))
 		}
 		if len(shortlist) == 0 {
 			return nil

@@ -3,6 +3,7 @@ package mesh
 import (
 	"bytes"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/MagnusPetursson/splitter/internal/geom"
@@ -87,5 +88,21 @@ func TestTinyUnitsSurvive(t *testing.T) {
 	m, rep, err := Repair(Box(geom.Vec3{0, 0, 0}, geom.Vec3{0.15, 0.1, 0.05}))
 	if err != nil || !rep.Closed || len(m.F) != 12 {
 		t.Fatalf("metre-scale model lost: %v %+v", err, rep)
+	}
+}
+
+// A refused mesh must say what is wrong with it, and that it is not a
+// memory problem: the two failures look alike to users otherwise.
+func TestRepairExplainNamesTheDefects(t *testing.T) {
+	m, rep, err := Repair(Box(geom.Vec3{}, geom.Vec3{10, 10, 10}))
+	if err != nil || m == nil || rep.Explain() != "" {
+		t.Fatalf("closed box explains %q (%v)", rep.Explain(), err)
+	}
+	bad := &RepairReport{OpenEdges: 12, BadEdges: 3, HolesFilled: 2}
+	s := bad.Explain()
+	for _, want := range []string{"12 open edges", "3 edges are shared by more than two faces", "2 holes capped", "not a memory limit"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("explanation %q lacks %q", s, want)
+		}
 	}
 }

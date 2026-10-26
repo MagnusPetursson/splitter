@@ -34,6 +34,9 @@ type SimplifyReport struct {
 	// Limited is true when MaxError stopped the simplification before
 	// TargetTris was reached.
 	Limited bool `json:"limited"`
+	// Failed is set (and the full mesh kept) when simplification could
+	// not keep the mesh closed.
+	Failed string `json:"failed,omitempty"`
 }
 
 // symmetric 4×4 quadric, upper triangle
@@ -190,6 +193,7 @@ func Simplify(m *Mesh, opt SimplifyOptions) (*Mesh, *SimplifyReport, error) {
 		if opt.Progress != nil {
 			opt.Progress(start-live, start-target)
 		}
+		checkpoint()
 		if collapsed == 0 && thr >= maxErr {
 			limited = live > target
 			break
@@ -270,7 +274,11 @@ func (s *simplifier) edgeError(a, b int32) (geom.Vec3, float64) {
 	q := s.V[a].q
 	q.add(&s.V[b].q)
 	det := det3(q[0], q[1], q[2], q[1], q[4], q[5], q[2], q[5], q[7])
-	if math.Abs(det) > 1e-12 {
+	// relative conditioning: on a crease (two plane families) or a flat
+	// area the 3×3 part is (nearly) singular and the "optimum" slides
+	// along the crease, past its end; use the edge points instead
+	tr := (q[0] + q[4] + q[7]) / 3
+	if math.Abs(det) > 1e-6*tr*tr*tr {
 		p := geom.Vec3{
 			-1 / det * det3(q[1], q[2], q[3], q[4], q[5], q[6], q[5], q[7], q[8]),
 			1 / det * det3(q[0], q[2], q[3], q[1], q[5], q[6], q[2], q[7], q[8]),
@@ -475,6 +483,7 @@ func Deviation(a, b *Mesh, maxSamples int) (maxD, mean, rms float64, n int) {
 			n++
 		}
 	}
+	checkpoint()
 	one(a, bb, maxSamples/2)
 	one(b, ba, maxSamples/2)
 	if n > 0 {

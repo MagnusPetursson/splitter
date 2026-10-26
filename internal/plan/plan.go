@@ -178,7 +178,10 @@ func (md *Model) run(req *Request, allowance float64, progress func(string)) (*P
 			patches[pid].Style, patches[pid].Force = so.Style, so.Force
 		}
 	}
-	for _, p := range patches {
+	for i, p := range patches {
+		if md.Step != nil {
+			md.Step("joints", i, len(patches))
+		}
 		if locked[p.ID] || !s.AutoJoints {
 			continue
 		}

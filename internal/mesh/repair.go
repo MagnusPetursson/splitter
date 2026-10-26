@@ -4,31 +4,36 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 
 	"github.com/MagnusPetursson/splitter/internal/geom"
 )
 
 // RepairReport lists what the repair pipeline changed.
 type RepairReport struct {
-	InputTriangles      int      `json:"inputTriangles"`
-	OutputTriangles     int      `json:"outputTriangles"`
-	InputVertices       int      `json:"inputVertices"`
-	OutputVertices      int      `json:"outputVertices"`
-	WeldedVertices      int      `json:"weldedVertices"`
-	DegenerateRemoved   int      `json:"degenerateRemoved"`
-	DuplicateRemoved    int      `json:"duplicateRemoved"`
-	FlippedFaces        int      `json:"flippedFaces"`
-	InvertedShells      int      `json:"invertedShells"`
-	HolesFilled         int      `json:"holesFilled"`
-	HoleTriangles       int      `json:"holeTriangles"`
-	LargestHolePerimMM  float64  `json:"largestHolePerimMM"`
-	DebrisRemoved       int      `json:"debrisRemoved"`
-	NonManifoldEdges    int      `json:"nonManifoldEdges"`
-	NonManifoldResolved int      `json:"nonManifoldResolved"`
-	Shells              int      `json:"shells"`
-	Closed              bool     `json:"closed"`
-	VolumeMM3           float64  `json:"volumeMM3"`
-	Notes               []string `json:"notes"`
+	InputTriangles      int     `json:"inputTriangles"`
+	OutputTriangles     int     `json:"outputTriangles"`
+	InputVertices       int     `json:"inputVertices"`
+	OutputVertices      int     `json:"outputVertices"`
+	WeldedVertices      int     `json:"weldedVertices"`
+	DegenerateRemoved   int     `json:"degenerateRemoved"`
+	DuplicateRemoved    int     `json:"duplicateRemoved"`
+	FlippedFaces        int     `json:"flippedFaces"`
+	InvertedShells      int     `json:"invertedShells"`
+	HolesFilled         int     `json:"holesFilled"`
+	HoleTriangles       int     `json:"holeTriangles"`
+	LargestHolePerimMM  float64 `json:"largestHolePerimMM"`
+	DebrisRemoved       int     `json:"debrisRemoved"`
+	NonManifoldEdges    int     `json:"nonManifoldEdges"`
+	NonManifoldResolved int     `json:"nonManifoldResolved"`
+	Shells              int     `json:"shells"`
+	Closed              bool    `json:"closed"`
+	// what is still wrong when Closed is false
+	OpenEdges   int      `json:"openEdges"`
+	BadEdges    int      `json:"badEdges"`    // non-manifold edges left
+	Misoriented int      `json:"misoriented"` // edges whose faces disagree on winding
+	VolumeMM3   float64  `json:"volumeMM3"`
+	Notes       []string `json:"notes"`
 }
 
 // Changed reports whether repair modified anything material.
@@ -82,6 +87,17 @@ func Weld(s *Soup, tol float64) (*Mesh, int) {
 	return m, in - len(m.V)
 }
 
+// Checkpoint, when set, is called between the heavy steps of Repair and
+// Simplify. The WebAssembly build uses it to run the garbage collector,
+// which otherwise cannot finish a cycle during a long call from JavaScript.
+var Checkpoint func()
+
+func checkpoint() {
+	if Checkpoint != nil {
+		Checkpoint()
+	}
+}
+
 // Repair runs the full pipeline on a soup.
 func Repair(s *Soup) (*Mesh, *RepairReport, error) {
 	rep := &RepairReport{InputTriangles: len(s.Tris), InputVertices: len(s.Tris) * 3}
@@ -102,6 +118,7 @@ func Repair(s *Soup) (*Mesh, *RepairReport, error) {
 	m, welded := Weld(s, tol)
 	rep.WeldedVertices = welded
 
+	checkpoint()
 	// 1. degenerate (repeated index) faces
 	out := m.F[:0]
 	for _, f := range m.F {
@@ -113,6 +130,7 @@ func Repair(s *Soup) (*Mesh, *RepairReport, error) {
 	}
 	m.F = out
 
+	checkpoint()
 	// 2. duplicate faces (same vertex set). Opposite-oriented pairs are
 	// internal double walls: remove both. Same-oriented copies: keep one.
 	type fk [3]int32
@@ -161,15 +179,18 @@ func Repair(s *Soup) (*Mesh, *RepairReport, error) {
 	}
 	m.F = filterFaces(m.F, drop)
 
+	checkpoint()
 	// 3. non-manifold edges: split them by duplicating vertices per fan
 	rep.NonManifoldEdges = m.EdgeStats().NonManifold
 	if rep.NonManifoldEdges > 0 {
 		rep.NonManifoldResolved = resolveNonManifold(m)
 	}
 
+	checkpoint()
 	// 4. consistent orientation via BFS across manifold edges
 	rep.FlippedFaces = orient(m)
 
+	checkpoint()
 	// 5. fill holes
 	nh, nt, perim := fillHoles(m)
 	rep.HolesFilled, rep.HoleTriangles, rep.LargestHolePerimMM = nh, nt, perim
@@ -177,6 +198,7 @@ func Repair(s *Soup) (*Mesh, *RepairReport, error) {
 		rep.FlippedFaces += orient(m)
 	}
 
+	checkpoint()
 	// 6. per-shell: drop debris, fix inside-out shells
 	comps := m.Components()
 	keep := make([]bool, len(m.F))
@@ -207,9 +229,11 @@ func Repair(s *Soup) (*Mesh, *RepairReport, error) {
 	}
 	m.F = filterFaces(m.F, drop)
 	m = compact(m)
+	checkpoint()
 	rep.Shells = len(shellVol)
 	st := m.EdgeStats()
 	rep.Closed = st.Boundary == 0 && st.NonManifold == 0 && st.Misoriented == 0
+	rep.OpenEdges, rep.BadEdges, rep.Misoriented = st.Boundary, st.NonManifold, st.Misoriented
 	rep.VolumeMM3 = m.Volume()
 	rep.OutputTriangles = len(m.F)
 	rep.OutputVertices = len(m.V)
@@ -226,6 +250,42 @@ func Repair(s *Soup) (*Mesh, *RepairReport, error) {
 		return nil, rep, fmt.Errorf("nothing printable remained after repair")
 	}
 	return m, rep, nil
+}
+
+// Explain says, in plain words, why a repaired mesh is still not
+// watertight and what to do about it ("" when it is closed).
+func (r *RepairReport) Explain() string {
+	if r.Closed {
+		return ""
+	}
+	var what []string
+	if r.OpenEdges > 0 {
+		what = append(what, fmt.Sprintf("%d open edges remain: holes the automatic repair could not cap (usually large, twisted or overlapping openings)", r.OpenEdges))
+	}
+	if r.BadEdges > 0 {
+		what = append(what, fmt.Sprintf("%d edges are shared by more than two faces (surfaces that touch or pass through each other)", r.BadEdges))
+	}
+	if r.Misoriented > 0 {
+		what = append(what, fmt.Sprintf("%d edges join faces that point opposite ways (inconsistent winding)", r.Misoriented))
+	}
+	if len(what) == 0 {
+		what = append(what, "the surface is not a closed solid")
+	}
+	done := []string{}
+	if r.HolesFilled > 0 {
+		done = append(done, fmt.Sprintf("%d holes capped", r.HolesFilled))
+	}
+	if r.NonManifoldResolved > 0 {
+		done = append(done, fmt.Sprintf("%d non-manifold edges split", r.NonManifoldResolved))
+	}
+	if r.FlippedFaces > 0 {
+		done = append(done, fmt.Sprintf("%d faces re-oriented", r.FlippedFaces))
+	}
+	s := "The mesh could not be made watertight: " + strings.Join(what, "; ") + "."
+	if len(done) > 0 {
+		s += " The repair already " + strings.Join(done, ", ") + "."
+	}
+	return s + " This is a problem in the file, not a memory limit: repair it in your modeller or slicer (e.g. Blender's 3D-Print Toolbox, Meshmixer Make Solid, or your slicer's Fix model) and load it again."
 }
 
 func filterFaces(f [][3]int32, drop []bool) [][3]int32 {
