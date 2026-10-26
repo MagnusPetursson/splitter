@@ -38,6 +38,8 @@
       <button class="link" data-sample="bunny_damaged.stl">damaged bunny</button>
     </div>
     <div id="privacy" class="small okc">Runs entirely in your browser: your model is never uploaded.</div>
+    <div id="loadNote" class="info hidden" role="alert"></div>
+    <div id="meshNote" class="meshnote hidden"></div>
     <div id="modelInfo" class="info hidden"></div>
     <div id="unitRow" class="row hidden">
       <label>Units <select id="units"><option value="1">mm</option><option value="10">cm</option><option value="1000">m</option><option value="25.4">inch</option></select></label>
@@ -123,9 +125,12 @@
     <div id="jointHelp" class="mute small">Select a cut face in the 3D view (Cuts) or below to see its joint map.</div>
     <div id="faceList" class="facelist"></div>
     <div id="mapWrap" class="mapwrap hidden">
-      <canvas id="jointMap" width="600" height="420"></canvas>
+      <div class="mapframe">
+        <canvas id="jointMap" width="600" height="420" title="Click to open the zoomable joint editor"></canvas>
+        <button id="openEditor" class="small mapopen" title="Open the zoomable joint editor">⤢ Zoom &amp; edit</button>
+      </div>
       <div class="maptools">
-        <button id="addJointMode" class="small" title="Click on the map to add a joint">+ Add joint</button>
+        <button id="addJointMode" class="small" title="Open the joint editor and click on the face to add a joint">+ Add joint</button>
         <select id="addKind"></select>
         <label class="small"><input type="checkbox" id="showField" checked> distance field</label>
       </div>
@@ -152,6 +157,7 @@
       <button id="buildBtn" class="primary" disabled>Build parts</button>
       <button id="exportBtn" disabled>Export package</button>
     </div>
+    <div id="detailRow" class="detailrow small hidden"></div>
     <label class="row small" id="explodeRow">Explode <input type="range" id="explode" min="0" max="1" step="0.01" value="0.35"></label>
     <div id="buildInfo" class="info hidden"></div>
     <div id="exportInfo" class="info hidden"></div>
@@ -174,9 +180,44 @@
   <div id="hud" class="hud"></div>
   <div id="legend" class="legend hidden"></div>
   <div id="toast" class="toast hidden"></div>
-  <div id="busy" class="busy hidden"><div class="bar"><div id="busyFill"></div></div><div id="busyText">Working…</div></div>
+  <div id="busy" class="busy hidden" role="status" aria-live="polite">
+    <div class="busy-head"><b id="busyTitle"></b><span id="busyTime" class="mute"></span><button id="busyCancel" class="small hidden">Cancel</button></div>
+    <ol id="busyStages" class="stages"></ol>
+    <div class="bar"><div id="busyFill"></div></div><div id="busyText">Working…</div>
+  </div>
   <div id="empty" class="empty"><div><h1>Split anything to fit your printer.</h1><p>Drop a model, pick your printer, and print-splitter finds the cuts, places joints that suit the walls it cuts through, and exports print-ready plates with an assembly sheet.</p><p class="mute">Drag to orbit · right-drag to pan · scroll to zoom · click a cut or joint to edit it</p></div></div>
 </main>
+
+<div id="jointDlg" class="jdlg hidden" role="dialog" aria-modal="true" aria-labelledby="jdTitle" aria-hidden="true">
+  <div class="jd-head">
+    <h2 id="jdTitle">Joints</h2>
+    <div id="jdFaces" class="jd-faces" aria-label="Cut faces"></div>
+    <div class="spacer"></div>
+    <button id="jdDock" class="small">Beside 3D</button>
+    <button id="jdClose" class="ghost jd-x" aria-label="Close the joint editor (Esc)" title="Close (Esc)">×</button>
+  </div>
+  <div class="jd-body">
+    <div class="jd-mapcol">
+      <div class="jd-tools">
+        <button id="jdAdd" class="small" aria-pressed="false">+ Add joint</button>
+        <select id="jdKind" aria-label="Joint type to add"></select>
+        <span class="jd-sep"></span>
+        <button id="jdOut" class="small zb" aria-label="Zoom out (−)" title="Zoom out (−)">−</button>
+        <output id="jdZoom" aria-live="polite">100 %</output>
+        <button id="jdIn" class="small zb" aria-label="Zoom in (+)" title="Zoom in (+)">+</button>
+        <button id="jdFit" class="small" title="Fit the face (0)">Fit</button>
+        <label class="small jd-field"><input type="checkbox" id="jdField" checked> distance field</label>
+      </div>
+      <div class="jd-canvas">
+        <canvas id="jdMap" tabindex="0" aria-label="Cut face map. Arrow keys or Tab: next joint; Shift+arrows: move the selected joint 0.5 mm; plus and minus: zoom; A: add mode; Delete: remove joint."></canvas>
+        <div id="jdHint" class="jd-hint hidden"></div>
+      </div>
+      <div id="jdJoints" class="jd-joints" aria-label="Joints on this face"></div>
+      <div class="jd-keys small mute">Wheel or pinch to zoom · drag to pan · drag a joint to move it · <kbd>←</kbd><kbd>→</kbd>/<kbd>Tab</kbd> next joint · <kbd>Shift</kbd>+arrows nudge 0.5 mm · <kbd>Del</kbd> delete · <kbd>A</kbd> add · <kbd>+</kbd><kbd>−</kbd><kbd>0</kbd> zoom · <kbd>Esc</kbd> close</div>
+    </div>
+    <aside id="jdSide" class="jd-side" aria-label="Contact and joint settings"></aside>
+  </div>
+</div>
 
 <dialog id="helpDlg">
   <h2>print-splitter</h2>
