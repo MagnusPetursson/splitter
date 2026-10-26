@@ -389,6 +389,7 @@ type cutCand struct {
 	worldAxis  bool
 	lo, hi     float64
 	support    float64
+	stagger    float64 // gap to a nearly coincident parallel cut (0 = none)
 }
 
 // AutoSplit first makes leaves fit, then considers optional support-saving cuts.
@@ -441,7 +442,7 @@ func (md *Model) AutoSplit(t *Tree, s *Settings, progress func(string)) []string
 		if progress != nil {
 			progress(fmt.Sprintf("searching cut %d", len(t.Internal())+1))
 		}
-		c := md.bestCut(rep, hs, downs, s, fits)
+		c := md.bestCut(rep, hs, downs, s, fits, t.cutPlanes())
 		if c == nil && fits {
 			continue
 		}
@@ -459,11 +460,70 @@ func (md *Model) AutoSplit(t *Tree, s *Settings, progress func(string)) []string
 	return warnings
 }
 
+// cutPlanes lists the planes of every cut already in the tree.
+func (t *Tree) cutPlanes() []Plane {
+	var out []Plane
+	for _, id := range t.Internal() {
+		out = append(out, *t.Nodes[id].Cut)
+	}
+	return out
+}
+
+// staggerGap returns the distance from offset d (along n) to the nearest
+// existing parallel cut that is not exactly the same plane, or +Inf. Two
+// parallel cuts a few mm apart on the two sides of an earlier cut turn the
+// strip between them into its own thin contact patch (and a visible step
+// along the outside of the model); aligning them avoids that.
+func staggerGap(n geom.Vec3, d float64, others []Plane) (float64, float64) {
+	gap, at := math.Inf(1), math.NaN()
+	for _, o := range others {
+		dot := n.Dot(o.N)
+		if math.Abs(dot) < 0.9995 {
+			continue
+		}
+		od := o.D
+		if dot < 0 {
+			od = -od
+		}
+		if g := math.Abs(d - od); g > 1e-6 && g < gap {
+			gap, at = g, od
+		}
+	}
+	return gap, at
+}
+
+func alignedWith(p Plane, others []Plane) (Plane, bool) {
+	for _, o := range others {
+		dot := p.N.Dot(o.N)
+		if math.Abs(dot) >= 0.9995 && math.Abs(p.D-math.Copysign(o.D, dot)) <= 1e-6 {
+			return o, true
+		}
+	}
+	return Plane{}, false
+}
+
+// parallelOffsets returns the offsets (along n) of existing cuts parallel to n.
+func parallelOffsets(n geom.Vec3, others []Plane) []float64 {
+	var out []float64
+	for _, o := range others {
+		dot := n.Dot(o.N)
+		if math.Abs(dot) < 0.9995 {
+			continue
+		}
+		if dot < 0 {
+			out = append(out, -o.D)
+		} else {
+			out = append(out, o.D)
+		}
+	}
+	return out
+}
+
 func isWorldAxis(n geom.Vec3) bool {
 	return math.Abs(n[0]) > 0.9999 || math.Abs(n[1]) > 0.9999 || math.Abs(n[2]) > 0.9999
 }
 
-func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *Settings, supportOnly bool) *cutCand {
+func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *Settings, supportOnly bool, others []Plane) *cutCand {
 	bed := s.splitBed()
 	ax := PCA(rep)
 	normals := dedupeDirs([]geom.Vec3{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, ax[0], ax[1], ax[2]}, false)
@@ -501,6 +561,13 @@ func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *
 				if hi-b*f > lo+minP && hi-b*f < hi-minP {
 					ds = append(ds, hi-b*f)
 				}
+			}
+		}
+		// offer the offsets of existing parallel cuts, so this cell can be
+		// cut flush with its neighbour instead of a few mm off
+		for _, od := range parallelOffsets(n, others) {
+			if od > lo+minP && od < hi-minP {
+				ds = append(ds, od)
 			}
 		}
 		sl := md.Slicer(n)
@@ -564,6 +631,16 @@ func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *
 		cost += 8 * sec.Area / maxA
 		if !c.worldAxis {
 			cost += 4
+		}
+		// a near-miss of an existing parallel cut leaves a sliver contact
+		// strip (narrower than the smallest allowed piece) on the face
+		// between them: worse than any balance or slack preference
+		if gap, _ := staggerGap(c.plane.N, c.plane.D, others); gap < s.MinPiece {
+			c.stagger = gap
+			cost += 40 + 20*(1-gap/s.MinPiece)
+		} else if _, ok := alignedWith(c.plane, others); ok {
+			// flush cuts meet in one clean line instead of a step
+			cost -= 6
 		}
 		// similar-sized pieces are easier to print, pack and assemble
 		a, b := c.plane.D-c.lo, c.hi-c.plane.D
@@ -634,6 +711,11 @@ func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *
 	b.reason = fmt.Sprintf("estimated %d part(s) on this branch; section %.0f mm², wall ~%.1f mm, %d loop(s), %.0f%% grazing", b.est, b.sec.Area, b.sec.Thickness, len(b.sec.Loops), 100*b.sec.GrazeFrac)
 	if s.supportWeight() > 0 {
 		b.reason += fmt.Sprintf("; support proxy ~%.0f cm³", b.support/1000)
+	}
+	if b.stagger > 0 {
+		b.reason += fmt.Sprintf("; %.1f mm from a parallel cut (no flush alternative fits)", b.stagger)
+	} else if _, ok := alignedWith(b.plane, others); ok {
+		b.reason += "; flush with a neighbouring cut"
 	}
 	return b
 }
