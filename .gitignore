@@ -5,3 +5,6 @@ web/js/wasm_exec.js
 node_modules/
 smoke-out/
 *.test
+/evidence/
+/support-out/
+__pycache__/

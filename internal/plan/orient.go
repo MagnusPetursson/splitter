@@ -10,19 +10,20 @@ import (
 
 // LeafInfo is a planned part with its print orientation.
 type LeafInfo struct {
-	ID        int       `json:"id"`
-	Label     string    `json:"label"`
-	Fits      bool      `json:"fits"`
-	Down      geom.Vec3 `json:"down"`
-	Angle     float64   `json:"angle"`
-	Extent    geom.Vec3 `json:"extent"`
-	Overhang  float64   `json:"overhang"` // fraction of surface needing support
-	Contact   float64   `json:"contact"`  // mm² on the bed
-	PrintFace string    `json:"printFace"`
-	Center    geom.Vec3 `json:"center"`
-	Bounds    geom.AABB `json:"bounds"`
-	Warnings  []string  `json:"warnings,omitempty"`
-	Empty     bool      `json:"empty,omitempty"`
+	ID            int       `json:"id"`
+	Label         string    `json:"label"`
+	Fits          bool      `json:"fits"`
+	Down          geom.Vec3 `json:"down"`
+	Angle         float64   `json:"angle"`
+	Extent        geom.Vec3 `json:"extent"`
+	Overhang      float64   `json:"overhang"`      // fraction of surface needing support
+	SupportVolume float64   `json:"supportVolume"` // mm³ geometric proxy, not material
+	Contact       float64   `json:"contact"`       // mm² on the bed
+	PrintFace     string    `json:"printFace"`
+	Center        geom.Vec3 `json:"center"`
+	Bounds        geom.AABB `json:"bounds"`
+	Warnings      []string  `json:"warnings,omitempty"`
+	Empty         bool      `json:"empty,omitempty"`
 }
 
 type capInfo struct {
@@ -83,6 +84,7 @@ func (md *Model) Orient(t *Tree, faces []*Face, patches []*Patch, male map[[2]in
 		li.Bounds = b
 		li.Center = b.Center()
 		rep := Representative(pts, 3000)
+		support := md.supportGeometry(hs)
 		// triangles of this leaf
 		tris := md.cellTris(hs)
 		var caps []capInfo
@@ -196,7 +198,8 @@ func (md *Model) Orient(t *Tree, faces []*Face, patches []*Patch, male map[[2]in
 				}
 			}
 			overFrac := over / math.Max(totalArea, 1e-9)
-			cost := 100*overFrac + 12*f.Extent[2]/bed.Z - 25*math.Min(1, contact/math.Max(1, 0.25*f.Extent[0]*f.Extent[1]))
+			volume := support.estimate(pts, d)
+			cost := supportCost(volume, md.supportWeight) + 100*overFrac + 12*f.Extent[2]/bed.Z - 25*math.Min(1, contact/math.Max(1, 0.25*f.Extent[0]*f.Extent[1]))
 			if c.name == "cut face 0" || c.name == "flat face" || (len(c.name) > 8 && c.name[:8] == "cut face") {
 				cost -= 2
 			}
@@ -206,9 +209,14 @@ func (md *Model) Orient(t *Tree, faces []*Face, patches []*Patch, male map[[2]in
 			if !f.Fits {
 				cost += 1e4 + 100*float64(EstParts(rep, bed))
 			}
-			ranked = append(ranked, scored{LeafInfo{Fits: f.Fits, Down: d, Angle: f.Angle, Extent: f.Extent, Overhang: overFrac, Contact: contact, PrintFace: c.name}, cost})
+			ranked = append(ranked, scored{LeafInfo{Fits: f.Fits, Down: d, Angle: f.Angle, Extent: f.Extent, Overhang: overFrac, SupportVolume: volume, Contact: contact, PrintFace: c.name}, cost})
 		}
-		sort.SliceStable(ranked, func(a, b int) bool { return ranked[a].cost < ranked[b].cost })
+		sort.SliceStable(ranked, func(a, b int) bool {
+			if ranked[a].li.Fits != ranked[b].li.Fits {
+				return ranked[a].li.Fits
+			}
+			return ranked[a].cost < ranked[b].cost
+		})
 		// confirm on the exact point set, in cost order
 		chosen := false
 		for _, r := range ranked {
@@ -216,6 +224,7 @@ func (md *Model) Orient(t *Tree, faces []*Face, patches []*Patch, male map[[2]in
 			if ex.Fits || !r.li.Fits {
 				li.Fits, li.Down, li.Angle, li.Extent = ex.Fits, r.li.Down, ex.Angle, ex.Extent
 				li.Overhang, li.Contact, li.PrintFace = r.li.Overhang, r.li.Contact, r.li.PrintFace
+				li.SupportVolume = r.li.SupportVolume
 				chosen = true
 				if ex.Fits || !r.li.Fits {
 					break
@@ -226,6 +235,7 @@ func (md *Model) Orient(t *Tree, faces []*Face, patches []*Patch, male map[[2]in
 			r := ranked[0]
 			ex := FitPoints(pts, []geom.Vec3{r.li.Down}, bed)
 			li.Fits, li.Down, li.Angle, li.Extent = ex.Fits, r.li.Down, ex.Angle, ex.Extent
+			li.Overhang, li.Contact, li.PrintFace, li.SupportVolume = r.li.Overhang, r.li.Contact, r.li.PrintFace, r.li.SupportVolume
 		}
 		if !li.Fits {
 			li.Warnings = append(li.Warnings, fmt.Sprintf("does not fit the build volume (%.0f×%.0f×%.0f mm)", li.Extent[0], li.Extent[1], li.Extent[2]))

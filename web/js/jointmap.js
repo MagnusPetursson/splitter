@@ -80,6 +80,7 @@ export class JointMap {
       const w = Math.round(rect.width * dpr), h = Math.round(rect.width * 0.7 * dpr);
       if (this.c.width !== w || this.c.height !== h) { this.c.width = w; this.c.height = h; }
     }
+    this.contactLabels = [];
     ctx.clearRect(0, 0, this.c.width, this.c.height);
     if (!this.face || !this.face.loops || !this.face.loops.length) return;
     const V = this.view();
@@ -134,24 +135,45 @@ export class JointMap {
     const fpx = Math.round(12 * dpr);
     ctx.font = `600 ${fpx}px system-ui`;
     ctx.lineJoin = 'round';
+    const occupied = [];
     const label = (t, x, y, col) => {
-      // keep labels inside the canvas (shell sections put centroids near the edge)
-      const hw = ctx.measureText(t).width / 2 + 4 * dpr;
-      x = Math.max(hw, Math.min(this.c.width - hw, x));
-      y = Math.max(fpx, Math.min(this.c.height - 4 * dpr, y));
+      // Use real glyph bounds, including the halo; move only colliding labels.
+      ctx.textAlign = 'center';
+      const m = ctx.measureText(t), pad = 3 * dpr;
+      const left = m.actualBoundingBoxLeft + pad, right = m.actualBoundingBoxRight + pad;
+      const top = m.actualBoundingBoxAscent + pad, bottom = m.actualBoundingBoxDescent + pad;
+      const clampX = (v) => Math.max(left, Math.min(this.c.width - right, v));
+      const clampY = (v) => Math.max(top, Math.min(this.c.height - bottom, v));
+      const box = (xx, yy) => ({ left: xx - left, right: xx + right, top: yy - top, bottom: yy + bottom });
+      const free = (b) => !occupied.some((a) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
+      x = clampX(x); y = clampY(y);
+      let b = box(x, y);
+      if (!free(b)) {
+        const step = top + bottom + dpr;
+        const candidates = [];
+        for (let yy = top; yy <= this.c.height - bottom; yy += step)
+          for (let xx = left; xx <= this.c.width - right; xx += left + right + dpr)
+            candidates.push({ x: xx, y: yy, distance: Math.hypot(xx - x, yy - y) });
+        candidates.sort((a, b) => a.distance - b.distance);
+        const next = candidates.find((p) => free(box(p.x, p.y)));
+        if (next) { x = next.x; y = next.y; b = box(x, y); }
+      }
+      occupied.push(b);
       ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#0b0e12'; ctx.strokeText(t, x, y); ctx.fillStyle = col; ctx.fillText(t, x, y);
+      return { ...b, x, y };
     };
     ctx.textAlign = 'center';
     for (const pid of this.face.patches) {
       const p = this.plan.patches[pid];
       const q = V.toC(p.centroid);
-      const ln = this.plan.leaves[leafIdx[p.negLeaf]].label, lp = this.plan.leaves[leafIdx[p.posLeaf]].label;
-      let t = `${ln} ↔ ${lp}`;
-      if (p.seam && p.seam.kind !== 'none') t += ` · ${p.seam.kind}`;
-      label(t, q[0], q[1] - fpx * 0.6, pid === this.opts.patch ? '#ffffff' : '#dbe3ea');
-      label(`wall ${p.thickness.toFixed(1)} mm · max Ø${(2 * p.rmax).toFixed(1)}`, q[0], q[1] + fpx * 0.8, '#aab6c2');
-      if (p.fallback) label(`⚠ ${p.fallback.want} → ${p.fallback.got.replace('tongue-and-groove', 'T&G')}: ${p.fallback.reason}`, q[0], q[1] + fpx * 2.2, '#e8b04a');
-      else if (p.single) label('⚠ only one joint fits: can rotate', q[0], q[1] + fpx * 2.2, '#e8b04a');
+      const col = pid === this.opts.patch ? '#ffffff' : (p.fallback || p.single ? '#e8b04a' : '#dbe3ea');
+      const b = label(`C${pid}`, q[0], q[1] - fpx * 0.6, col);
+      this.contactLabels.push({ ...b, pid });
+      // A leader preserves the association when edge clamping/packing moves an ID.
+      ctx.lineWidth = dpr; ctx.strokeStyle = col;
+      ctx.beginPath(); ctx.moveTo(q[0], q[1]);
+      ctx.lineTo(Math.max(b.left, Math.min(b.right, q[0])), Math.max(b.top, Math.min(b.bottom, q[1])));
+      ctx.stroke();
     }
     // joints
     for (const j of this.joints()) {
@@ -197,6 +219,11 @@ export class JointMap {
       this.drag = { j, moved: false };
       this.c.setPointerCapture(e.pointerId);
       this.cb.onSelectJoint && this.cb.onSelectJoint(j.id);
+      return;
+    }
+    const hit = !this.addMode && this.contactLabels.find((b) => cp[0] >= b.left && cp[0] <= b.right && cp[1] >= b.top && cp[1] <= b.bottom);
+    if (hit) {
+      this.cb.onSelectPatch && this.cb.onSelectPatch(hit.pid);
       return;
     }
     const q = this.view().toF(cp[0], cp[1]);

@@ -190,16 +190,17 @@ func (t *Tree) Compact() *Tree {
 
 // Model wraps the repaired mesh with caches used by the planner.
 type Model struct {
-	M       *mesh.Mesh
-	Nrm     []geom.Vec3
-	Bounds  geom.AABB
-	Diag    float64
-	Tilted  bool // allow tilted print orientations (set per run)
-	Upright bool // keep the model's +Z up for every part
-	slicers map[[3]int64]*Slicer
-	bvh     *BVH
-	Area    []float64
-	cents   []geom.Vec3
+	M             *mesh.Mesh
+	Nrm           []geom.Vec3
+	Bounds        geom.AABB
+	Diag          float64
+	Tilted        bool // allow tilted print orientations (set per run)
+	Upright       bool // keep the model's +Z up for every part
+	supportWeight float64
+	slicers       map[[3]int64]*Slicer
+	bvh           *BVH
+	Area          []float64
+	cents         []geom.Vec3
 }
 
 func NewModel(m *mesh.Mesh) *Model {
@@ -265,19 +266,21 @@ func (md *Model) CellPoints(hs []HalfSpace) []geom.Vec3 {
 
 // Settings controls planning.
 type Settings struct {
-	Bed        Bed      `json:"bed"`    // raw printer volume
-	Margin     float64  `json:"margin"` // safety margin per side (XY) and on Z
-	MinPiece   float64  `json:"minPiece"`
-	AutoSplit  bool     `json:"autoSplit"`
-	MaxParts   int      `json:"maxParts"`
-	JointStyle string   `json:"jointStyle"`
-	Nozzle     float64  `json:"nozzle"`
-	Fits       FitTable `json:"fits"`
-	AutoJoints bool     `json:"autoJoints"`
-	MinWall    float64  `json:"minWall"`
-	Tilted     bool     `json:"tilted"`  // allow PCA (tilted) print orientations
-	Upright    bool     `json:"upright"` // print every part as modelled (only rotate about Z)
-	allowance  float64
+	Bed           Bed      `json:"bed"`    // raw printer volume
+	Margin        float64  `json:"margin"` // safety margin per side (XY) and on Z
+	MinPiece      float64  `json:"minPiece"`
+	AutoSplit     bool     `json:"autoSplit"`
+	MaxParts      int      `json:"maxParts"`
+	JointStyle    string   `json:"jointStyle"`
+	Nozzle        float64  `json:"nozzle"`
+	Fits          FitTable `json:"fits"`
+	AutoJoints    bool     `json:"autoJoints"`
+	MinWall       float64  `json:"minWall"`
+	Tilted        bool     `json:"tilted"`                  // allow PCA (tilted) print orientations
+	Upright       bool     `json:"upright"`                 // print every part as modelled (only rotate about Z)
+	SupportWeight *float64 `json:"supportWeight,omitempty"` // nil = 0.5; 0 = legacy fewest-parts
+	supportSplit  bool
+	allowance     float64
 }
 
 func (s *Settings) Usable() Bed {
@@ -315,7 +318,22 @@ func (s *Settings) Normalize() {
 	if s.MinWall <= 0 {
 		s.MinWall = math.Max(1.2, 2*s.Nozzle*1.05)
 	}
+	if s.SupportWeight != nil {
+		w := *s.SupportWeight
+		if math.IsNaN(w) || math.IsInf(w, 0) {
+			w = 0.5
+		}
+		w = math.Max(0, math.Min(1, w))
+		s.SupportWeight = &w
+	}
 	s.Fits.normalize(s.Nozzle)
+}
+
+func (s *Settings) supportWeight() float64 {
+	if s.SupportWeight == nil {
+		return 0.5
+	}
+	return *s.SupportWeight
 }
 
 // candidateDowns gathers orientations worth testing for a cell.
@@ -370,14 +388,21 @@ type cutCand struct {
 	reason     string
 	worldAxis  bool
 	lo, hi     float64
+	support    float64
 }
 
-// AutoSplit recursively splits every leaf that does not fit.
+// AutoSplit first makes leaves fit, then considers optional support-saving cuts.
 func (md *Model) AutoSplit(t *Tree, s *Settings, progress func(string)) []string {
 	var warnings []string
 	bed := s.splitBed()
 	queue := t.Leaves()
-	for len(queue) > 0 {
+	var optional []int
+	supportPhase := false
+	for len(queue) > 0 || len(optional) > 0 {
+		if len(queue) == 0 {
+			queue, optional = optional, nil
+			supportPhase = true
+		}
 		if len(t.Leaves()) >= s.MaxParts {
 			warnings = append(warnings, fmt.Sprintf("stopped at the part limit (%d); some parts may not fit", s.MaxParts))
 			break
@@ -392,24 +417,39 @@ func (md *Model) AutoSplit(t *Tree, s *Settings, progress func(string)) []string
 		rep := Representative(pts, 2500)
 		downs := candidateDowns(rep, hs, s.Tilted, s.Upright, flatDirs(md, md.cellTris(hs), 6)...)
 		f := FitPoints(rep, downs, bed)
-		if !f.Fits && f.Slack > -15 && len(pts) <= 400000 {
-			// representative points are conservative only up to the voxel size
-			if FitPoints(pts, downs, bed).Fits {
+		fits := false
+		if f.Fits || (f.Slack > -15 && len(pts) <= 400000) {
+			fits = FitPoints(pts, downs, bed).Fits
+		}
+		parentSupport := 0.0
+		if fits {
+			// Manual trees / auto-complete keep fitting leaves. Only a fresh
+			// Auto split may add cuts solely to save support.
+			if !s.supportSplit || s.supportWeight() == 0 {
 				continue
 			}
-		}
-		if f.Fits {
-			// confirm on exact points
-			if FitPoints(pts, []geom.Vec3{f.Down}, bed).Fits || FitPoints(pts, downs, bed).Fits {
+			if !supportPhase {
+				optional = append(optional, id)
+				continue
+			}
+			_, parentSupport = md.supportFit(pts, hs, downs, bed, s.supportWeight())
+			// Even eliminating ALL support cannot pay for another part.
+			if supportCost(parentSupport, s.supportWeight()) <= 100 {
 				continue
 			}
 		}
 		if progress != nil {
 			progress(fmt.Sprintf("searching cut %d", len(t.Internal())+1))
 		}
-		c := md.bestCut(rep, hs, downs, s)
+		c := md.bestCut(rep, hs, downs, s, fits)
+		if c == nil && fits {
+			continue
+		}
 		if c == nil {
 			warnings = append(warnings, fmt.Sprintf("could not find a cut for a %.0f×%.0f×%.0f mm region", f.Extent[0], f.Extent[1], f.Extent[2]))
+			continue
+		}
+		if fits && (c.est != 2 || c.cost >= 100+supportCost(parentSupport, s.supportWeight())) {
 			continue
 		}
 		neg, pos := t.SplitLeaf(id, c.plane)
@@ -423,7 +463,7 @@ func isWorldAxis(n geom.Vec3) bool {
 	return math.Abs(n[0]) > 0.9999 || math.Abs(n[1]) > 0.9999 || math.Abs(n[2]) > 0.9999
 }
 
-func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *Settings) *cutCand {
+func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *Settings, supportOnly bool) *cutCand {
 	bed := s.splitBed()
 	ax := PCA(rep)
 	normals := dedupeDirs([]geom.Vec3{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, ax[0], ax[1], ax[2]}, false)
@@ -541,7 +581,59 @@ func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *
 		c.cost = cost
 	}
 	sort.SliceStable(cands, func(i, j int) bool { return cands[i].cost < cands[j].cost })
+	if s.supportWeight() > 0 {
+		// Bound the expensive geometry work: keep the best seam in each of
+		// five offset bands per normal (<= 30 candidates). Do not let a
+		// hundred near-identical mid-plane cuts crowd out another direction.
+		shortlist := []*cutCand{}
+		seen := map[[4]int]bool{}
+		for _, c := range cands {
+			n := c.plane.N
+			key := [4]int{int(math.Round(n[0] * 1000)), int(math.Round(n[1] * 1000)), int(math.Round(n[2] * 1000)), min(4, int(5*(c.plane.D-c.lo)/(c.hi-c.lo)))}
+			if seen[key] {
+				continue
+			}
+			// Empty-space cuts can separate disconnected components that must
+			// fit. Only optional support cuts require a material section.
+			if supportOnly && c.sec.Area <= 1e-6 {
+				continue
+			}
+			seen[key] = true
+			dirs := append(append([]geom.Vec3{}, downs...), n)
+			if s.Upright {
+				dirs = downs
+			}
+			oldEst := c.est
+			c.est = 0
+			for _, side := range []float64{-1, 1} {
+				child := append(append([]HalfSpace{}, hs...), HalfSpace{P: c.plane, Side: side})
+				pts := md.CellPoints(child)
+				f, v := md.supportFit(pts, child, dirs, bed, s.supportWeight())
+				if f.Fits {
+					c.est++
+				} else {
+					c.est += max(2, f.Est)
+				}
+				if side < 0 {
+					c.fitN = f
+				} else {
+					c.fitP = f
+				}
+				c.support += v
+			}
+			c.cost += 100*float64(c.est-oldEst) + supportCost(c.support, s.supportWeight())
+			shortlist = append(shortlist, c)
+		}
+		if len(shortlist) == 0 {
+			return nil
+		}
+		cands = shortlist
+		sort.SliceStable(cands, func(i, j int) bool { return cands[i].cost < cands[j].cost })
+	}
 	b := cands[0]
-	b.reason = fmt.Sprintf("needs %d part(s) on this branch; section %.0f mm², wall ~%.1f mm, %d loop(s), %.0f%% grazing", b.est, b.sec.Area, b.sec.Thickness, len(b.sec.Loops), 100*b.sec.GrazeFrac)
+	b.reason = fmt.Sprintf("estimated %d part(s) on this branch; section %.0f mm², wall ~%.1f mm, %d loop(s), %.0f%% grazing", b.est, b.sec.Area, b.sec.Thickness, len(b.sec.Loops), 100*b.sec.GrazeFrac)
+	if s.supportWeight() > 0 {
+		b.reason += fmt.Sprintf("; support proxy ~%.0f cm³", b.support/1000)
+	}
 	return b
 }

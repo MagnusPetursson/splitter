@@ -24,6 +24,7 @@ func cmdPlan(args []string) error {
 	meshOut := fs.String("mesh", "", "write repaired mesh (PSM1) here")
 	tilted := fs.Bool("tilted", false, "allow tilted print orientations")
 	upright := fs.Bool("upright", false, "print every part upright as modelled")
+	supportWeight := fs.Float64("support-weight", 0.5, "0 = fewer parts (legacy), 1 = less support; geometric proxy only")
 	fs.Parse(args)
 	if fs.NArg() != 1 {
 		return fmt.Errorf("usage: plan [flags] model")
@@ -42,7 +43,8 @@ func cmdPlan(args []string) error {
 	md := plan.NewModel(m)
 	req := &plan.Request{Mode: "auto", Settings: plan.Settings{
 		Bed: plan.Bed{X: pr.X, Y: pr.Y, Z: pr.Z}, Margin: *margin, Nozzle: pr.Nozzle,
-		JointStyle: *style, AutoSplit: true, AutoJoints: true, Tilted: *tilted, Upright: *upright,
+		SupportWeight: supportWeight,
+		JointStyle:    *style, AutoSplit: true, AutoJoints: true, Tilted: *tilted, Upright: *upright,
 	}}
 	pl, err := md.Run(req, func(s string) { fmt.Fprintln(os.Stderr, "…", s) })
 	if err != nil {

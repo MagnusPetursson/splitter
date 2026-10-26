@@ -98,6 +98,13 @@
       </select></label>
       <button id="autoSplit" class="primary" disabled>Auto split</button>
     </div>
+    <div class="support-control">
+      <label for="supportWeight" class="support-label"><span>Fewer parts ↔ Less support</span><output id="supportValue" for="supportWeight">Balanced</output></label>
+      <input id="supportWeight" type="range" min="0" max="1" step="0.05" value="0.5" aria-describedby="supportHelp">
+      <div class="support-ends small"><span>Keep it together</span><span>Allow extra cuts</span></div>
+      <p id="supportHelp" class="small mute">Use Auto split to trade extra parts for a lower support estimate. Not filament volume or print time.</p>
+      <div id="supportPending" class="small warnc hidden" role="status">Preference changed. Press Auto split to replace the cuts; the current plan is unchanged.</div>
+    </div>
     <div class="row two small">
       <label class="row" title="Every part prints the way the model is oriented (only rotated about Z). Good for cosmetic parts and anything with a natural base."><input type="checkbox" id="upright"> Keep upright</label>
       <label class="row" title="Also try tilted (principal-axis) orientations: can mean fewer parts, but usually more supports."><input type="checkbox" id="tilted"> Allow tilted</label>

@@ -10,7 +10,7 @@
 
 1. **Load** an STL (binary or ASCII), OBJ or 3MF up to 300 MB. The mesh is welded and repaired: holes are capped, flipped and inside-out faces are fixed, duplicate and degenerate faces are removed, non-manifold edges are split and debris is dropped. Each repair is counted in the UI.
 2. **Choose a printer** (Prusa, Bambu Lab, Creality, Voron presets, or a custom volume) and a safety margin.
-3. **Auto split.** A BSP search over cut planes finds the fewest parts that fit in some print orientation. You can move, tilt, delete or add cuts. **Auto-complete** then splits only the parts that still do not fit.
+3. **Auto split.** A BSP search over cut planes trades part count against estimated support demand. The **Fewer parts ↔ Less support** slider defaults to Balanced; move it fully left for the legacy parts-first objective. You can move, tilt, delete or add cuts. **Auto-complete** then splits only the parts that still do not fit.
 4. **Joints.** Every cut face is analysed, and joints are placed where the wall can hold them. You can edit them on a 2D joint map.
 5. **Build** every part as a closed manifold solid with the [Manifold](https://github.com/elalish/manifold) kernel. The interference between mating parts is checked.
 6. **Export** a zip: oriented STLs, one 3MF per print plate, an all-plates 3MF, an assembled preview, an HTML assembly sheet, `plan.json` and a per-part report.
@@ -39,10 +39,33 @@ Clearances are radial, per side, and editable. The defaults for a 0.4 mm nozzle 
 ## Limits and caveats
 
 - **Physical fit is untested until you print the coupon.** The clearances are geometric. Your printer, filament and slicer decide the real fit. Step 5 generates a **joint test coupon** with six graded clearances. Print it first, then enter the loosest step that still holds.
-- **Support material is not yet included** in the cost when choosing cuts and orientations. "Allow tilted" can save parts but usually adds support.
+- **Support is a geometric proxy, not slicer material or print time.** It ignores bridging, support density, supports resting on the model, tree supports, and joint geometry. The coarse raster can miss small features. "Allow tilted" can save parts but usually adds support. Always inspect the exported orientation and supports in your slicer.
 - No STEP import. The 3MF files contain geometry only, with no slicer profiles.
 - Very large meshes (millions of triangles) are slow in the browser and use a lot of memory.
 - Cut planning is a heuristic search. It does not guarantee the global optimum, and on strongly curved shells it may need a manual cut.
+
+## Support-aware cost
+
+Each signed print orientation is scored using a 40 × 40 raster over the part's projected footprint. Only downward-facing surfaces steeper than 45° count. A covered pixel contributes its height above the bed, multiplied by its estimated **surface** area (projected pixel area divided by the normal's cosine). Overlapping columns take the maximum rather than being counted twice. Bed contact within 0.6 mm is ignored. Original triangles are clipped to the BSP cell; cut caps retain their holes.
+
+This produces `supportVolume` in **mm³ of geometric proxy**, shown as cm³ in the UI. It is deliberately not named support grams. The cost added to both cut selection and print orientation is:
+
+```
+supportCost = supportVolume_mm3 × 0.004 × supportWeight²
+partCost = 100 per estimated part (plus the existing seam/geometry penalties)
+```
+
+`supportWeight` is 0–1, defaults to 0.5 when omitted, and is clamped at the API boundary. At Balanced, saving about 100 cm³ of proxy pays for one extra part before seam penalties; at the far right, about 25 cm³. Part cost never becomes zero. At zero, support does not affect the old cut/orientation objective, but the estimate is still reported.
+
+The planner makes required fit cuts first. On a fresh **Auto split**, it then considers extra cuts even when a piece already fits, accepting them only when their predicted savings exceed the added part/seam cost and both children fit. It considers at most five offset bands per cut normal (up to 30 shortlisted cuts per search), not every possible split. This is a bounded greedy search, **not** a global optimum. Exact fit checks remain mandatory; support preferences never override Keep upright or the part limit. Auto-complete and manual cut edits do not add support-only cuts.
+
+Changing the slider does not silently replace manual cuts: press Auto split to apply it. The UI retains the preference (including zero), shows a pending-change notice, and compares successive auto plans when other settings are unchanged. Reset to defaults restores Balanced.
+
+```sh
+bin/splitter plan -support-weight 0.5 model.stl > plan.json
+# Real browser planning, builds, oriented export, screenshots, persistence:
+node e2e/support.mjs http://localhost:8000/ model.stl support-out
+```
 
 ## How it works
 

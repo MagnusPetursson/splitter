@@ -46,6 +46,10 @@ try {
   check(st.style === 'glued' && st.label === 'Dowel pins (glue)', 'default style is Dowel pins after clearing storage');
   check(!st.restored, 'no restored note on a clean load');
   await page.selectOption('#printer', 'prusa-mini');
+  // This fixture protects joint selection on the original cut topology.
+  // Support-aware defaults intentionally choose different bowl contacts.
+  await page.locator('#supportWeight').fill('0');
+  await page.locator('#supportWeight').dispatchEvent('input');
 
   // bracket: solid part → dowels; selector → Magnets re-places without re-split
   await loadSample('bracket_320mm.stl');

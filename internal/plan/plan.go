@@ -101,8 +101,10 @@ func (md *Model) run(req *Request, allowance float64, progress func(string)) (*P
 	s := req.Settings
 	s.Normalize()
 	s.allowance = allowance
+	s.supportSplit = req.Mode == "auto" || req.Tree == nil
 	md.Tilted = s.Tilted
 	md.Upright = s.Upright
+	md.supportWeight = s.supportWeight()
 	pl := &Plan{Settings: s, Usable: s.Usable(), Timing: map[string]float64{}}
 	if pl.Usable.X <= 10 || pl.Usable.Y <= 10 || pl.Usable.Z <= 10 {
 		return nil, fmt.Errorf("build volume too small after margin")
