@@ -148,3 +148,28 @@ func TestSliverContactIsReported(t *testing.T) {
 		t.Fatalf("no warning %q; warnings: %q", want, pl.Warnings)
 	}
 }
+
+// chop measures the piece a plane cuts off an earlier cut face: a 100×100
+// square face cut 3 mm from one edge leaves a 300 mm², 3 mm deep piece.
+func TestBoundFaceChop(t *testing.T) {
+	fr := geom.PlaneFrame(geom.Vec3{0, 0, 1}, 0)
+	sq := []geom.Vec2{}
+	for _, c := range [][2]float64{{0, 0}, {100, 0}, {100, 100}, {0, 100}} {
+		sq = append(sq, fr.To2(geom.Vec3{c[0], c[1], 0}))
+	}
+	b := boundFace{&Section{Frame: fr, Loops: []Loop2{{P: sq}}, Area: 10000}}
+	a, d := b.chop(Plane{N: geom.Vec3{1, 0, 0}, D: 3})
+	if math.Abs(a-300) > 1e-6 || math.Abs(d-3) > 1e-6 {
+		t.Fatalf("chop at x=3: area %g depth %g, want 300 and 3", a, d)
+	}
+	if a, _ := b.chop(Plane{N: geom.Vec3{1, 0, 0}, D: 150}); a != 0 {
+		t.Fatalf("a plane missing the face chops %g", a)
+	}
+	if a, _ := b.chop(Plane{N: geom.Vec3{0, 0, 1}, D: 0}); a != 0 {
+		t.Fatalf("a parallel plane chops %g", a)
+	}
+	s := &Settings{MinPiece: 15}
+	if chopBadness(300, 3, s) <= 0.5 || chopBadness(5000, 50, s) != 0 {
+		t.Fatalf("badness: thin strip %g, half the face %g", chopBadness(300, 3, s), chopBadness(5000, 50, s))
+	}
+}

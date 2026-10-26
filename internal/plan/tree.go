@@ -417,6 +417,70 @@ type cutCand struct {
 	lo, hi     float64
 	support    float64
 	stagger    float64 // gap to a nearly coincident parallel cut (0 = none)
+	chop       float64 // 0..1: how badly it chops a sliver off a bounding cut face
+}
+
+// boundFace is the part of an earlier cut face that bounds a cell.
+type boundFace struct{ sec *Section }
+
+// chop returns the smaller of the two pieces a plane cuts this face into
+// (area, and depth: the largest distance of that piece from the cut
+// line), or 0 when the plane misses the face or the face is not split.
+func (b boundFace) chop(p Plane) (float64, float64) {
+	f := b.sec.Frame
+	// the plane's trace on the face: points q with p.N·f.To3(q) = p.D
+	a, bb := p.N.Dot(f.U), p.N.Dot(f.V)
+	c := p.D - p.N.Dot(f.O)
+	l := math.Hypot(a, bb)
+	if l < 1e-6 {
+		return 0, 0 // parallel planes
+	}
+	a, bb, c = a/l, bb/l, c/l
+	side := func(sgn float64) (float64, float64) {
+		area, depth := 0.0, 0.0
+		for _, lp := range b.sec.Loops {
+			var poly []geom.Vec2
+			n := len(lp.P)
+			for i := 0; i < n; i++ {
+				p0, p1 := lp.P[i], lp.P[(i+1)%n]
+				d0, d1 := sgn*(a*p0[0]+bb*p0[1]-c), sgn*(a*p1[0]+bb*p1[1]-c)
+				if d0 >= 0 {
+					poly = append(poly, p0)
+					depth = math.Max(depth, d0)
+				}
+				if (d0 >= 0) != (d1 >= 0) {
+					t := d0 / (d0 - d1)
+					poly = append(poly, geom.Vec2{p0[0] + t*(p1[0]-p0[0]), p0[1] + t*(p1[1]-p0[1])})
+				}
+			}
+			s := 0.0
+			for i := range poly {
+				q0, q1 := poly[i], poly[(i+1)%len(poly)]
+				s += q0[0]*q1[1] - q1[0]*q0[1]
+			}
+			area += s / 2 // loops are signed: holes subtract
+		}
+		return math.Abs(area), depth
+	}
+	an, dn := side(-1)
+	ap, dp := side(1)
+	if an < 1e-6 || ap < 1e-6 {
+		return 0, 0
+	}
+	if an < ap {
+		return an, dn
+	}
+	return ap, dp
+}
+
+// chopBadness: near 1 for a piece that reaches only a few mm past the
+// cut line (a strip, however long, or a crumb), falling to 0 for a piece
+// reaching half a minimum part.
+func chopBadness(area, depth float64, s *Settings) float64 {
+	if depth >= s.MinPiece/2 {
+		return 0
+	}
+	return 1 - depth/(s.MinPiece/2)
 }
 
 // AutoSplit first makes leaves fit, then considers optional support-saving cuts.
@@ -612,6 +676,15 @@ func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *
 		}
 		jobs = append(jobs, job{n, ds, lo, hi})
 	}
+	// the parts of earlier cut faces that bound this cell: a candidate
+	// that chops a thin piece off one of them leaves a sliver contact
+	var bfaces []boundFace
+	for i, h := range hs {
+		others := append(append([]HalfSpace{}, hs[:i]...), hs[i+1:]...)
+		if sec := md.Slicer(h.P.N).Slice(h.P.D, others); sec.Area > 1e-6 {
+			bfaces = append(bfaces, boundFace{sec})
+		}
+	}
 	total, done := 0, 0
 	for _, jb := range jobs {
 		total += len(jb.ds)
@@ -662,7 +735,13 @@ func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *
 					est += max(2, EstParts(side.pts, bed))
 				}
 			}
-			cands = append(cands, &cutCand{plane: Plane{N: n, D: d}, sec: sec, est: est, fitN: fn, fitP: fp, worldAxis: isWorldAxis(n), lo: lo, hi: hi})
+			cc := &cutCand{plane: Plane{N: n, D: d}, sec: sec, est: est, fitN: fn, fitP: fp, worldAxis: isWorldAxis(n), lo: lo, hi: hi}
+			for _, bf := range bfaces {
+				if a, w := bf.chop(cc.plane); a > 0 {
+					cc.chop = math.Max(cc.chop, chopBadness(a, w, s))
+				}
+			}
+			cands = append(cands, cc)
 		}
 	}
 	if len(cands) == 0 {
@@ -694,6 +773,9 @@ func (md *Model) bestCut(rep []geom.Vec3, hs []HalfSpace, downs []geom.Vec3, s *
 			// flush cuts meet in one clean line instead of a step
 			cost -= 6
 		}
+		// chopping a thin piece off an earlier cut face: that piece
+		// becomes a contact too small for any joint
+		cost += 50 * c.chop
 		// similar-sized pieces are easier to print, pack and assemble
 		a, b := c.plane.D-c.lo, c.hi-c.plane.D
 		cost += 8 * (1 - math.Min(a, b)/math.Max(a, b))

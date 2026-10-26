@@ -133,6 +133,7 @@ func (md *Model) run(req *Request, allowance float64, progress func(string)) (*P
 	}
 	faces, patches := md.AnalyzeFaces(t)
 	pl.Faces, pl.Patches = faces, patches
+	pl.Warnings = append(pl.Warnings, sliverWarnings(patches, &s)...)
 	pl.Timing["faces"] = time.Since(t1).Seconds()
 	t2 := time.Now()
 	faceOf := map[int]*Face{}
@@ -430,4 +431,21 @@ func locate(faces []*Face, patches []*Patch, at geom.Vec3) (int, geom.Vec2) {
 		bestD, bestP, bestQ = d, int(f.label[k]), q
 	}
 	return bestP, bestQ
+}
+
+// sliverWarnings names contacts too small to hold a joint: a strip of a
+// cut face left between two nearly coincident later cuts, or a plane
+// grazing a thin rim. Such a contact gets at most a seam and shows as a
+// thin chunk along the outside of the model.
+func sliverWarnings(patches []*Patch, s *Settings) []string {
+	var out []string
+	small := math.Pi * (s.MinPiece / 2) * (s.MinPiece / 2)
+	for _, p := range patches {
+		if p.Area < small && p.RMax < s.MinPiece/4 {
+			msg := fmt.Sprintf("contact C%d is a sliver (%.0f mm², at most %.1f mm wide): move a neighbouring cut so the cuts meet flush, or merge the parts", p.ID, p.Area, 2*p.RMax)
+			p.Notes = append(p.Notes, msg)
+			out = append(out, msg)
+		}
+	}
+	return out
 }
