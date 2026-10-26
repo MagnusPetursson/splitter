@@ -8,10 +8,10 @@
 
 ## What it does
 
-1. **Load** an STL (binary or ASCII), OBJ or 3MF up to 300 MB. The mesh is welded and repaired: holes are capped, flipped and inside-out faces are fixed, duplicate and degenerate faces are removed, non-manifold edges are split and debris is dropped. Each repair is counted in the UI.
+1. **Load** an STL (binary or ASCII), OBJ or 3MF up to 300 MB. The mesh is welded and repaired: holes are capped, flipped and inside-out faces are fixed, duplicate and degenerate faces are removed, non-manifold edges are split and debris is dropped. Each repair is counted in the UI. Meshes above 600k triangles are simplified for planning (closed shells kept, measured deviation shown) and parts are cut from the full-detail original; see [Large meshes](docs/large-meshes.md).
 2. **Choose a printer** (Prusa, Bambu Lab, Creality, Voron presets, or a custom volume) and a safety margin.
 3. **Auto split.** A BSP search over cut planes trades part count against estimated support demand. The **Fewer parts ↔ Less support** slider defaults to Balanced; move it fully left for the legacy parts-first objective. You can move, tilt, delete or add cuts. **Auto-complete** then splits only the parts that still do not fit.
-4. **Joints.** Every cut face is analysed, and joints are placed where the wall can hold them. You can edit them on a 2D joint map.
+4. **Joints.** Every cut face is analysed, and joints are placed where the wall can hold them. You can edit them on a 2D joint map, which opens as a large zoomable editor (wheel/pinch, keyboard, phone layout) with the 3D view optionally beside it.
 5. **Build** every part as a closed manifold solid with the [Manifold](https://github.com/elalish/manifold) kernel. The interference between mating parts is checked.
 6. **Export** a zip: oriented STLs, one 3MF per print plate, an all-plates 3MF, an assembled preview, an HTML assembly sheet, `plan.json` and a per-part report.
 

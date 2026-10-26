@@ -1048,7 +1048,7 @@ function renderBuild(res, ms) {
   $('buildInfo').innerHTML = `<div>${ok ? '<span class="okc">All parts are closed manifolds.</span>' : '<span class="badc">Some parts failed.</span>'} ${fmt(ms / 1000, 1)} s</div>
     <div class="small ${res.fromFull ? 'okc' : 'mute'}">${res.fromFull ? `Cut from the full-detail original (${fmtTris(S.model.simplified.inputTris)} triangles).` : S.model.simplified && !S.model.simplified.failed ? `Cut from the simplified mesh (${fmtTris(S.model.tris)} triangles; max deviation ${fmt(S.model.simplified.maxDev, 3)} mm).` : ''}</div>
     <table class="ver">${rows}${pins}</table>
-    <div class="small">Mating checks: max interference ${fmt(maxInt, 3)} mm³ ${maxInt < 0.05 ? '<span class="okc">✓</span>' : '<span class="badc">✗</span>'} · material added outside the model ${fmt(res.outside, 2)} mm³ · voids (holes + clearances) ${fmt(100 * res.voids / res.original, 2)} %</div>`;
+    <div class="small">Mating checks: max interference ${fmt(maxInt, 3)} mm³ ${maxInt < 0.05 ? '<span class="okc">✓</span>' : '<span class="badc">✗</span>'}${res.light ? ` (within 40 mm of each cut) · whole-model void/outside checks skipped at ${fmtTris(res.tris)} triangles` : ` · material added outside the model ${fmt(res.outside, 2)} mm³ · voids (holes + clearances) ${fmt(100 * res.voids / res.original, 2)} %`}</div>`;
   $('buildInfo').classList.remove('hidden');
 }
 

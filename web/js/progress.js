@@ -11,8 +11,11 @@ export const LIMITS = {
   target: 400000,
   maxError: 0.05,
   // keep the full-detail mesh (for exports cut from the original) up to
-  // this many triangles; it costs ~24 bytes per triangle in the planner
-  keepOriginal: 4000000,
+  // this many triangles: ~24 bytes per triangle in the planner, but the
+  // geometry kernel needs ~1 kB per triangle to cut it (measured: 3.7 GB
+  // extra at 3.6 M triangles, 2.9 GB at 1.8 M), so above this exports use
+  // the simplified mesh
+  keepOriginal: 1500000,
   // estimated peak memory (MB) at which we warn / refuse before loading
   warnMB: 1500,
   refuseMB: 3000,
