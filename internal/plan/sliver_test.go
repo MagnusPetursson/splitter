@@ -73,7 +73,7 @@ func staggeredCuts(t *Tree, tol float64) [][2]int {
 
 // A plan must not create sliver contacts: thin strips of an earlier cut's
 // face, left between two nearly-coincident later cuts on its two sides.
-// This is the friend's helmet bug (cut 0 at Y, then Z cuts at 163.3 and
+// Seen on a real 226k-triangle helmet (cut 0 at Y, then Z cuts at 163.3 and
 // 159.3 → a 56 mm², 4 mm wide contact with no room for any joint).
 func TestNoStaggeredSiblingCuts(t *testing.T) {
 	a1mini := Settings{Bed: Bed{180, 180, 180}, Margin: 3, AutoJoints: true, JointStyle: "filament"}
