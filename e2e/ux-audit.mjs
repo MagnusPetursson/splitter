@@ -24,7 +24,7 @@ async function audit(p,name) {
 }
 try {
  for(const [device,width,height] of [['desktop',1440,900],['phone',390,844]]) {
-  const ctx=await b.newContext({viewport:{width,height},isMobile:device==='phone',hasTouch:device==='phone',deviceScaleFactor:1});const p=await ctx.newPage();
+  const ctx=await b.newContext({viewport:{width,height},isMobile:device==='phone',hasTouch:device==='phone',deviceScaleFactor:1});await ctx.addInitScript(()=>{try{localStorage.setItem('ps.sheet','open')}catch{}});const p=await ctx.newPage();
   p.on('pageerror',e=>report.errors.push(device+': '+e.message));p.on('console',m=>{if(m.type()==='error')report.errors.push(device+': '+m.text());});
   await p.goto(url,{waitUntil:'networkidle'});await p.waitForFunction(()=>document.querySelector('#printer').options.length>5);
   await audit(p,device+'-load');

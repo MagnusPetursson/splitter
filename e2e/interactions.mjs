@@ -3,7 +3,7 @@
 import fs from 'node:fs';import path from 'node:path';import assert from 'node:assert/strict';import {createRequire} from 'node:module';
 const {chromium}=createRequire(import.meta.url)(process.env.SPLITTER_PLAYWRIGHT||'playwright');
 const [url='http://127.0.0.1:8792/',out='evidence/interactions',model]=process.argv.slice(2);fs.mkdirSync(out,{recursive:true});
-const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader',...(process.env.SPLITTER_HOST_RESOLVER_RULES?['--host-resolver-rules='+process.env.SPLITTER_HOST_RESOLVER_RULES]:[])]});const p=await b.newPage({viewport:{width:1440,height:900},acceptDownloads:true});
+const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader',...(process.env.SPLITTER_HOST_RESOLVER_RULES?['--host-resolver-rules='+process.env.SPLITTER_HOST_RESOLVER_RULES]:[])]});const p=await b.newPage({viewport:{width:1440,height:900},acceptDownloads:true});await p.addInitScript(()=>{try{localStorage.setItem('ps.sheet','open')}catch{}});
 const report={errors:[]};p.on('pageerror',e=>report.errors.push(e.message));p.on('console',m=>{if(m.type()==='error')report.errors.push(m.text());});
 const idle=()=>p.waitForFunction(()=>document.querySelector('#busy').classList.contains('hidden'),null,{timeout:900000});
 const seq=()=>p.evaluate(()=>window.__ps.planSeq);

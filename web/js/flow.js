@@ -123,7 +123,7 @@ export class GuidedFlow {
     $('views').inert=busy;$('viewerTools').inert=busy;
     // Presentations are views of the current step, not another navigation.
     $('views').hidden=!S.model||(!this.expert&&this.step!=='export');$('viewerTools').hidden=!S.model;
-    $('viewCaption').textContent=this.expert?'VIEW ONLY · same work':({load:'LOADED MODEL',fit:'PRINTER FIT',split:'EDIT CUTS IN 3D',join:'PLACE & CHECK JOINTS',export:'INSPECT BUILT PARTS'})[this.step];
+    $('viewCaption').textContent=({load:'LOADED MODEL',fit:'PRINTER FIT',split:'EDIT CUTS IN 3D',join:'PLACE & CHECK JOINTS',export:'INSPECT BUILT PARTS'})[this.step];
     for(const b of document.querySelectorAll('#views button')) {
       b.disabled=(b.dataset.view==='cuts'&&!S.plan)||(['parts','plates'].includes(b.dataset.view)&&!S.built);
       b.setAttribute('aria-pressed',String(this.viewer.view===b.dataset.view));

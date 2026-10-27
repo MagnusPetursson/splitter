@@ -54,7 +54,7 @@ try {
  assert.ok(results[1].supportProxyCM3<results[0].supportProxyCM3);
  assert.ok(results[1].parts>results[0].parts);
  await page.setViewportSize({width:412,height:915});
- await page.click('[data-step="split"]');await page.locator('.support-control').scrollIntoViewIfNeeded();
+ await page.click('[data-step="split"]');if(await page.locator('#sheetToggle[aria-expanded=false]').isVisible())await page.click('#sheetToggle');await page.locator('.support-control').scrollIntoViewIfNeeded();
  const sliderBox=await page.locator('#supportWeight').boundingBox();
  assert.ok(sliderBox && sliderBox.y>=0 && sliderBox.y+sliderBox.height<=915,'slider is inside phone viewport');
  await page.mouse.click(sliderBox.x+sliderBox.width*0.75,sliderBox.y+sliderBox.height/2);

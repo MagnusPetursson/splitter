@@ -82,7 +82,7 @@ export class DirectEditor {
     const key=JSON.stringify([j,document.body.dataset.expert]);if(key===this.popKey)return;this.popKey=key;
     if(S.pendingPin){S.pendingPin=false;queueMicrotask(()=>this.a.syncFlow());}
     const name=this.a.jointName(j),fixed=j.kind==='filament'||['insert','bolt'].includes(j.kind);
-    el.innerHTML=`<header><b>${esc(name)}</b><button id="pinClose" aria-label="Deselect pin">×</button></header><div class="pin-fields"><div class="row three"><label>Diameter (mm)<input id="pinDiameter" type="number" min="1" max="30" step="0.25" value="${j.d||3}" ${fixed?'disabled':''}></label><label>Depth (mm)<input id="pinDepth" type="number" min="1" max="60" step="0.5" value="${j.depth||8}"></label><label>Clearance (mm)<input id="pinClearance" type="number" min="0" max="1" step="0.01" value="${j.clear}"></label></div><p class="small mute">Radial clearance for this joint only. ${fixed?'Diameter is fixed by its type; hardware sizes are in Advanced.':''}</p>${depthProfile(j)}${(j.warnings||[]).map(w=>`<p class="badc">${esc(w)}</p>`).join('')}</div><div class="pin-actions"><p id="pinState" class="small" role="status">Applied · preview shows accepted geometry</p><div class="btns"><button id="pinApply" class="primary" disabled>Apply pin</button><button id="pinDelete" class="danger">Delete pin</button></div></div>`;
+    el.innerHTML=`<header><b>${esc(name)}</b><button id="pinClose" aria-label="Deselect pin">×</button></header><div class="pin-fields"><div class="row three"><label>Diameter (mm)<input id="pinDiameter" type="number" min="1" max="30" step="0.25" value="${j.d||3}" ${fixed?'disabled':''}></label><label>Depth (mm)<input id="pinDepth" type="number" min="1" max="60" step="0.5" value="${j.depth||8}"></label><label>Clearance (mm)<input id="pinClearance" type="number" min="0" max="1" step="0.01" value="${j.clear}"></label></div><p class="small mute">Radial clearance for this joint only. ${fixed?'Diameter is fixed by its type; hardware sizes are in Advanced.':''}</p>${this.clearance(j)}${depthProfile(j)}${(j.warnings||[]).map(w=>`<p class="badc">${esc(w)}</p>`).join('')}</div><div class="pin-actions"><p id="pinState" class="small" role="status">Applied · preview shows accepted geometry</p><div class="btns"><button id="pinApply" class="primary" disabled>Apply pin</button><button id="pinDelete" class="danger">Delete pin</button></div></div>`;
     for(const input of el.querySelectorAll('input'))input.oninput=()=>{
       const changed=+$('pinDiameter').value!==j.d||+$('pinDepth').value!==j.depth||Math.abs(+$('pinClearance').value-j.clear)>1e-9;
       const valid=[...el.querySelectorAll('input')].every(i=>i.checkValidity());
@@ -96,6 +96,13 @@ export class DirectEditor {
       const next={...j,d:fixed?j.d:+$('pinDiameter').value,depth:+$('pinDepth').value,clearOverride:+$('pinClearance').value};
       S.pendingPin=false;this.a.editJoint(next);this.dom.focus();
     };
+  }
+  // Measured edge room against the planner's requirement for this joint.
+  clearance(j){
+    const dist=this.a.jmap?.distAt?.(j.p),need=j.rreq;
+    if(!(Number.isFinite(dist)&&Number.isFinite(need)&&need>0))return '';
+    const ok=dist>=need-1e-6;
+    return `<p id="pinRoom" class="pin-room" data-ok="${ok}"><b>Edge room ${dist.toFixed(1)} mm</b> measured · ${need.toFixed(1)} mm required. ${ok?'Enough material around this pin.':'Too close to an edge or hole: drag it toward the middle of the face or use a smaller diameter.'}</p>`;
   }
   project(a){const p=v3(a).project(this.v.camera),r=this.dom.getBoundingClientRect();return{x:r.x+(p.x+1)*r.width/2,y:r.y+(1-p.y)*r.height/2,z:p.z};}
   hit(e){

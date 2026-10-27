@@ -215,6 +215,7 @@ try {
 
   // phone
   const ph = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await ph.addInitScript(() => { try { localStorage.setItem('ps.sheet', 'open'); } catch {} });
   const pp = await ph.newPage();
   pp.on('pageerror', (e) => errors.push('phone pageerror: ' + e.message));
   await pp.goto(url, { waitUntil: 'networkidle' });

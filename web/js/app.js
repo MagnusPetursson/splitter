@@ -5,6 +5,7 @@ import { JointEditor } from './jointeditor.js';
 import { createBackend } from './backend.js';
 import { GuidedFlow } from './flow.js';
 import { DirectEditor } from './direct-editor.js';
+import { MergeLayer } from './merge.js';
 import { PlanHistory, readiness } from './readiness.js';
 import { LIMITS, estimateTris, estimateMemMB, estimateLoadSec, estimatePlanSec, fmtTris, fmtDur, fmtMem, msgText, Progress, LOAD_STAGES, PLAN_STAGES, crumbSet, crumbClear, crumbTake } from './progress.js';
 
@@ -47,6 +48,7 @@ let DEFAULTS = null; // form values before any saved settings are applied
 let FLOW = null;
 const history=new PlanHistory();
 let DIRECT=null;
+let MERGE=null;
 function save() {
   const s = {
     printer: $('printer').value, bedX: $('bedX').value, bedY: $('bedY').value, bedZ: $('bedZ').value,
@@ -168,7 +170,8 @@ async function init() {
   updateSupportPreference();
   bind();
   DIRECT=new DirectEditor({syncFlow:()=>FLOW?.sync(),S,viewer,jmap,jed,history,setView,build,selectJoint,selectFace,setAddMode,protoJoint,moveJoint,addJoint,deleteJoint,jointName,restore:restorePlan,editJoint:j=>{Object.assign(S.plan.joints.find(x=>x.id===j.id),j);updateJoint(S.plan.joints.find(x=>x.id===j.id));}});
-  FLOW = new GuidedFlow({ S, viewer, setView, split:()=>runPlan('auto'), prepare:async()=>{if(!S.built)await build();if(S.built&&S.built.parts.every(p=>p.status==='NoError'))await exportPkg();},onSync:()=>DIRECT?.sync() });
+  FLOW = new GuidedFlow({ S, viewer, setView, split:()=>runPlan('auto'), prepare:async()=>{if(!S.built)await build();if(S.built&&S.built.parts.every(p=>p.status==='NoError'))await exportPkg();},onSync:()=>{DIRECT?.sync();MERGE?.sync();} });
+  MERGE = new MergeLayer({ S, viewer, FLOW, DIRECT, select, setView, deleteCut, deleteJoint, renderJointPanel, cutName, jointName, contactName });
 }
 
 function styleLabel(v) { const o = [...$('jointStyle').options].find((x) => x.value === v); return o ? o.textContent : v; }
@@ -722,7 +725,7 @@ function select(sel) {
     const node = j ? S.plan.patches[j.patch].node : sel.cut;
     if (node != null) selectFace(node, false);
   }
-  renderJointPanel();DIRECT?.sync();
+  renderJointPanel();DIRECT?.sync();MERGE?.sync();
 }
 
 function onPick(h) {
@@ -764,7 +767,7 @@ function renderCutEditor() {
     <details class="precise-values" ${document.body.dataset.expert==='true'?'open':''}><summary>Precise values <span>Offset &amp; tilt</span></summary>
     <label>Offset along normal (mm)<input type="range" id="cutOffset" min="${lo}" max="${hi}" step="0.1" value="${n.cut.d}"></label>
     <div class="row three"><label>Offset<input id="cutOffsetNum" type="number" step="0.1" value="${fmt(n.cut.d, 2)}"></label>
-      <label>Tilt A (°)<input id="tiltA" type="number" step="1" value="0"></label><label>Tilt B (°)<input id="tiltB" type="number" step="1" value="0"></label></div>
+      <label class="ring-a"><span><i aria-hidden="true"></i>Tilt A · orange ring (°)</span><input id="tiltA" type="number" step="1" value="0"></label><label class="ring-b"><span><i aria-hidden="true"></i>Tilt B · mint ring (°)</span><input id="tiltB" type="number" step="1" value="0"></label></div>
     <div class="btns"><button class="small" data-ax="x">⟂ X</button><button class="small" data-ax="y">⟂ Y</button><button class="small" data-ax="z">⟂ Z</button>
       <button class="small primary" id="cutApply">Apply</button><button class="small danger" id="cutDelete">Delete cut</button></div>
     </details><p class="small mute">Drag the blue arrow in 3D to slide. Choose Tilt cut for rotation arcs. Release to apply; Esc cancels. Precise values provides the keyboard alternative.</p>`;

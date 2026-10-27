@@ -8,3 +8,4 @@ smoke-out/
 /evidence/
 /support-out/
 __pycache__/
+e2e/node_modules

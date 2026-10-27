@@ -267,7 +267,19 @@ export class Viewer {
     // 2.9 r fits the vertical 40° field; a tall, narrow view (the 3D view
     // beside the joint editor, phones) must back off by the aspect ratio
     const aspect = this.camera.aspect || 1;
-    this.camera.position.copy(c).addScaledVector(dir, r * 2.9 * Math.max(1, 1.25 / aspect));
+    // Viewer-first framing: solve the distance at which all eight box corners
+    // fill ~82 % of the limiting screen dimension (exact for the box, unlike a
+    // bounding sphere), so the model dominates phones and desktops alike.
+    const up = new THREE.Vector3(0, 0, 1), right = new THREE.Vector3().crossVectors(up, dir).normalize(), camUp = new THREE.Vector3().crossVectors(dir, right);
+    const tv = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * 0.82, th = tv * aspect;
+    let dist = 0;
+    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+      const p = new THREE.Vector3(x, y, z).sub(c);
+      const depth = p.dot(dir);
+      dist = Math.max(dist, depth + Math.abs(p.dot(right)) / th, depth + Math.abs(p.dot(camUp)) / tv);
+    }
+    if (!(dist > 0)) dist = r * 2.9 * Math.max(1, 1.25 / aspect);
+    this.camera.position.copy(c).addScaledVector(dir, Math.max(dist, r * 1.05));
     this.camera.near = r / 50; this.camera.far = r * 60;
     this.camera.updateProjectionMatrix();
     this.controls.target.copy(c);

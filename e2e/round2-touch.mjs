@@ -2,7 +2,7 @@
 import fs from 'node:fs';import path from 'node:path';import assert from 'node:assert/strict';import {chromium} from 'playwright';
 const [url='http://127.0.0.1:8792/',out='evidence/round2-touch']=process.argv.slice(2);fs.mkdirSync(out,{recursive:true});
 const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader',...(process.env.SPLITTER_HOST_RESOLVER_RULES?['--host-resolver-rules='+process.env.SPLITTER_HOST_RESOLVER_RULES]:[])]});
-const ctx=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1}),p=await ctx.newPage(),report={errors:[]};p.on('pageerror',e=>report.errors.push(e.message));
+const ctx=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1});await ctx.addInitScript(()=>{try{localStorage.setItem('ps.sheet','open')}catch{}});const p=await ctx.newPage(),report={errors:[]};p.on('pageerror',e=>report.errors.push(e.message));
 try{
  await p.goto(url,{waitUntil:'networkidle'});await p.waitForFunction(()=>document.querySelector('#printer').options.length>5);await p.tap('[data-sample="bracket_320mm.stl"]');await p.waitForFunction(()=>window.__ps.workerReady&&document.querySelector('#busy').classList.contains('hidden'));await p.tap('#flowNext');await p.waitForFunction(()=>window.__ps.plan&&document.querySelector('#busy').classList.contains('hidden'));
  await p.tap('#expandView');await p.tap('#viewFace');await p.waitForTimeout(200);
