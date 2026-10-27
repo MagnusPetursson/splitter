@@ -549,7 +549,8 @@ async function rotateModel(rot, done) {
     const info = await BE.rotate(S.model, rot);
     await onModel(info);
     FLOW?.go('fit', { focus: false });
-    toast(done);
+    // The verdict card is the persistent confirmation (with Undo); a toast
+    // would cover it on a phone, so the change is announced, not toasted.
     FLOW?.say(done);
   } catch (err) { busy(false); toast(err.message, true); }
 }

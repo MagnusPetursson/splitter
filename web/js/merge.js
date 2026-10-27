@@ -35,6 +35,7 @@ export class MergeLayer {
     // The triad is the live camera basis, drawn after every rendered frame.
     const prev = this.v.cb.onFrame;
     this.v.cb.onFrame = () => { prev?.(); this.triad(); this.cutFieldsLive(); };
+    this.triadW = 64; new ResizeObserver(([e]) => { this.triadW = Math.round(e.contentRect.width) || 64; this.triad(); }).observe($('orientationTriad'));
     this.triad();
     // Layout changes (sheet, outliner, step chrome) resize the canvas. Re-fit only
     // while the camera is still in its framed pose; never undo a user's orbit.
@@ -46,13 +47,18 @@ export class MergeLayer {
     }).observe($('viewport'));
   }
   triad() {
-    const q = this.v.camera.quaternion.clone().invert(), key = q.toArray().map(x => x.toFixed(3)).join();
+    const q = this.v.camera.quaternion.clone().invert(), key = q.toArray().map(x => x.toFixed(3)).join() + '|' + this.triadW;
     if (key === this.triadKey) return; this.triadKey = key;
+    // Letters render at ≥ 12.5 CSS px whatever size the triad is drawn at.
+    const tw = this.triadW || 64, fs = Math.max(19, Math.min(22, 12.5 * 74 / tw));
     const axes = [[1,0,0,'X','#ffa69c'],[0,1,0,'Y','#b6ed88'],[0,0,1,'Z','#a8d8ee']];
     $('triadLines').innerHTML = axes.map(([x,y,z,name,color]) => {
-      const n = new THREE.Vector3(x,y,z).applyQuaternion(q), px = 37 + n.x * 22, py = 37 - n.y * 22;
-      return `<line x1="37" y1="37" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/><text x="${(px + n.x * 8).toFixed(1)}" y="${(py - n.y * 8 + 4).toFixed(1)}" text-anchor="middle" fill="${color}" font-size="13" font-weight="700">${name}</text>`;
-    }).join('');
+      // Round 3: shorter arms and larger, haloed letters placed past each tip;
+      // an axis pointing away from the camera is drawn dimmer and behind.
+      const n = new THREE.Vector3(x,y,z).applyQuaternion(q), px = 37 + n.x * 15, py = 37 - n.y * 15, len = Math.hypot(n.x, n.y) || 1, back = n.z < -0.2;
+      const lx = 37 + n.x / len * Math.max(15 * len + 10, 12), ly = 37 - n.y / len * Math.max(15 * len + 10, 12);
+      return {z: n.z, svg: `<g opacity="${back ? .55 : 1}"><line x1="37" y1="37" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/><text x="${lx.toFixed(1)}" y="${(ly + 5).toFixed(1)}" text-anchor="middle" fill="${color}" font-size="${fs.toFixed(1)}" font-weight="700">${name}</text></g>`};
+    }).sort((a, b) => a.z - b.z).map(a => a.svg).join('');
   }
 
   // Phone bottom sheet: one summary line and the step's details on demand.

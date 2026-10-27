@@ -48,7 +48,7 @@ function outOfBedMaterial(color) {
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWorldP;\nuniform vec3 boxMin;\nuniform vec3 boxMax;')
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
         bool outside = any(lessThan(vWorldP, boxMin)) || any(greaterThan(vWorldP, boxMax));
-        if (outside) { float s = step(0.5, fract((vWorldP.x + vWorldP.y + vWorldP.z) * 0.09)); float l = dot(gl_FragColor.rgb, vec3(0.3,0.5,0.2)); gl_FragColor.rgb = mix(vec3(1.0,0.50,0.42) * (0.55 + 0.6 * l), vec3(0.42,0.10,0.09) * (0.7 + 0.5 * l), s); }`);
+        if (outside) { vec3 t = gl_FragColor.rgb * vec3(1.0, 0.66, 0.58) + vec3(0.045, 0.0, 0.0); float s = step(0.84, fract((vWorldP.x + vWorldP.y + vWorldP.z) * 0.07)); gl_FragColor.rgb = mix(t, t * 0.6, s); }`);
   };
   return mat;
 }
@@ -153,23 +153,25 @@ export class Viewer {
     // Round 2: lower sky fill and a lower key so up-facing surfaces (helmet
     // tops) keep a gradient instead of saturating; the rim separates the
     // silhouette. Four analytic lights, no shadow maps: cheap on an iGPU.
-    const hemi = new THREE.HemisphereLight('#dbe7e2', '#3a342c', 0.6);
+    // Round 3: one stronger, higher directional key and a restrained fill, so
+    // the crown and face relief read through shading rather than tint.
+    const hemi = new THREE.HemisphereLight('#dbe7e2', '#3a342c', 0.4);
     hemi.position.set(0, 0, 1);
     this.scene.add(hemi);
-    this.sun = new THREE.DirectionalLight('#fff1dc', 1.3);
-    this.sun.position.set(-0.35, -1.0, 0.5);
+    this.sun = new THREE.DirectionalLight('#fff1dc', 2.15);
+    this.sun.position.set(-0.55, -0.8, 0.95);
     this.scene.add(this.sun);
-    this.fillLight = new THREE.DirectionalLight('#cfe3ff', 0.5);
+    this.fillLight = new THREE.DirectionalLight('#cfe3ff', 0.42);
     this.fillLight.position.set(1.0, 0.25, 0.2);
     this.scene.add(this.fillLight);
     // A soft point key near the model adds distance falloff, so large flat
     // up-facing areas get a gradient instead of one uniform value.
     this.keyPt = new THREE.PointLight('#fff1dc', 0, 0, 1.5);
     this.scene.add(this.keyPt);
-    this.rim = new THREE.DirectionalLight('#a9d4ff', 1.1);
+    this.rim = new THREE.DirectionalLight('#a9d4ff', 0.8);
     this.rim.position.set(-0.6, 1.0, 0.7);
     this.scene.add(this.rim);
-    this.camLight = new THREE.DirectionalLight('#ffffff', 0.22);
+    this.camLight = new THREE.DirectionalLight('#ffffff', 0.1);
     this.camera.add(this.camLight);
     this.scene.add(this.camera);
     this.groups = {};
@@ -341,13 +343,13 @@ export class Viewer {
     this.clear('model'); this.clear('cuts'); this.clear('joints'); this.clear('parts'); this.clear('plates');
     this.modelGeom = geomFrom(positions, indices, true);
     this.modelIndexed = { positions, indices };
-    this.modelMat = outOfBedMaterial('#c9cfc9');
+    this.modelMat = outOfBedMaterial('#bcc3be');
     this.modelMesh = new THREE.Mesh(this.modelGeom, this.modelMat);
     this.groups.model.add(this.modelMesh);
     this.box = this.modelGeom.boundingBox.clone();
     this.center = this.box.getCenter(new THREE.Vector3());
     { const d = this.box.getSize(new THREE.Vector3()).length(), off = new THREE.Vector3(-0.45, -0.75, 0.85).normalize().multiplyScalar(d * 0.75);
-      this.keyPt.position.copy(this.center).add(off); this.keyPt.intensity = 1.7 * Math.pow(off.length(), 1.5); }
+      this.keyPt.position.copy(this.center).add(off); this.keyPt.intensity = 1.2 * Math.pow(off.length(), 1.5); }
     this.frame();
     this.updateBed();
     this.dirty();
@@ -463,7 +465,7 @@ export class Viewer {
       const dims = [[y, z], [x, z], [x, y]][k], g2 = new THREE.PlaneGeometry(...dims);
       if (k === 0) g2.rotateY(Math.PI / 2); else if (k === 1) g2.rotateX(Math.PI / 2);
       const pos = new THREE.Vector3(c.x, c.y, zmin + z / 2); pos.setComponent(k, k === 2 ? (sgn > 0 ? zmin + z : zmin) : c.getComponent(k) + sgn * [x, y, z][k] / 2);
-      const wall = new THREE.Mesh(g2, new THREE.MeshBasicMaterial({ color: '#ff8f80', transparent: true, opacity: 0.13, side: THREE.DoubleSide, depthWrite: false }));
+      const wall = new THREE.Mesh(g2, new THREE.MeshBasicMaterial({ color: '#ff8f80', transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false }));
       wall.position.copy(pos); wall.renderOrder = 2; wall.userData.boundary = [k, sgn]; this.groups.bed.add(wall);
       const rim = new THREE.LineSegments(new THREE.EdgesGeometry(g2), new THREE.LineBasicMaterial({ color: '#ff9a8c', transparent: true, opacity: 0.95 }));
       rim.position.copy(pos); this.groups.bed.add(rim);

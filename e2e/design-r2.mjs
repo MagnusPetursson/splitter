@@ -37,7 +37,7 @@ try {
     // 1. Too big in every orientation: verdict headline, honest next step, framed scene.
     let s = await scene(p);
     const v1 = await p.locator('#fitVerdict').innerText();
-    ok(/^Doesn’t fit as placed: [\d.]+ mm too wide/.test(v1.trim()), `${dev}: verdict leads with the result`);
+    ok(/^Doesn’t fit: [\d.]+ mm too wide/.test(v1.trim()), `${dev}: verdict leads with the result`);
     ok(/No orientation fits it whole/.test(v1) && /Plan cuts proposes cuts/.test(v1), `${dev}: says Plan cuts proposes cuts when no orientation fits`);
     ok(await p.locator('[data-fit-rotate]').count() === 0, `${dev}: no rotate offer when no quarter turn fits`);
     ok(s.labels === 3 && s.overlaps === 0 && s.edge >= 12, `${dev}: three dimension labels, none overlapping, ≥ 12 px inside the view (${s.edge})`);
@@ -46,7 +46,7 @@ try {
     ok(s.primaries.length <= 1, `${dev}: one primary on Fit (${s.primaries})`);
     const sum = await p.locator('#sheetSummary').innerText();
     if (dev === 'phone') {
-      ok(/^Doesn’t fit as placed: [\d.]+ mm too wide/.test(sum), 'phone: summary row carries the verdict headline');
+      ok(/^Doesn’t fit: [\d.]+ mm too wide/.test(sum), 'phone: summary row carries the verdict headline');
       const w = await p.locator('#sheetSummary b').evaluate(e => +getComputedStyle(e).fontWeight), fs16 = await p.locator('#sheetSummary b').evaluate(e => parseFloat(getComputedStyle(e).fontSize));
       ok(w >= 600 && fs16 >= 16, `phone: headline weight ${w}, ${fs16} px`);
     }
@@ -64,26 +64,27 @@ try {
     for (const [id, v] of [['bedX', '70'], ['bedY', '330'], ['bedZ', '230']]) await p.fill('#' + id, v);
     await p.waitForTimeout(300);
     const before = await p.evaluate(() => window.__ps.model.size.slice());
-    ok(/Fits in one piece if turned 90° on the bed/.test(await p.locator('#sheetSummary').innerText()) || dev !== 'phone', `${dev}: phone summary names the quarter-turn fix`);
-    await p.locator('[data-fit-rotate]').scrollIntoViewIfNeeded();
-    ok(/Turn 90° on the bed/.test(await p.locator('[data-fit-rotate]').innerText()), `${dev}: offers the quarter turn`);
-    await p.click('[data-fit-rotate]');
-    await p.waitForFunction(() => /^Fits as turned/.test(document.querySelector('#fitVerdict').innerText.trim()), null, {timeout: 60000}); await idle(p);
+    // Round 3 supersedes the in-card turn button: the turn is the footer primary.
+    ok(/^Fits in one piece after a 90° turn/.test(await p.locator('#sheetSummary').innerText()) || dev !== 'phone', `${dev}: phone summary names the quarter-turn fix`);
+    ok(/^Turn 90° to fit$/.test((await p.locator('#flowNext').innerText()).trim()), `${dev}: offers the quarter turn`);
+    await p.click('#flowNext');
+    await p.waitForFunction(() => /Within usable/.test(document.querySelector('#fitVerdict').innerText), null, {timeout: 60000}); await idle(p);
     const after = await p.evaluate(() => window.__ps.model.size.slice());
     ok(Math.abs(after[0] - before[1]) < 0.01 && Math.abs(after[1] - before[0]) < 0.01 && Math.abs(after[2] - before[2]) < 0.01, `${dev}: turned model swaps width and depth (${before.map(Math.round)} → ${after.map(Math.round)})`);
     ok(await p.locator('[data-fit-restore]').isVisible(), `${dev}: restore file orientation offered`);
     await p.waitForTimeout(300);
     await p.screenshot({path: path.join(out, `${dev}-turned.png`)});
     if (dev === 'desktop') {
-      await p.click('#flowNext'); await p.waitForFunction(() => window.__ps.plan, null, {timeout: 600000}); await idle(p);
+      await p.click('#flowNav [data-step="split"]'); await p.click('#autoSplit'); await p.waitForFunction(() => window.__ps.plan, null, {timeout: 600000}); await idle(p);
       const n = await p.evaluate(() => window.__ps.plan.leaves.filter(l => !l.empty).length);
       ok(n === 1, `desktop: turned model plans as one piece (${n})`);
+      await p.click('#flowNav [data-step="split"]');
       ok(/No cut needed/.test(await p.locator('#stepSplit .step-intro').innerText()), 'desktop: one-piece plan says no cut is needed');
       await p.click('#flowNav [data-step="fit"]');
     }
     await p.locator('[data-fit-restore]').scrollIntoViewIfNeeded();
     await p.click('[data-fit-restore]');
-    await p.waitForFunction(() => /^Doesn’t fit as placed/.test(document.querySelector('#fitVerdict').innerText.trim()), null, {timeout: 60000}); await idle(p);
+    await p.waitForFunction(() => /after a 90° turn/.test(document.querySelector('#fitVerdict').innerText.trim()), null, {timeout: 60000}); await idle(p);
     const back = await p.evaluate(() => window.__ps.model.size.slice());
     ok(back.every((v, i) => Math.abs(v - before[i]) < 0.01), `${dev}: restore returns the file orientation`);
     // 4. Desktop panel bottom: nothing ends under the sticky footer.

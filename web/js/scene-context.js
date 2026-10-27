@@ -3,6 +3,10 @@ import * as THREE from 'three';
 const $=id=>document.getElementById(id),vec=a=>new THREE.Vector3(...a);
 const hide=(el,on)=>el.toggleAttribute('hidden',on);
 const clamp=(x,a,b)=>Math.max(a,Math.min(Math.max(a,b),x));
+// Does segment (x0,y0)-(x1,y1) touch rectangle r {l,r,t,b}? (Liang–Barsky clip)
+export function segRect(x0,y0,x1,y1,r){let a=0,b=1;const dx=x1-x0,dy=y1-y0;
+  for(const [pp,qq] of [[-dx,x0-r.l],[dx,r.r-x0],[-dy,y0-r.t],[dy,r.b-y0]]){if(pp===0){if(qq<0)return false;continue;}const t=qq/pp;if(pp<0){if(t>b)return false;if(t>a)a=t;}else{if(t<a)return false;if(t<b)b=t;}}
+  return a<=b;}
 export class SceneContext {
   constructor(editor){
     this.e=editor;this.v=editor.v;this.stage=document.querySelector('.stage');
@@ -58,22 +62,40 @@ export class SceneContext {
     const legend=$('fitLegend');if(legend)hide(legend,!show);if(!show)return;
     const g=v.fitGeometry(),size=v.box.getSize(new THREE.Vector3()),usable=[v.bed.x,v.bed.y,v.bed.z];
     const cen=this.project(g.all.getCenter(new THREE.Vector3())),edge=12,W=stage.width;
-    // Labels sit outside the geometry: pushed away from the projected centre of
-    // model ∪ volume, then held at least 12 px inside the viewport.
-    const narrow=W<560,placed=[],out=[];
-    // Order H, W, D: the failing axis is placed last so it is the one nudged
-    // into free space, and every pill keeps a 6 px gap from the others.
+    // Round 3: each label gets its own slot beside its dimension line, never
+    // on it. Candidates step along the line on the side away from the scene
+    // centre (then the other side); the first slot that clears every
+    // dimension line and arrowhead (4 px) and the other labels (6 px) wins.
+    const segs=g.lines.map(([lo,hi])=>{const p=this.project(vec(lo)),q=this.project(vec(hi));return{p,q};});
+    const ctx=(this.mctx||=document.createElement('canvas').getContext('2d'));
+    const placed=[],out=[];
+    // The model's projected bounds are an obstacle too: a label never sits on the hero.
+    const mb=v.box,corners=[0,1,2,3,4,5,6,7].map(k=>this.project(new THREE.Vector3(k&1?mb.max.x:mb.min.x,k&2?mb.max.y:mb.min.y,k&4?mb.max.z:mb.min.z)));
+    const model={l:Math.min(...corners.map(c=>c.x)),r:Math.max(...corners.map(c=>c.x)),t:Math.min(...corners.map(c=>c.y)),b:Math.max(...corners.map(c=>c.y))};
     for(const i of [2,0,1]){
-      const [lo,hi]=g.lines[i],p=this.project(vec(lo)),q=this.project(vec(hi)),over=size.getComponent(i)>usable[i]+1e-6,val=size.getComponent(i).toFixed(1);
-      const label=`${['W','D','H'][i]} ${val}`+(over?` / ${usable[i].toFixed(1)} mm${narrow?'':' usable'}`:' mm');
-      const w=Math.round(label.length*7.2+22),h=24,mx=(p.x+q.x)/2,my=(p.y+q.y)/2;let dx=mx-cen.x,dy=my-cen.y;const n=Math.hypot(dx,dy)||1;dx/=n;dy/=n;
-      const off=i===2?w/2+10:i===1?28:22;
-      let x=clamp(mx+dx*off,edge+w/2,W-edge-w/2),y=clamp(my+dy*off+(i===2?0:4),top+edge+h/2,bottom-edge-h/2);
-      const hit=(x,y)=>placed.find(r=>Math.abs(r.x-x)<(r.w+w)/2+6&&Math.abs(r.y-y)<(r.h+h)/2+6);
-      for(let k=0,r;(r=hit(x,y))&&k<8;k++){const sy=y>=r.y?1:-1,ny=r.y+sy*((r.h+h)/2+6);
-        y=ny<top+edge+h/2||ny>bottom-edge-h/2?clamp(r.y-sy*((r.h+h)/2+6),top+edge+h/2,bottom-edge-h/2):ny;}
-      placed.push({x,y,w,h});
-      out[i]=`<g data-dimension="${['width','depth','height'][i]}" class="${over?'over':'ok'}"><path d="M${p.x.toFixed(1)},${p.y.toFixed(1)}L${q.x.toFixed(1)},${q.y.toFixed(1)}" marker-start="url(#dimArrow)" marker-end="url(#dimArrow)"/><rect class="dim-bg" x="${(x-w/2).toFixed(1)}" y="${(y-h/2).toFixed(1)}" width="${w}" height="${h}" rx="6"/><text x="${x.toFixed(1)}" y="${(y+4.5).toFixed(1)}">${label}</text></g>`;
+      const {p,q}=segs[i],over=size.getComponent(i)>usable[i]+1e-6,val=size.getComponent(i).toFixed(1);
+      const label=`${['W','D','H'][i]} ${val} mm`+(over?` · limit ${+usable[i].toFixed(1)} mm`:'');
+      ctx.font=`${over?620:400} 13px ${getComputedStyle(document.body).fontFamily}`;
+      const w=Math.ceil(ctx.measureText(label).width)+20,h=24;
+      let dx=q.x-p.x,dy=q.y-p.y;const L=Math.hypot(dx,dy)||1;dx/=L;dy/=L;
+      let nx=-dy,ny=dx;const mx=(p.x+q.x)/2,my=(p.y+q.y)/2;if((mx-cen.x)*nx+(my-cen.y)*ny<0){nx=-nx;ny=-ny;}
+      const ext=Math.abs(nx)*w/2+Math.abs(ny)*h/2,gap=10;
+      const fit=(x,y)=>({x:clamp(x,edge+w/2,W-edge-w/2),y:clamp(y,top+edge+h/2,bottom-edge-h/2)});
+      const cost=({x,y})=>{let c=0;const r={l:x-w/2-4,r:x+w/2+4,t:y-h/2-4,b:y+h/2+4};
+        for(const sg of segs){const ex=(sg.q.x-sg.p.x),ey=(sg.q.y-sg.p.y),el=Math.hypot(ex,ey)||1,ux=ex/el*7,uy=ey/el*7;
+          if(segRect(sg.p.x-ux,sg.p.y-uy,sg.q.x+ux,sg.q.y+uy,r))c+=sg===segs[i]?100:40;}
+        {const ox=Math.min(r.r,model.r)-Math.max(r.l,model.l),oy=Math.min(r.b,model.b)-Math.max(r.t,model.t);if(ox>0&&oy>0)c+=20+Math.min(30,ox*oy/(w*h)*30);}
+        for(const o of placed)if(Math.abs(o.x-x)<(o.w+w)/2+6&&Math.abs(o.y-y)<(o.h+h)/2+6)c+=60;
+        return c;};
+      let best=null;
+      for(const side of [1,-1])for(const t of [.5,.38,.62,.25,.75]){
+        const c=fit(p.x+(q.x-p.x)*t+nx*side*(ext+gap),p.y+(q.y-p.y)*t+ny*side*(ext+gap)),k=cost(c)+(side<0?1:0)+Math.abs(t-.5);
+        if(!best||k<best.k)best={...c,k};if(best.k<2)break;}
+      // Beyond either arrowhead, in line with the dimension.
+      if(best.k>=2){const along=Math.abs(dx)*w/2+Math.abs(dy)*h/2+gap;for(const [e,sg] of [[q,1],[p,-1]]){const c=fit(e.x+dx*sg*along,e.y+dy*sg*along),k=cost(c)+1.5;if(k<best.k)best={...c,k};}}
+      if(best.k>=2)for(const r of [1.6,2.4])for(const side of [1,-1]){const c=fit(mx+nx*side*(ext+gap)*r,my+ny*side*(ext+gap)*r),k=cost(c)+r;if(k<best.k)best={...c,k};}
+      const {x,y}=best;placed.push({x,y,w,h});
+      out[i]=`<g data-dimension="${['width','depth','height'][i]}" data-slot-cost="${Math.round(best.k)}" class="${over?'over':'ok'}"><path d="M${p.x.toFixed(1)},${p.y.toFixed(1)}L${q.x.toFixed(1)},${q.y.toFixed(1)}" marker-start="url(#dimArrow)" marker-end="url(#dimArrow)"/><rect class="dim-bg" x="${(x-w/2).toFixed(1)}" y="${(y-h/2).toFixed(1)}" width="${w}" height="${h}" rx="6"/><text x="${x.toFixed(1)}" y="${(y+4.5).toFixed(1)}">${label}</text></g>`;
     }
     // Lines first, pills on top, so no arrow is drawn across a label.
     const lines=out.map(o=>o.replace(/<rect[\s\S]*$/,'</g>')).join(''),pills=out.map(o=>o.replace(/<path[^>]*\/>/,'')).join('');
