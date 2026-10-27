@@ -165,10 +165,87 @@ The repeated visual reviews judged the final Fit/Export/Expert-cut screens aroun
 Remaining gaps, in order:
 
 1. **Phone Expert chrome remains dense.** Four presentation tabs, Objects, Frame, triad, editing tools and history remain available with 44 px targets. I did not hide capabilities to make screenshots look cleaner. Some visible labels became named icons; a human touch-usability review is still worthwhile.
-2. **Phone Fit keeps the model large, not the whole box.** Dimension labels have backings; their lines and the box can still leave the phone viewport. The numeric comparison remains available through Why?/Details. Desktop simple Fit now frames both fully.
+2. ~~Phone Fit keeps the model large, not the whole box.~~ Resolved in round 2 (§7): every screen size now frames model ∪ volume ∪ dimension lines.
 3. **Join rendering is still an inspection compromise.** Opacity rose from 0.20 to 0.42, but transparent parts and small pins can be muddy in perspective. Face-on and Explode expose the mechanics; no new local clipping/section renderer was invented for this pass.
 4. **Grounding is AO-like, not physical AO.** A shared radial footprint shadow and faint floor are inexpensive and preserve browser performance, but exploded parts can still appear suspended. This is not a ray-traced shadow claim.
 5. **The palette remains a flat launcher.** It has clearer selection, type and keyboard hints but no new recency/ranking engine or collapsible command groups.
 6. **Dense engineering details remain in Expert mode and the pin inspector.** The table and main fit decision are clearer; not every planner-generated sentence was rewritten. Per-side hole depth still uses the solver’s signed-side convention, with the accepted depth figure and end-allowance caption.
 7. **Stylesheet layering remains.** Tokens replace most colour/type one-offs, but the historical layout sheets still carry some spacing/radius overrides. A wholesale CSS rewrite would be a separate riskier change, not a claim made here.
 8. **Scope of evidence.** Axe and screenshots are not a screen-reader session or a real phone hardware test. Screenshots with panel content at a scroll boundary are not proof of overlapping controls: DOM bounds and scroll reachability were checked separately. No physical print was produced in this UI pass.
+
+## 7. Round 2: decision clarity and composition
+
+Two reviews of the first design build asked for the same kind of change: less prettiness work and more decision clarity. The review of the app as an artifact found two filled primaries for one action on desktop Split before planning, pre-plan copy that described cuts that did not exist yet, and a phone Fit view that cropped the build box and the depth arrow. Control's review (desktop 8/10, phone 7.5/10) asked for six things in order: resolve the fit decision, use one self-contained headline, fix the viewport composition and lighting, add panel bottom clearance, enlarge small text and utility icons, then reduce Expert density and Join transparency where that was cheap. This section records what changed, what was measured and what remains.
+
+### 7.1 The fit decision is now a decision
+
+**Finding.** The private 226k-triangle helmet showed "9.8 mm too deep … Splitting finds pieces that fit." That was misleading: it is 197.2 × 223.8 × 241.8 mm against 244 × 214 × 267 mm usable, so it fits **in one piece turned 90° on the bed**. I checked that against the real planner: with the default Balanced preference, Plan cuts returns **one part** for the helmet on the CORE One. The old copy pointed the user towards cutting a model that needs no cut.
+
+**Change.**
+- The verdict is computed once (`fitAssess` in `flow.js`) and states the result first: **"Doesn't fit as placed: 9.8 mm too deep"**, then the measured line **"Depth 223.8 / 214.0 mm usable on Prusa CORE One / One+"**, then the consequence.
+- It checks the six axis-aligned orientations the planner itself considers for a whole model (two when "Keep all parts upright" is set, matching `candidateDowns`). If a quarter turn fits, the card offers it as a real action: **Turn 90° on the bed** or **Lay it on its side**. The model is then rotated in the backend (new `rotate` in WASM and `POST /api/models/{id}/rotate` on the server). This is a signed permutation validated to det +1, so it never mirrors, and it applies to the repaired mesh and to any kept full-detail original. Planning, the geometry kernel and exports therefore all see the same orientation. Afterwards the card reads **"Fits as turned"** with **Restore file orientation**, and a cancel/restore reload reapplies the turn.
+- If no quarter turn fits, the copy says so and states what happens next: "No orientation fits it whole. Plan cuts proposes cuts and a print orientation for each piece; you review them before anything is built." If the model fits as placed, it says no cut is needed and that Plan cuts only adds one when the Split preference trades a cut for less support. That is the planner's actual behaviour.
+- After planning, a one-piece result says **"No cut needed: it prints in one piece in the orientation shown"** instead of "Review the suggested cuts".
+- The rotate offer is a secondary button. **Plan cuts** stays the single primary because it also reaches the one-piece result: it tries orientations before cutting. One reviewer preferred Rotate as the primary. I kept one step action per view and made the copy say what Plan cuts does.
+
+**Why not further.** The axis-aligned check can miss a diagonal fit that the planner (with tilted orientations) finds. The copy says "No orientation fits it whole" only for the axis-aligned set the planner uses by default. The planner remains the authority.
+
+### 7.2 One primary per view, one label per action
+
+- On desktop Split before planning, `#autoSplit` "Plan cuts automatically" and the footer "Plan cuts" were both filled mint. Now the in-panel button is labelled **Plan cuts** and is the only primary, and the footer's identical action is hidden while Split still needs a plan. On a phone peek, where the panel button is hidden, the footer keeps it.
+- Pre-plan Split copy is state-specific: "Choose what matters more, then Plan cuts. You review the proposed cuts here before anything is built." The help link reads "How cuts are chosen" until cuts exist, then "Why these cuts?". Changed settings produce "Plan cuts again to apply them". "Find cuts again" was renamed to match.
+- The new contract assertion found a case nobody had reported: an open pin popover showed **pinApply + footer** (and, in Expert, **pinApply + seamApply + jApply**) as filled primaries. Local form commits (cut, seam and joint Apply, Auto-split this part) are now **confirm** buttons, an accent outline, and the footer steps down to secondary while a local editor's primary is visible.
+- **Test:** `merge-expert.mjs` asserts that every audited state, now **47** (43 + 4 pre-plan Split states), has at most one visible `.primary` outside an open modal. It also asserts that the pre-plan copy never mentions suggested cuts. `design-r2.mjs` asserts **exactly one** primary on Split before planning at all three sizes.
+
+### 7.3 Viewport composition and lighting
+
+- **Framing.** Fit frames model ∪ usable volume ∪ dimension lines on every screen size, not just desktop (`viewer.fitGeometry()` is shared by framing and annotations). New `fitFrameMargin()` projects all eight volume corners and all dimension-line ends: the smallest distance to the canvas edge is **71 px** at 1440×900, **54 px** at 1280×720 and **53 px** at 390×844 (helmet). Before, the phone label edge minimum was **−123 px**, meaning a label sat 123 px outside the viewport.
+- **Cost, measured** (`merge-measure.mjs`, bracket sample on Prusa MINI). Showing the whole volume and the label lanes makes the model smaller on **Fit only**. Phone Fit model share fell from 0.392 to **0.123**, because a 320 mm bracket next to a 180 mm volume makes a wide union. Desktop simple Fit fell from 0.202 to **0.146**, and the phone Fit canvas from 0.724 to **0.681**, because the summary row is now two lines. Split, Cut, Join and Export are unchanged (phone 0.392, desktop 0.305). The reviewers asked for this trade on the comparison step. Editing steps keep model-first framing. On Fit, Fit view (F) reframes the same union, while pinch or scroll zoom still reaches model detail.
+- **Labels.** Labels are pushed away from the projected centre of model ∪ volume and kept at least 12 px inside the view. They are placed with a 6 px collision gap, failing axis last, and drawn after all lines so no arrow crosses a pill. The failing axis reads **"D 223.8 / 214.0 mm usable"** in a red pill with a 2 px line, while passing axes use a muted 1 px line and text. Measured: 0 label overlaps and ≥ 12 px edge clearance at all three sizes (helmet and bracket).
+- **Exceeded face.** Each box face the model crosses gets a translucent red wall and a solid outline. The legend chip moved into the viewport: Usable build volume / Model outside it / Exceeded side. Because the volume is centred on the model, an over-deep model crosses both front and back faces, and both are highlighted. That is true, but busier than a single face.
+- **Overflow hatch.** A wider, two-tone hatch (light coral / deep red, modulated by the lit value) replaces the 62 % tint, so the overflow keeps its shape cues but no longer blends into pale model regions.
+- **Lighting.** The hemisphere fill dropped from 1.15 to 0.60 and the key is lower (elevation ≈ 25°). A cool fill sits at camera right, and a soft point key at 0.75 × the model diagonal adds distance falloff, so large up-facing areas get a gradient instead of a uniform value. It remains four analytic lights and one point light with no shadow maps, a small cost on an iGPU. The helmet crown is now light-to-mid grey with a gradient. Reviewers still call it "subtle", which is true of a near-planar crown without AO.
+
+### 7.4 Panel bottom clearance
+
+At 1280×720 the Fit panel's last rows sat under the sticky footer with no cue. The panel now has 48 px end padding. A bottom fade and a **More below** pill straddling the footer edge appear only while content continues (`data-more` from scroll and resize/mutation observers) and disappear at the end. Measured with Advanced open and scrolled to the end: the last row ends **141 px** above the footer at 1440×900 and **141 px** at 1280×720. `design-r2.mjs` asserts ≥ 8 px, that the pill is absent at the end and that it is present at the top.
+
+### 7.5 Small text and utility icons
+
+- Supporting text (`.small`, readout notes, metric labels, printer source) rose from 12 to **13 px** and the muted text colour from `--text-subtle` to `--text-muted`. The usable value under each metric now reads "of 244.0 usable" on its own line, which removes the inconsistent wrap.
+- Phone header: Guide and Help are 48 × 48 px with a visible 12 px label under the icon (the 12 px floor is enforced by `design-system.mjs`). Viewport icon buttons, Objects and Enlarge view have tooltips in addition to their accessible names. Future-step markers were measured in round 1 (9.6:1 inactive, 5.93:1 disabled) and are unchanged.
+- Phone summary row: the verdict headline is **16 px semibold** in the warning colour, with the remedy or next step on a second 13 px line, for example "Doesn't fit as placed: 9.8 mm too deep / Fits in one piece if turned 90° on the bed". The repeated paragraph, cards, legend and badge were reduced to one headline, one measured line, one consequence and one legend.
+
+### 7.6 Before / after (round 2)
+
+Before is left, after is right. "Before" is the first design build, fb606e0. The committed images use the public bracket sample. The private helmet pairs are in the review gallery only and are not committed.
+
+| Item | Pair |
+|---|---|
+| Fit verdict, framing, labels, exceeded face · 1440×900 | ![](screenshots/design-r2/desktop-bracket-fit.webp) |
+| Same + panel fade / More below · 1280×720 | ![](screenshots/design-r2/laptop-bracket-fit.webp) |
+| Phone Fit: whole box, headline summary, labelled header utilities · 390×844 | ![](screenshots/design-r2/phone-bracket-fit.webp) |
+| Split before planning: one primary, pre-plan copy · 1440×900 | ![](screenshots/design-r2/desktop-split-preplan.webp) |
+| Split before planning · 1280×720 | ![](screenshots/design-r2/laptop-split-preplan.webp) |
+| Split before planning · phone | ![](screenshots/design-r2/phone-split-preplan.webp) |
+| Panel end with Advanced open · 1440×900 | ![](screenshots/design-r2/desktop-fit-bottom.webp) |
+| Panel end with Advanced open · 1280×720 | ![](screenshots/design-r2/laptop-fit-bottom.webp) |
+| New: after **Turn 90° on the bed** (custom 70 × 330 × 230 bed) · 1440×900 | ![](screenshots/design-r2/desktop-turned.webp) |
+| New: turned · 1280×720 | ![](screenshots/design-r2/laptop-turned.webp) |
+| New: turned · phone | ![](screenshots/design-r2/phone-turned.webp) |
+
+### 7.7 Verification
+
+- `go test ./...` and `go vet ./...` (including `GOOS=js GOARCH=wasm go vet ./cmd/splitter-wasm`) PASS. New Go tests: `geom.QuarterTurn` accepts the four quarter-turn cases and rejects mirrors, scaling, repeated columns, short input and non-integer rotations. The server rotate test swaps W and D on a scaled box, keeps the scale, keeps the mesh closed with positive volume and rejects bad input with HTTP 400.
+- New `e2e/design-r2.mjs`: **52 checks** at 1440×900, 1280×720 and 390×844. It covers the verdict headline, honest next step, rotate offer only when a quarter turn fits, applying the turn (W and D swap), the turned model planning as **one piece**, restoring the file orientation, framing margins, label clearance and overlap, failing-axis-only emphasis, one primary, pre-plan copy, panel end clearance and the More below behaviour.
+- The full browser suite (`scripts/e2e-all.sh`, now 18 suites with `design-r2`) is reported in the commit/handoff with the private-model check. Reproduce the captures with `e2e/design-r2-pairs.mjs` (bracket, any build) and `e2e/design-r2-shots.mjs` (any STL, with metrics).
+
+### 7.8 Honest gaps after round 2
+
+1. **Rotate vs Plan cuts.** Two visual reviews would make Rotate the primary when it alone fixes the fit. I kept Plan cuts as the single step action because it reaches the same one-piece result and keeps one primary and one label per step. This is a judgement call. A human usability check should decide it.
+2. **Two highlighted faces** for an over-deep, centred model (front and back) are correct, but they read busier than a single "exceeded side".
+3. **Crown shading** is a gradient, not AO. Near-planar tops still read fairly flat at phone size.
+4. **Phone Expert density and Join transparency** (item 6) were not changed in this round. They need their own visual work and touch testing, and squeezing them in here would have been guesswork.
+5. **Fit is model-smaller by design** (phone bracket 0.392 → 0.123). On Fit there is no one-tap model-only framing; zoom gets there. A two-state Fit camera (volume ⇄ model) would be the natural follow-up.
+6. **Toasts** on phone can briefly cover the expanded sheet. This is pre-existing and transient.
+7. Evidence remains screenshots, DOM measurements and axe on Chromium/SwiftShader. No real-device, screen-reader or physical-print test was done.
