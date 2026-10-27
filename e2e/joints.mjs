@@ -10,7 +10,7 @@ const url = process.argv[2];
 const out = process.argv[3] || 'jsmoke';
 fs.mkdirSync(out, { recursive: true });
 const errors = [];
-const browser = await pw.chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const browser = await pw.chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', ...(process.env.SPLITTER_HOST_RESOLVER_RULES ? ['--host-resolver-rules='+process.env.SPLITTER_HOST_RESOLVER_RULES] : [])] });
 const ctx = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
 const page = await ctx.newPage();
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
