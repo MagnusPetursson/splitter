@@ -104,7 +104,7 @@ export class MergeLayer {
     if (!show && btn.previousElementSibling !== home) home.after(btn);
     const label = show ? 'Regenerate' : S.plan ? 'Plan cuts again' : 'Plan cuts automatically';
     if (btn.firstChild?.nodeType === 3 && btn.firstChild.textContent.trim() !== label) btn.firstChild.textContent = label + ' ';
-    btn.classList.toggle('primary', !show); btn.classList.toggle('wide', !show);
+    btn.classList.toggle('primary', !show && !S.plan); btn.classList.toggle('wide', !show);
     if (!show) return;
     const parts = S.plan.leaves.filter(l => !l.empty), bad = parts.filter(l => !l.fits).length;
     const cuts = S.plan.tree.nodes.filter(n => n.cut).length, seams = S.plan.patches.filter(p => p.seam && p.seam.kind !== 'none').length;

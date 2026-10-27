@@ -772,8 +772,8 @@ function renderCutEditor() {
   const lo = Math.min(...cs), hi = Math.max(...cs);
   const patches = S.plan.patches.filter((p) => p.node === n.id);
   el.innerHTML = `<h2>${cutName(n.id)} ${n.locked ? '<span class="badge">manual</span>' : '<span class="badge">auto</span>'}</h2>
-    <div class="reason">${esc(n.reason || 'placed by you')}</div>
-    <div class="small">Normal ${axisName(n.cut.n)} · section ${fmt(f ? f.area : 0, 0)} mm² · ${patches.length} contact patch(es)</div>
+    <div class="reason">${esc(plural(n.reason || 'placed by you'))}</div>
+    <div class="small">Normal ${axisName(n.cut.n)} · section ${fmt(f ? f.area : 0, 0)} mm² · ${patches.length} contact ${patches.length === 1 ? 'patch' : 'patches'}</div>
     <details class="precise-values" ${document.body.dataset.expert==='true'?'open':''}><summary>Precise values <span>Offset &amp; tilt</span></summary>
     <label>Offset along normal (mm)<input type="range" id="cutOffset" min="${lo}" max="${hi}" step="0.1" value="${n.cut.d}"></label>
     <div class="row three"><label>Offset<input id="cutOffsetNum" type="number" step="0.1" value="${fmt(n.cut.d, 2)}"></label>

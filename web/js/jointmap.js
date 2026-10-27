@@ -262,8 +262,8 @@ export class JointMap {
     }
     ctx.stroke();
     // patch labels + seams
-    const fpx = Math.round((this.zoomable ? 13 : 12) * dpr);
-    ctx.font = `600 ${fpx}px system-ui`;
+    const fpx = Math.round((this.zoomable ? 14 : 12) * dpr);
+    ctx.font = `600 ${fpx}px Inter, "Segoe UI", system-ui, sans-serif`;
     ctx.lineJoin = 'round';
     const occupied = [];
     const label = (t, x, y, col) => {
@@ -289,7 +289,9 @@ export class JointMap {
         if (next) { x = next.x; y = next.y; b = box(x, y); }
       }
       occupied.push(b);
-      ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#0b0e12'; ctx.strokeText(t, x, y); ctx.fillStyle = col; ctx.fillText(t, x, y);
+      // label badge: rounded backing instead of a heavy halo
+      ctx.fillStyle = 'rgba(13,19,20,0.82)'; ctx.beginPath(); (ctx.roundRect ? ctx.roundRect(b.left - dpr, b.top, b.right - b.left + 2 * dpr, b.bottom - b.top, 4 * dpr) : ctx.rect(b.left, b.top, b.right - b.left, b.bottom - b.top)); ctx.fill();
+      ctx.fillStyle = col; ctx.fillText(t, x, y);
       return { ...b, x, y };
     };
     // joints first reserve their marker area so labels avoid covering them

@@ -4,7 +4,7 @@ import { OrbitControls } from '../vendor/three/OrbitControls.js';
 import { TransformControls } from '../vendor/three/TransformControls.js';
 
 // Part identification colours: equal lightness, moderate chroma, tuned to the dark-mint UI (S3).
-export const PALETTE = ['#d9a066', '#6fa8d6', '#8cc68a', '#c792c9', '#d9c46a', '#7f93d9', '#d98c80', '#5fc2ad', '#a99be0', '#d6a0b4', '#9fd4c1', '#c9a98a'];
+export const PALETTE = ['#e39f55', '#5aa2e3', '#8cc68a', '#c792c9', '#d9c46a', '#7f93d9', '#d98c80', '#5fc2ad', '#a99be0', '#d6a0b4', '#9fd4c1', '#c9a98a'];
 export const KIND_COLORS = { dowel: '#f5f5f5', press: '#ffd166', filament: '#bde0fe', peg: '#90e0a0', keyed: '#5cc98a', magnet: '#c77dff', insert: '#f4a261', bolt: '#e76f51', snap: '#4cc9f0' };
 
 export function partColor(i) { return PALETTE[i % PALETTE.length]; }

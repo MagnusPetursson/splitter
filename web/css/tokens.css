@@ -13,7 +13,8 @@
   --text:          #eef3f0;   /* 15.4:1 */
   --text-muted:    #adbdb9;   /*  8.9:1 secondary text, labels */
   --text-subtle:   #8fa29e;   /*  6.5:1 metadata, inactive tabs, placeholders */
-  --text-disabled: #829498;   /*  5.5:1 / 5.0:1 on surface-2: disabled labels stay legible */
+  --text-disabled: #829498;   /*  5.5:1 / 5.0:1 on surface-2: unavailable-but-explained labels (blocked steps) */
+  --text-inactive: #6c7f82;   /*  3.9:1 disabled controls (WCAG 1.4.3 exempts inactive UI) */
 
   /* ---- roles ---- */
   --accent:        #8fdcbc;   /* mint: primary action, current step, success */

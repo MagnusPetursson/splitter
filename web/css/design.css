@@ -396,3 +396,13 @@ body:not([data-loaded=true]) :is(.view-corner, #gestureHint, .gesture-hint) { di
 .ver-head { display:flex; justify-content:space-between; align-items:baseline; gap:var(--s-2); flex-wrap:wrap; }
 .ver-head .okc, .ver-head .badc { display:inline-flex; align-items:center; font-weight:var(--fw-semibold); }
 .ver-head .i { width:18px; height:18px; }
+/* Scroll affordance: the panel fades into the footer instead of hard-clipping a line. */
+@media (min-width:761px) { .side { -webkit-mask-image:linear-gradient(#000 calc(100% - 28px), transparent); mask-image:linear-gradient(#000 calc(100% - 28px), transparent); } }
+
+/* Disabled controls read as unavailable (WCAG exempts inactive controls from contrast). */
+button:disabled, button.primary:disabled { background:transparent; border-color:var(--border); color:var(--text-inactive); }
+.flow-footer button:disabled { background:transparent; }
+@media (max-width:760px) { body:not([data-loaded=true]) { grid-template-rows:48px 52px minmax(150px,22dvh) minmax(0,1fr) 68px; } }
+
+/* Active tool must read at a glance (pressed = accent border + stronger tint). */
+.tool-row [aria-pressed=true], .tool-row [aria-pressed=true]:hover:not(:disabled) { background:color-mix(in srgb, var(--accent) 22%, var(--surface-1)); border-color:var(--accent); color:var(--accent-hover); }
