@@ -1,7 +1,7 @@
 // 2D joint map of one cut face: distance field, contact patches, joints.
 // The same class draws the small inline preview in the side panel and the
 // large zoomable editor overlay ({zoomable: true, fill: true}).
-import { partColor } from './viewer.js';
+import { partColor } from './viewer.js?v=59e3b4e';
 
 function b64(s) {
   const bin = atob(s);
@@ -262,8 +262,8 @@ export class JointMap {
     }
     ctx.stroke();
     // patch labels + seams
-    const fpx = Math.round((this.zoomable ? 13 : 12) * dpr);
-    ctx.font = `600 ${fpx}px system-ui`;
+    const fpx = Math.round((this.zoomable ? 14 : 12) * dpr);
+    ctx.font = `600 ${fpx}px Inter, "Segoe UI", system-ui, sans-serif`;
     ctx.lineJoin = 'round';
     const occupied = [];
     const label = (t, x, y, col) => {
@@ -289,7 +289,9 @@ export class JointMap {
         if (next) { x = next.x; y = next.y; b = box(x, y); }
       }
       occupied.push(b);
-      ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#0b0e12'; ctx.strokeText(t, x, y); ctx.fillStyle = col; ctx.fillText(t, x, y);
+      // label badge: rounded backing instead of a heavy halo
+      ctx.fillStyle = 'rgba(13,19,20,0.82)'; ctx.beginPath(); (ctx.roundRect ? ctx.roundRect(b.left - dpr, b.top, b.right - b.left + 2 * dpr, b.bottom - b.top, 4 * dpr) : ctx.rect(b.left, b.top, b.right - b.left, b.bottom - b.top)); ctx.fill();
+      ctx.fillStyle = col; ctx.fillText(t, x, y);
       return { ...b, x, y };
     };
     // joints first reserve their marker area so labels avoid covering them
@@ -305,7 +307,7 @@ export class JointMap {
       const q = V.toC(p.centroid);
       if (q[0] < -50 || q[1] < -50 || q[0] > this.c.width + 50 || q[1] > this.c.height + 50) continue;
       const col = pid === this.opts.patch ? '#ffffff' : (p.fallback || p.single ? '#e8b04a' : '#dbe3ea');
-      const b = label(`C${pid}`, q[0], q[1] - fpx * 0.6, col);
+      const b = label(document.body.dataset.expert==='true'?`C${pid}`:`Contact ${this.face.patches.indexOf(pid)+1}`,  q[0], q[1] - fpx * 0.6, col);
       this.contactLabels.push({ ...b, pid });
       // A leader preserves the association when edge clamping/packing moves an ID.
       ctx.lineWidth = dpr; ctx.strokeStyle = col;
@@ -322,7 +324,7 @@ export class JointMap {
       ctx.strokeStyle = '#ffffff90';
       ctx.beginPath(); ctx.arc(q[0], q[1], rq, 0, 2 * Math.PI); ctx.stroke();
       ctx.setLineDash([]);
-      const sel = j.id === this.opts.joint;
+      const sel = j.id === this.opts.joint || j.id === this.opts.hover;
       ctx.fillStyle = (j.warnings && j.warnings.length) ? '#e0564a' : (sel ? '#e07a3f' : '#f5f5f5');
       ctx.strokeStyle = '#0b0e12';
       ctx.lineWidth = (sel ? 3 : 1.5) * (this.zoomable ? dpr : 1);
@@ -332,7 +334,7 @@ export class JointMap {
         ctx.beginPath(); ctx.arc(q[0], q[1], rf + 5 * dpr, 0, 2 * Math.PI); ctx.stroke();
       }
       ctx.textAlign = 'left';
-      label(`J${j.id}`, q[0] + rf + 3 * dpr, q[1] - rf, '#ffffff');
+      label(document.body.dataset.expert==='true'?`J${j.id}`:`Pin ${this.joints().findIndex(x=>x.id===j.id)+1}`,  q[0] + rf + 3 * dpr, q[1] - rf, '#ffffff');
       ctx.textAlign = 'center';
     }
     if (this.addMode && !this.zoomable && !this.preview) {
@@ -437,7 +439,7 @@ export class JointMap {
       this.draw();
       return;
     }
-    if (!this.drag) return;
+    if (!this.drag) {this.cb.onHover?.(this.hitJoint(cp)?.id??null);return;}
     if (!this.drag.moved && Math.hypot(cp[0] - this.drag.cp[0], cp[1] - this.drag.cp[1]) < 3 * this.dpr()) return;
     const q = this.view().toF(cp[0], cp[1]);
     this.drag.j.p = q;

@@ -1,0 +1,73 @@
+/* Splitter design tokens: shared colour roles, type, spacing, radii,
+   elevation and motion. Contrast ratios are against --surface-1 (#141c1d)
+   unless noted. Enabled-text roles meet WCAG AA (4.5:1); inactive UI is exempt. */
+:root {
+  /* ---- neutrals (teal-tinted, dark) ---- */
+  --bg:            #0d1314;   /* app background, 3D canvas base */
+  --surface-1:     #141c1d;   /* side panel, header, footer */
+  --surface-2:     #1a2425;   /* cards, inputs, secondary buttons */
+  --surface-3:     #223031;   /* hover, raised popovers, toasts */
+  --surface-4:     #2b3b3c;   /* pressed / active hover */
+  --border:        #2c3a3c;   /* hairlines between regions */
+  --border-strong: #5f7577;   /* control outlines: 3.5:1 on surface-1, 3.3:1 on surface-2 (WCAG 1.4.11) */
+  --text:          #eef3f0;   /* 15.4:1 */
+  --text-muted:    #adbdb9;   /*  8.9:1 secondary text, labels */
+  --text-subtle:   #8fa29e;   /*  6.5:1 metadata, inactive tabs, placeholders */
+  --text-disabled: #829498;   /*  5.5:1 / 5.0:1 on surface-2: unavailable-but-explained labels (blocked steps) */
+  --text-inactive: #6c7f82;   /*  3.9:1 disabled controls (WCAG 1.4.3 exempts inactive UI) */
+
+  /* ---- roles ---- */
+  --accent:        #8fdcbc;   /* mint: primary action, current step, success */
+  --accent-hover:  #b2ecd3;
+  --accent-ink:    #0a2a1f;   /* text on accent: 9.6:1 */
+  --accent-tint:   #1c3a31;   /* pressed toggles, selected rows */
+  --accent-line:   #4f8f77;   /* accent outlines on dark */
+  --info:          #8fc9ee;   /* build volume, cut readouts: 9.7:1 */
+  --info-tint:     #16293a;
+  --warn:          #f1cf80;   /* 11.5:1 */
+  --warn-tint:     #352e1d;
+  --warn-line:     #8f7a46;
+  --danger:        #ffa093;   /*  8.8:1 */
+  --danger-tint:   #3a201d;
+  --danger-line:   #9a4c43;
+  --pin:           #f4d27f;   /* joint badges */
+  --ring-a:        #efb779;   /* tilt gizmo ring A (matches the 3D handle) */
+  --ring-b:        #b3e7dc;   /* tilt gizmo ring B */
+  --focus:         #c6f6df;
+
+  /* ---- type ---- */
+  --font-sans: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, Ubuntu, "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  --fs-12: 12px;  /* metadata, captions, keys (minimum) */
+  --fs-14: 14px;  /* body, controls */
+  --fs-16: 16px;  /* lead, section titles, readouts */
+  --fs-20: 20px;  /* panel titles */
+  --fs-24: 24px;  /* step headings */
+  --fs-32: 32px;  /* empty-state display */
+  --lh-tight: 1.2; --lh-snug: 1.35; --lh-body: 1.5;
+  --fw-regular: 400; --fw-medium: 520; --fw-semibold: 620; --fw-bold: 700;
+  --tracking-tight: -0.012em; --tracking-caps: 0.08em;
+
+  /* ---- space (4 px grid) ---- */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px;
+  --target: 44px;   /* minimum touch target */
+
+  /* ---- shape ---- */
+  --r-sm: 6px;     /* controls */
+  --r-md: 10px;    /* cards, popovers, panels in the stage */
+  --r-lg: 14px;    /* dialogs */
+  --r-full: 999px;
+  --e-1: 0 1px 0 #ffffff08 inset, 0 6px 18px #00000059;
+  --e-2: 0 1px 0 #ffffff0d inset, 0 24px 60px #000000a6;
+  --glass: color-mix(in srgb, var(--surface-1) 86%, transparent);
+
+  /* ---- motion ---- */
+  --t-fast: 120ms; --t-med: 200ms; --ease: cubic-bezier(.2, .7, .2, 1);
+
+  /* ---- legacy aliases (older rules still read these) ---- */
+  --panel: var(--surface-1); --panel2: var(--surface-2); --line: var(--border);
+  --ink: var(--text); --mute: var(--text-muted);
+  --acc: var(--accent); --acc2: var(--info); --ok: var(--accent); --bad: var(--danger);
+  --r: var(--r-md);
+}
+@media (prefers-reduced-motion: reduce) { :root { --t-fast: 0ms; --t-med: 0ms; } }

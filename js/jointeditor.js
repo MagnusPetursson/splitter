@@ -1,7 +1,7 @@
 // Pop-out joint editor: a large, zoomable view of one cut face on top of
 // the main window. It drives the same plan as the inline map (the app's
 // callbacks), so every change also shows in the 3D view.
-import { JointMap } from './jointmap.js';
+import { JointMap } from './jointmap.js?v=59e3b4e';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -16,6 +16,7 @@ export class JointEditor {
     this.open = false;
     this.map = new JointMap($('jdMap'), {
       onSelectJoint: (id) => app.selectJoint(id),
+      onHover: id=>app.hoverJoint?.(id),
       onSelectPatch: (pid) => { if (pid != null) app.selectPatch(pid); },
       onMove: (j, q, pid) => app.moveJoint(j, q, pid),
       onAdd: (pid, q) => app.addJoint(pid, q),
@@ -48,6 +49,8 @@ export class JointEditor {
   layout() {
     const dock = this.open && this.docked && !this.isPhone();
     this.el.classList.toggle('docked', dock);
+    this.el.setAttribute('aria-modal', String(!dock));
+    for (const node of document.querySelectorAll('.top, #flowNav, .side, .flow-footer, .stage')) node.inert = this.open && (!dock || !node.classList.contains('stage'));
     document.body.classList.toggle('jd-docked', dock);
     $('jdDock').textContent = this.docked ? 'Full view' : 'Beside 3D';
     $('jdDock').title = this.docked ? 'Use the whole window for the editor' : 'Show the 3D view beside the editor (changes appear there live)';
@@ -66,8 +69,10 @@ export class JointEditor {
     this.el.classList.remove('hidden');
     this.el.setAttribute('aria-hidden', 'false');
     // the contact/joint editors live in the overlay while it is open
-    this.home = this.home || { seam: $('seamEditor').parentNode, next: $('seamEditor').nextSibling };
-    $('jdSide').append($('seamEditor'), $('jointEditor'));
+    if (!this.home) { const marker=document.createComment('joint editors return here'); $('seamEditor').before(marker); this.home={parent:marker.parentNode,marker}; }
+    $('jdSide').append($('contactList'), $('seamEditor'), $('jointEditor'));
+    // Keep progress and cancellation in the modal's accessible subtree.
+    this.el.append($('busy'));
     $('jdKind').innerHTML = $('addKind').innerHTML;
     $('jdKind').value = $('addKind').value;
     $('jdField').checked = $('showField').checked;
@@ -90,12 +95,15 @@ export class JointEditor {
     this.flushNudge();
     this.el.classList.add('hidden');
     this.el.setAttribute('aria-hidden', 'true');
+    document.querySelector('.stage').append($('busy'));
     // put the editors back under the inline map
-    this.home.seam.insertBefore($('seamEditor'), this.home.next);
-    this.home.seam.insertBefore($('jointEditor'), this.home.next);
+    this.home.parent.insertBefore($('seamEditor'), this.home.marker);
+    this.home.parent.insertBefore($('jointEditor'), this.home.marker);
+    $('mapWrap').insertBefore($('contactList'),$('mapWrap').querySelector('details'));
     this.app.setAddMode(false);
     this.layout();
-    if (this.returnFocus && this.returnFocus.focus) this.returnFocus.focus();
+    if (this.returnFocus?.isConnected) this.returnFocus.focus();
+    else $('openEditor').focus();
   }
 
   face() { const S = this.app.S; return S.plan && S.plan.faces.find((f) => f.node === S.face); }
@@ -115,14 +123,14 @@ export class JointEditor {
     this.map.set(S.plan, f, this.app.mapOpts());
     $('jdAdd').classList.toggle('on', S.addMode);
     $('jdAdd').setAttribute('aria-pressed', String(!!S.addMode));
-    $('jdAdd').textContent = S.addMode ? '✓ Adding… (Esc to stop)' : '+ Add joint';
+    $('jdAdd').innerHTML = S.addMode ? 'Adding… <kbd>Esc</kbd> to stop' : `<svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Add joint`;
     $('jdKind').value = $('addKind').value;
     // joint chips: Tab-able, show selection
     const js = this.map.joints();
     $('jdJoints').innerHTML = js.length
       ? js.map((j) => `<button data-jdj="${j.id}" class="jchip ${j.id === S.sel.joint ? 'sel' : ''} ${j.warnings && j.warnings.length ? 'bad' : ''}" aria-pressed="${j.id === S.sel.joint}" title="${esc(j.kind)} · C${j.patch}">J${j.id}<span>${esc(j.kind)}</span></button>`).join('')
       : '<span class="small mute">No point joints on this face.</span>';
-    for (const b of $('jdJoints').querySelectorAll('[data-jdj]')) b.addEventListener('click', () => this.pick(+b.dataset.jdj));
+    $('jdJoints').querySelectorAll('[data-jdj]').forEach((b) => b.addEventListener('click', () => {this.pick(+b.dataset.jdj);$('jdMap').focus();}));
     this.hint();
   }
 
@@ -189,7 +197,7 @@ export class JointEditor {
       this.close();
       return;
     }
-    if (e.key === 'Tab' && !onMap) {
+    if (e.key === 'Tab') {
       // keep focus inside the dialog
       const f = [...this.el.querySelectorAll('button:not([disabled]), select, input, canvas[tabindex], [tabindex="0"]')].filter((x) => x.offsetParent !== null);
       const i = f.indexOf(t);
@@ -215,15 +223,14 @@ export class JointEditor {
           if (pid != null) this.app.addJoint(pid, q); else this.app.toast('The centre of the view is not on the cut face: pan first.', true);
         }
         return;
-      case 'Tab':
-        if (onMap) { e.preventDefault(); this.step(e.shiftKey ? -1 : 1); }
-        return;
+
       default: break;
     }
     if (e.key.startsWith('Arrow') && (onMap || (t.closest && t.closest('#jdJoints')))) {
       e.preventDefault();
       const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
-      if (e.shiftKey) this.nudgeBy(0.5 * d[0], 0.5 * d[1]);
+      if (e.altKey) { this.map.pan[0]+=d[0]*35*this.map.dpr(); this.map.pan[1]-=d[1]*35*this.map.dpr(); this.map.draw(); }
+      else if (e.shiftKey) this.nudgeBy(0.5 * d[0], 0.5 * d[1]);
       else this.step(d[0] + (d[0] ? 0 : -d[1]) > 0 ? 1 : -1);
     }
   }

@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { OrbitControls } from '../vendor/three/OrbitControls.js';
 import { TransformControls } from '../vendor/three/TransformControls.js';
 
-export const PALETTE = ['#e07a3f', '#3fa7e0', '#7bc96f', '#c96fb8', '#e0c23f', '#6f8fc9', '#c9786f', '#4fc9b0', '#a3a3e0', '#e09f9f', '#9fe0c6', '#d4a373'];
+// Part identification colours: equal lightness, moderate chroma, tuned to the dark-mint UI (S3).
+export const PALETTE = ['#e39f55', '#5aa2e3', '#8cc68a', '#c792c9', '#d9c46a', '#7f93d9', '#d98c80', '#5fc2ad', '#a99be0', '#d6a0b4', '#9fd4c1', '#c9a98a'];
 export const KIND_COLORS = { dowel: '#f5f5f5', press: '#ffd166', filament: '#bde0fe', peg: '#90e0a0', keyed: '#5cc98a', magnet: '#c77dff', insert: '#f4a261', bolt: '#e76f51', snap: '#4cc9f0' };
 
 export function partColor(i) { return PALETTE[i % PALETTE.length]; }
@@ -38,7 +39,7 @@ function geomFrom(positions, indices, flat = true) {
 }
 
 function outOfBedMaterial(color) {
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.62, metalness: 0.05, side: THREE.DoubleSide, vertexColors: false });
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.0, side: THREE.DoubleSide, vertexColors: false });
   mat.userData.uniforms = { boxMin: { value: new THREE.Vector3(-1e9, -1e9, -1e9) }, boxMax: { value: new THREE.Vector3(1e9, 1e9, 1e9) } };
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, mat.userData.uniforms);
@@ -47,9 +48,78 @@ function outOfBedMaterial(color) {
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWorldP;\nuniform vec3 boxMin;\nuniform vec3 boxMax;')
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
         bool outside = any(lessThan(vWorldP, boxMin)) || any(greaterThan(vWorldP, boxMax));
-        if (outside) { float s = step(0.5, fract((vWorldP.x + vWorldP.y + vWorldP.z) * 0.12)); gl_FragColor.rgb = mix(gl_FragColor.rgb, mix(vec3(0.95,0.25,0.2), vec3(0.75,0.15,0.12), s), 0.75); }`);
+        // Round 4: signed distance outside the usable box gives a crisp,
+        // screen-width boundary line where the surface crosses the limit;
+        // the overflow itself is a light salmon tint with a soft hatch.
+        vec3 dOut = vec3(max(boxMin.xy - vWorldP.xy, vWorldP.xy - boxMax.xy), vWorldP.z - boxMax.z); // the floor is never a limit
+        float sd = max(max(dOut.x, dOut.y), dOut.z);
+        float aa = max(fwidth(sd), 1e-4);
+        if (outside) { vec3 t = gl_FragColor.rgb * vec3(1.0, 0.8, 0.74) + vec3(0.07, 0.015, 0.0); float h = fract((vWorldP.x + vWorldP.y + vWorldP.z) * 0.07); float s = smoothstep(0.86, 0.9, h) * (1.0 - smoothstep(0.96, 1.0, h)); gl_FragColor.rgb = mix(t, t * 0.8, s); }
+        if (boxMax.x < 1e8) { float edge = 1.0 - smoothstep(1.1, 2.2, abs(sd) / aa); gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0, 0.47, 0.38), edge * 0.95); }`);
   };
   return mat;
+}
+
+// ---------- scene dressing (S1/S2) ----------
+// Vertical backdrop: lifted teal at the top, the app background at the floor.
+function stageBackdrop() {
+  const c = document.createElement('canvas'); c.width = 4; c.height = 256;
+  const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, '#1b2726'); g.addColorStop(0.55, '#121a1b'); g.addColorStop(1, '#0c1213');
+  x.fillStyle = g; x.fillRect(0, 0, 4, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+// Line material whose opacity falls off with depth through the volume, so the
+// rear edges of the build box recede behind the model instead of crossing it.
+function depthFadeLine(color, near, far) {
+  return new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: { uColor: { value: new THREE.Color(color) }, uCenter: { value: new THREE.Vector3() }, uR: { value: 100 }, uNear: { value: near }, uFar: { value: far } },
+    vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+    fragmentShader: 'uniform vec3 uColor; uniform vec3 uCenter; uniform float uR, uNear, uFar; varying vec3 vW; void main(){ vec3 d = normalize(uCenter - cameraPosition); float t = smoothstep(-uR, uR, dot(vW - uCenter, d)); gl_FragColor = vec4(uColor, mix(uNear, uFar, t));\n#include <colorspace_fragment>\n}',
+  });
+}
+// 10 mm minor / 50 mm major grid, clipped to the bed.
+function bedGrid(x, y, cx, cy, z) {
+  const grp = new THREE.Group(), minor = [], major = [];
+  const x0 = cx - x / 2, y0 = cy - y / 2;
+  for (let u = 0; u <= x + 1e-6; u += 10) (Math.round(u) % 50 === 0 ? major : minor).push(x0 + u, y0, z, x0 + u, y0 + y, z);
+  for (let v = 0; v <= y + 1e-6; v += 10) (Math.round(v) % 50 === 0 ? major : minor).push(x0, y0 + v, z, x0 + x, y0 + v, z);
+  for (const [arr, col, op] of [[minor, '#7fb2c4', 0.09], [major, '#8fc9ee', 0.2]]) {
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+    grp.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: op, depthWrite: false })));
+  }
+  const rim = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(x, y)), new THREE.LineBasicMaterial({ color: '#8fc9ee', transparent: true, opacity: 0.45 }));
+  rim.position.set(cx, cy, z); grp.add(rim);
+  return grp;
+}
+// Soft contact shadow under the model footprint (an AO-like grounding cue).
+let shadowTex = null, floorTex = null;
+function contactShadow(box, z) {
+  if (!shadowTex) {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, 'rgba(0,0,0,0.85)'); g.addColorStop(0.35, 'rgba(0,0,0,0.6)'); g.addColorStop(0.7, 'rgba(0,0,0,0.22)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+    shadowTex = new THREE.CanvasTexture(c);
+  }
+  if (!floorTex) {
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const x = c.getContext('2d'), g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+    g.addColorStop(0, 'rgba(160,205,200,0.10)'); g.addColorStop(0.6, 'rgba(160,205,200,0.04)'); g.addColorStop(1, 'rgba(160,205,200,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+    floorTex = new THREE.CanvasTexture(c);
+  }
+  const s = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  const grp = new THREE.Group(); grp.userData.noPick = true;
+  // a faint studio floor so built parts (no printer box) still sit on something
+  const R = Math.max(s.x, s.y) * 2.4 + 80;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(R, R), new THREE.MeshBasicMaterial({ map: floorTex, transparent: true, depthWrite: false, toneMapped: false }));
+  floor.position.set(c.x, c.y, z - 0.02); floor.renderOrder = 0; grp.add(floor);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(s.x * 1.25 + 36, s.y * 1.25 + 36), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, toneMapped: false }));
+  m.position.set(c.x, c.y, z); m.renderOrder = 1; grp.add(m);
+  grp.geometry = { dispose() { floor.geometry.dispose(); floor.material.dispose(); m.geometry.dispose(); m.material.dispose(); } };
+  return grp;
 }
 
 function makeLabel(text, size) {
@@ -73,23 +143,44 @@ export class Viewer {
     this.el = el;
     this.cb = cb;
     this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-    this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    this.renderer.setPixelRatio(this.pixelRatio());
     el.appendChild(this.renderer.domElement);
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#0f1318');
+    this.scene.background = stageBackdrop();
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.05;
     this.camera = new THREE.PerspectiveCamera(40, 1, 1, 20000);
     this.camera.up.set(0, 0, 1);
     this.camera.position.set(400, -500, 380);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
+    this.controls.enableDamping = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{this.controls.enableDamping=!e.matches;});
     this.controls.addEventListener('change', () => this.dirty());
-    const hemi = new THREE.HemisphereLight('#dfe8f2', '#30261f', 1.4);
+    this.controls.addEventListener('start',()=>this.cameraState('custom'));
+    // S1: warm key from the front-left (above), cool fill from the camera's right, cool rim from behind, low sky fill.
+    // Round 2: lower sky fill and a lower key so up-facing surfaces (helmet
+    // tops) keep a gradient instead of saturating; the rim separates the
+    // silhouette. Four analytic lights, no shadow maps: cheap on an iGPU.
+    // Round 3: one stronger, higher directional key and a restrained fill, so
+    // the crown and face relief read through shading rather than tint.
+    // Round 4: a touch more key contrast (key up, sky fill down) so relief
+    // on the front reads on a small screen.
+    const hemi = new THREE.HemisphereLight('#dbe7e2', '#3a342c', 0.34);
     hemi.position.set(0, 0, 1);
     this.scene.add(hemi);
-    this.sun = new THREE.DirectionalLight('#ffffff', 1.6);
-    this.sun.position.set(0.6, -0.8, 1.4);
+    this.sun = new THREE.DirectionalLight('#fff1dc', 2.45);
+    this.sun.position.set(-0.55, -0.8, 0.95);
     this.scene.add(this.sun);
-    this.camLight = new THREE.DirectionalLight('#ffffff', 0.7);
+    this.fillLight = new THREE.DirectionalLight('#cfe3ff', 0.42);
+    this.fillLight.position.set(1.0, 0.25, 0.2);
+    this.scene.add(this.fillLight);
+    // A soft point key near the model adds distance falloff, so large flat
+    // up-facing areas get a gradient instead of one uniform value.
+    this.keyPt = new THREE.PointLight('#fff1dc', 0, 0, 1.5);
+    this.scene.add(this.keyPt);
+    this.rim = new THREE.DirectionalLight('#a9d4ff', 0.8);
+    this.rim.position.set(-0.6, 1.0, 0.7);
+    this.scene.add(this.rim);
+    this.camLight = new THREE.DirectionalLight('#ffffff', 0.1);
     this.camera.add(this.camLight);
     this.scene.add(this.camera);
     this.groups = {};
@@ -97,28 +188,51 @@ export class Viewer {
       this.groups[n] = new THREE.Group();
       this.scene.add(this.groups[n]);
     }
+    // S5: hovering a cut plane brightens its rim (selection stays distinct).
+    let hoverQ = 0;
+    this.renderer.domElement.addEventListener('pointermove', (e) => {
+      if (hoverQ || e.pointerType === 'touch') return;
+      hoverQ = requestAnimationFrame(() => {
+        hoverQ = 0;
+        if (this.view !== 'cuts' || !this.cutMeshes || this.tc.dragging || e.buttons) { if (this.hoverCut != null) { this.hoverCut = null; this.highlight(); this.dirty(); } return; }
+        const r = this.renderer.domElement.getBoundingClientRect();
+        this._hr ||= new THREE.Raycaster();
+        this._hr.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), this.camera);
+        const quads = Object.values(this.cutMeshes).map((g) => g.userData.quad).filter((q) => q && q.parent?.visible !== false);
+        const hit = this._hr.intersectObjects(quads, false)[0];
+        const id = hit ? hit.object.userData.node : null;
+        if (id !== this.hoverCut) { this.hoverCut = id; this.highlight(); this.dirty(); }
+      });
+    });
     this.tc = new TransformControls(this.camera, this.renderer.domElement);
     this.tc.setSpace('local');
     this.tc.showX = false; this.tc.showY = false;
-    this.tc.setSize(0.8);
+    this.tc.setSize(1.25);
+    this.tc.setColors('#efb779','#b3e7dc','#a4dbff','#ffffff');
     this.tcHelper = this.tc.getHelper();
     this.scene.add(this.tcHelper);
     this.tc.addEventListener('dragging-changed', (e) => {
       this.controls.enabled = !e.value;
-      if (!e.value && this.dragNode != null) this.cb.onCutDragEnd && this.cb.onCutDragEnd(this.dragNode, this.dragD);
+      if(e.value){this.cutChanged=false;this.cutCancelled=false;this._cutWasDrag=true;}
+      else if(this.dragNode!=null&&this.cutChanged&&!this.cutCancelled)this.cb.onCutDragEnd?.(this.dragNode,this.dragD,this.dragNormal);
     });
     this.tc.addEventListener('objectChange', () => this.onTCChange());
     this.tc.addEventListener('change', () => this.dirty());
+    this.tc.addEventListener('axis-changed',e=>this.tc.setSize(e.value?1.4:1.25));
     this.raycaster = new THREE.Raycaster();
     this.view = 'model';
     this.explode = 0.35;
     this.sel = {};
     this._down = null;
     const dom = this.renderer.domElement;
+    dom.tabIndex = 0;
+    dom.setAttribute('role', 'img');
+    dom.setAttribute('aria-label', 'Interactive 3D model. Arrow keys orbit, Shift and arrows pan, plus and minus zoom, F fits. Cut and part buttons in Split provide an accessible selection alternative.');
+    dom.addEventListener('keydown', e => this.cameraKey(e));
     dom.addEventListener('pointerdown', (e) => { this._down = [e.clientX, e.clientY]; });
     dom.addEventListener('pointerup', (e) => {
-      if (!this._down || Math.hypot(e.clientX - this._down[0], e.clientY - this._down[1]) > 4) return;
-      if (this.tc.dragging) return;
+      const wasCutDrag=this.tc.dragging||this._cutWasDrag;this._cutWasDrag=false;
+      if (wasCutDrag||!this._down || Math.hypot(e.clientX - this._down[0], e.clientY - this._down[1]) > 4) return;
       this.pick(e);
     });
     new ResizeObserver(() => this.resize()).observe(el);
@@ -126,15 +240,98 @@ export class Viewer {
     const loop = () => {
       requestAnimationFrame(loop);
       this.controls.update();
-      if (this._dirty) { this._dirty = false; this.renderer.render(this.scene, this.camera); }
+      if (this._dirty) {
+        this.groups.cuts.traverse(o=>{if(o.isSprite){const pos=o.getWorldPosition(new THREE.Vector3()),size=this.camera.position.distanceTo(pos)*2*Math.tan(THREE.MathUtils.degToRad(this.camera.fov/2))*24/this.renderer.domElement.clientHeight;o.scale.set(size*2,size,1);}});
+        this.camera.updateMatrixWorld(true);this.scene.updateMatrixWorld(true);
+        this.styleHandles();this.cb.onFrame?.();
+        this._dirty = false; this.renderer.render(this.scene, this.camera);
+      }
     };
     loop();
   }
 
   dirty() { this._dirty = true; }
 
+  cameraState(pose){this.cameraPose=pose;document.dispatchEvent(new CustomEvent('viewer-camera',{detail:pose}));}
+
+  styleHandles(){
+    // Style visible handles only; never alter the raycast picker or vendor code.
+    const mode=this.tc.mode,axis=this.tc.axis;
+    this.tcHelper.traverse(o=>{if(!o.material||o.parent?.name==='picker'||!['X','Y','Z'].includes(o.name))return;
+      if(o.parent!==this.tc._gizmo.gizmo[mode])return;
+      o.onBeforeRender=()=>{o.material.opacity=this.tc.axis&&o.name!==this.tc.axis?0.28:1;};
+    });
+  }
+
+  cutDescription(){
+    if(this.dragNode==null)return '';
+    const n=this.dragNormal||this.plan.tree.nodes[this.dragNode].cut.n;
+    const k=n.findIndex(x=>Math.abs(x)>.9999),axis=k<0?'normal':['X','Y','Z'][k];
+    return `Offset ${axis} ${this.dragD.toFixed(1)} mm`;
+  }
+
+  clearAll(){if(this.ground){this.scene.remove(this.ground);this.ground.geometry.dispose();this.ground=null;}for(const k of Object.keys(this.groups))this.clear(k);this.tc.detach();this.box=null;this.modelMesh=null;this.modelGeom=null;this.modelIndexed=null;this.plan=null;this.cutMeshes={};this.jointMeshes={};this.partMeshes=[];this.dirty();}
+
+  cutMode(mode){this.tc.setMode(mode);this.tc.showX=mode==='rotate';this.tc.showY=mode==='rotate';this.tc.showZ=mode!=='rotate';this.highlight();}
+
+  cancelCut(){
+    if(!this.tc.dragging)return false;
+    this.cutCancelled=true;this.tc.reset();this.tc.dragging=false;
+    const g=this.cutMeshes[this.dragNode];if(g&&this.tcStart){g.position.copy(this.tcStart.grpPos);g.quaternion.copy(this.tcStart.quat);}
+    this.controls.enabled=true;this.highlight();return true;
+  }
+
+  faceView(node){
+    const f=this.plan?.faces.find(f=>f.node===node);if(!f)return;
+    const points=f.loops.flat(),u0=Math.min(...points.map(p=>p[0])),u1=Math.max(...points.map(p=>p[0])),v0=Math.min(...points.map(p=>p[1])),v1=Math.max(...points.map(p=>p[1]));
+    const fr=f.frame,c=new THREE.Vector3(...fr.o).addScaledVector(new THREE.Vector3(...fr.u),(u0+u1)/2).addScaledVector(new THREE.Vector3(...fr.v),(v0+v1)/2);
+    const distance=Math.max((v1-v0)*1.5,(u1-u0)/this.camera.aspect)*1.65;
+    this.faceFocus=true;if(this.ground)this.ground.visible=false;this.modelMesh.visible=false;this.cameraState('face');
+    this.camera.up.set(...fr.v);this.controls._quat.setFromUnitVectors(this.camera.up,new THREE.Vector3(0,1,0));this.controls._quatInverse.copy(this.controls._quat).invert();this.camera.position.copy(c).addScaledVector(new THREE.Vector3(...fr.n),Math.max(20,distance));this.controls.target.copy(c);this.controls.update();this.dirty();
+  }
+
+  frameCurrent() { this.frame(this.view === 'plates' ? this.platesBox : this.view === 'parts' ? this.explodedBox() : this.box); }
+
+  cameraView(view) {
+    if (!this.box) return;
+    this.frameCurrent();
+    const c = this.controls.target, d = this.camera.position.distanceTo(c);
+    const dirs = {top:[0,-.001,1],front:[0,-1,0],right:[1,0,0]};
+    if (dirs[view]) this.camera.position.copy(c).addScaledVector(new THREE.Vector3(...dirs[view]).normalize(),d);
+    this.controls.update(); this.camera.updateMatrixWorld(true);this.cameraState(view);this.dirty();
+  }
+
+  cameraKey(e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const delta = this.camera.position.clone().sub(this.controls.target), r = delta.length();
+    if (e.key === 'f' || e.key === 'F') {e.preventDefault();this.frameCurrent();return;}
+    if (['+','=','-','_'].includes(e.key)) {
+      e.preventDefault();this.camera.position.copy(this.controls.target).addScaledVector(delta, e.key==='-'||e.key==='_'?1.15:1/1.15);
+    } else if(e.key.startsWith('Arrow')) {
+      e.preventDefault();
+      const dx=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0,dy=e.key==='ArrowUp'?1:e.key==='ArrowDown'?-1:0;
+      if(e.shiftKey) {
+        const v=new THREE.Vector3().setFromMatrixColumn(this.camera.matrix,0).multiplyScalar(dx*r*.025).addScaledVector(new THREE.Vector3().setFromMatrixColumn(this.camera.matrix,1),dy*r*.025);
+        this.camera.position.add(v);this.controls.target.add(v);
+      } else {
+        this.cameraState('custom');
+        const theta=Math.atan2(delta.y,delta.x)+dx*.12,phi=THREE.MathUtils.clamp(Math.acos(delta.z/r)-dy*.12,.05,Math.PI-.05);
+        this.camera.position.copy(this.controls.target).add(new THREE.Vector3(r*Math.sin(phi)*Math.cos(theta),r*Math.sin(phi)*Math.sin(theta),r*Math.cos(phi)));
+      }
+    } else return;
+    this.controls.update();this.dirty();
+  }
+
+  // Round 4: phones (DPR 3) render at their real density when the canvas is
+  // small; large canvases stay capped at 2 and a ~4.5 MP budget.
+  pixelRatio(w = this.el?.clientWidth || 800, h = this.el?.clientHeight || 600) {
+    const d = window.devicePixelRatio || 1;
+    return Math.max(1, Math.min(d, 3, d > 2 ? Math.sqrt(4.5e6 / Math.max(1, w * h)) : 2));
+  }
+
   resize() {
     const w = this.el.clientWidth || 800, h = this.el.clientHeight || 600;
+    { const pr = this.pixelRatio(w, h); if (Math.abs(this.renderer.getPixelRatio() - pr) > 0.01) this.renderer.setPixelRatio(pr); }
     this.renderer.setSize(w, h, false);
     this.renderer.domElement.style.width = w + 'px';
     this.renderer.domElement.style.height = h + 'px';
@@ -146,8 +343,15 @@ export class Viewer {
   clear(g) {
     const grp = this.groups[g];
     while (grp.children.length) {
-      const c = grp.children.pop();
-      c.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.dispose) o.material.dispose(); });
+      const c = grp.children[0];grp.remove(c);
+      c.traverse(o => {
+        if(o.userData.pick==='joint'){
+          for(const x of new Set([o.geometry,o.userData.volume,o.userData.footprint,o.material,o.userData.shaded,o.userData.flat]))x?.dispose();
+        } else {
+          o.geometry?.dispose();
+          for(const material of [o.material].flat())material?.dispose();
+        }
+      });
     }
   }
 
@@ -156,11 +360,13 @@ export class Viewer {
     this.clear('model'); this.clear('cuts'); this.clear('joints'); this.clear('parts'); this.clear('plates');
     this.modelGeom = geomFrom(positions, indices, true);
     this.modelIndexed = { positions, indices };
-    this.modelMat = outOfBedMaterial('#b8c4cf');
+    this.modelMat = outOfBedMaterial('#bcc3be');
     this.modelMesh = new THREE.Mesh(this.modelGeom, this.modelMat);
     this.groups.model.add(this.modelMesh);
     this.box = this.modelGeom.boundingBox.clone();
     this.center = this.box.getCenter(new THREE.Vector3());
+    { const d = this.box.getSize(new THREE.Vector3()).length(), off = new THREE.Vector3(-0.45, -0.75, 0.85).normalize().multiplyScalar(d * 0.75);
+      this.keyPt.position.copy(this.center).add(off); this.keyPt.intensity = 1.2 * Math.pow(off.length(), 1.5); }
     this.frame();
     this.updateBed();
     this.dirty();
@@ -168,13 +374,51 @@ export class Viewer {
 
   frame(box = this.box) {
     if (!box) return;
+    // In the Fit step on wider screens, the printer volume is the subject too:
+    // frame model ∪ build volume so neither is cropped (phones keep the model).
+    // Frame model ∪ build volume ∪ dimension lines on every screen size, so the
+    // box, the failing face and the labels are all inside the view.
+    const fitBed = box === this.box && this.view === 'model' && this.bed && document.body.dataset.step === 'fit';
+    if (fitBed) box = this.fitGeometry().frame;
+    this.faceFocus=false;if(this.ground)this.ground.visible=this.view!=='plates';if(this.modelMesh)this.modelMesh.visible=true;this.cameraState('iso');
     const c = box.getCenter(new THREE.Vector3());
     const r = box.getSize(new THREE.Vector3()).length() * 0.5 || 100;
+    this.camera.up.set(0,0,1);this.controls._quat.setFromUnitVectors(this.camera.up,new THREE.Vector3(0,1,0));this.controls._quatInverse.copy(this.controls._quat).invert();
     const dir = new THREE.Vector3(0.75, -1.05, 0.8).normalize();
     // 2.9 r fits the vertical 40° field; a tall, narrow view (the 3D view
     // beside the joint editor, phones) must back off by the aspect ratio
     const aspect = this.camera.aspect || 1;
-    this.camera.position.copy(c).addScaledVector(dir, r * 2.9 * Math.max(1, 1.25 / aspect));
+    // Viewer-first framing: solve the distance at which all eight box corners
+    // fill ~82 % of the limiting screen dimension (exact for the box, unlike a
+    // bounding sphere), so the model dominates phones and desktops alike.
+    const up = new THREE.Vector3(0, 0, 1), right = new THREE.Vector3().crossVectors(up, dir).normalize(), camUp = new THREE.Vector3().crossVectors(dir, right);
+    const fill = fitBed ? (aspect < 1 ? 0.84 : 0.86) : aspect < 1 ? 0.9 : 0.82;
+    const tv = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * fill, th = tv * aspect;
+    let dist = 0;
+    const pts = [];
+    const fitPoint = (x, y, z) => {
+      const p = new THREE.Vector3(x, y, z).sub(c), depth = p.dot(dir);
+      pts.push(p);
+      dist = Math.max(dist, depth + Math.abs(p.dot(right)) / th, depth + Math.abs(p.dot(camUp)) / tv);
+    };
+    // For the whole model use (sampled) vertices: rounded shapes such as
+    // helmets fill far less of the screen than their box corners suggest.
+    const pos = box === this.box && this.modelGeom?.attributes.position;
+    if (pos) { const step = Math.max(1, Math.floor(pos.count / 40000)); for (let i = 0; i < pos.count; i += step) fitPoint(pos.getX(i), pos.getY(i), pos.getZ(i)); }
+    else for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) fitPoint(x, y, z);
+    if (!(dist > 0)) dist = r * 2.9 * Math.max(1, 1.25 / aspect);
+    dist = Math.max(dist, r * 1.05);
+    // Centre the projected silhouette (not the box centre), then re-fit once:
+    // asymmetric shapes otherwise waste one side of a narrow phone view.
+    if (pts.length) {
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const p of pts) { const z = dist - p.dot(dir), x = p.dot(right) / z, y = p.dot(camUp) / z; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+      c.addScaledVector(right, (x0 + x1) / 2 * dist).addScaledVector(camUp, (y0 + y1) / 2 * dist);
+      let d2 = 0;
+      for (const p0 of pts) { const p = p0.clone().sub(new THREE.Vector3().addScaledVector(right, (x0 + x1) / 2 * dist).addScaledVector(camUp, (y0 + y1) / 2 * dist)), depth = p.dot(dir); d2 = Math.max(d2, depth + Math.abs(p.dot(right)) / th, depth + Math.abs(p.dot(camUp)) / tv); }
+      if (d2 > 0) dist = Math.max(d2, r * 1.05);
+    }
+    this.camera.position.copy(c).addScaledVector(dir, dist);
     this.camera.near = r / 50; this.camera.far = r * 60;
     this.camera.updateProjectionMatrix();
     this.controls.target.copy(c);
@@ -183,6 +427,36 @@ export class Viewer {
   }
 
   setBed(x, y, z) { this.bed = { x, y, z }; this.updateBed(); }
+
+  // Fit-step geometry shared by framing and the dimension annotations: the
+  // usable box (centred on the model, on its floor), the dimension lines
+  // placed outside both, and the box faces the model crosses.
+  fitGeometry() {
+    const m = this.box, c = this.center, b = this.bed, z0 = m.min.z;
+    const bed = new THREE.Box3(new THREE.Vector3(c.x - b.x / 2, c.y - b.y / 2, z0), new THREE.Vector3(c.x + b.x / 2, c.y + b.y / 2, z0 + b.z));
+    const all = m.clone().union(bed), size = all.getSize(new THREE.Vector3()), pad = Math.max(size.x, size.y, size.z) * 0.07;
+    const a = all.min, e = all.max, mi = m.min, ma = m.max;
+    const lines = [
+      [[mi.x, a.y - pad, z0], [ma.x, a.y - pad, z0]],          // W along the front floor edge
+      [[e.x + pad, mi.y, z0], [e.x + pad, ma.y, z0]],          // D along the right floor edge
+      [[a.x - pad, a.y, mi.z], [a.x - pad, a.y, ma.z]],        // H up the front-left corner
+    ];
+    const frame = all.clone(); frame.min.x -= pad * 1.4; frame.min.y -= pad * 1.4; frame.max.x += pad * 1.4;
+    const crossed = [];
+    for (let k = 0; k < 3; k++) { const ax = 'xyz'[k]; if (m.min[ax] < bed.min[ax] - 0.01) crossed.push([k, -1]); if (m.max[ax] > bed.max[ax] + 0.01) crossed.push([k, 1]); }
+    return { bed, all, pad, lines, frame, crossed };
+  }
+  // Smallest distance (px) from any build-volume corner or dimension-line end
+  // to the canvas edge; negative means something is cropped. Used by tests.
+  fitFrameMargin() {
+    if (!this.box || !this.bed) return null;
+    const g = this.fitGeometry(), w = this.el.clientWidth, h = this.el.clientHeight, pts = [];
+    for (const x of [g.bed.min.x, g.bed.max.x]) for (const y of [g.bed.min.y, g.bed.max.y]) for (const z of [g.bed.min.z, g.bed.max.z]) pts.push(new THREE.Vector3(x, y, z));
+    for (const [a, b] of g.lines) pts.push(new THREE.Vector3(...a), new THREE.Vector3(...b));
+    let m = Infinity;
+    for (const p of pts) { const q = p.project(this.camera), sx = (q.x + 1) / 2 * w, sy = (1 - q.y) / 2 * h; m = Math.min(m, sx, w - sx, sy, h - sy); }
+    return Math.round(m);
+  }
 
   updateBed() {
     this.clear('bed');
@@ -193,23 +467,35 @@ export class Viewer {
     const min = new THREE.Vector3(c.x - x / 2, c.y - y / 2, zmin);
     const max = new THREE.Vector3(c.x + x / 2, c.y + y / 2, zmin + z);
     const g = new THREE.BoxGeometry(x, y, z);
-    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: '#3fa7e0', transparent: true, opacity: 0.8 }));
+    // S2: quiet build volume. Edges fade with distance from the camera (rear edges dimmed).
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g), depthFadeLine('#8fc9ee', 0.85, 0.2));
     edges.position.set(c.x, c.y, zmin + z / 2);
+    edges.material.uniforms.uCenter.value.set(c.x, c.y, zmin + z / 2); edges.material.uniforms.uR.value = 0.5 * Math.hypot(x, y, z);
     this.groups.bed.add(edges);
-    const plate = new THREE.Mesh(new THREE.PlaneGeometry(x, y), new THREE.MeshBasicMaterial({ color: '#1b3a52', transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false }));
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(x, y), new THREE.MeshBasicMaterial({ color: '#203a46', transparent: true, opacity: 0.34, side: THREE.DoubleSide, depthWrite: false }));
     plate.position.set(c.x, c.y, zmin - 0.05);
     this.groups.bed.add(plate);
-    const grid = new THREE.GridHelper(Math.max(x, y), Math.round(Math.max(x, y) / 10), '#2c4a62', '#20354a');
-    grid.rotation.x = Math.PI / 2;
-    grid.position.set(c.x, c.y, zmin - 0.02);
-    grid.scale.set(x / Math.max(x, y), 1, y / Math.max(x, y));
-    this.groups.bed.add(grid);
+    this.groups.bed.add(bedGrid(x, y, c.x, c.y, zmin - 0.02));
+    // Exceeded boundary faces: a translucent red wall with a solid outline,
+    // so the failing side of the volume reads before any number does.
+    for (const [k, sgn] of this.fitGeometry().crossed) {
+      const dims = [[y, z], [x, z], [x, y]][k], g2 = new THREE.PlaneGeometry(...dims);
+      if (k === 0) g2.rotateY(Math.PI / 2); else if (k === 1) g2.rotateX(Math.PI / 2);
+      const pos = new THREE.Vector3(c.x, c.y, zmin + z / 2); pos.setComponent(k, k === 2 ? (sgn > 0 ? zmin + z : zmin) : c.getComponent(k) + sgn * [x, y, z][k] / 2);
+      const wall = new THREE.Mesh(g2, new THREE.MeshBasicMaterial({ color: '#ff8f80', transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false }));
+      wall.position.copy(pos); wall.renderOrder = 2; wall.userData.boundary = [k, sgn]; this.groups.bed.add(wall);
+      const rim = new THREE.LineSegments(new THREE.EdgesGeometry(g2), new THREE.LineBasicMaterial({ color: '#ff9a8c', transparent: true, opacity: 0.95 }));
+      rim.position.copy(pos); this.groups.bed.add(rim);
+    }
     const u = this.modelMat && this.modelMat.userData.uniforms;
     if (u) {
       u.boxMin.value.copy(min).addScalar(-0.01);
       u.boxMax.value.copy(max).addScalar(0.01);
     }
     this.groups.bed.visible = this.view === 'model';
+    if (this.ground) { this.scene.remove(this.ground); this.ground.geometry.dispose(); }
+    this.ground = contactShadow(this.box, zmin - 0.01); this.scene.add(this.ground);
+    this.ground.visible = this.view !== 'plates';
     this.dirty();
   }
 
@@ -249,7 +535,7 @@ export class Viewer {
     }
     this.modelGeom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     // opaque, so the parts read clearly; joints are drawn on top instead
-    this.planMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.05, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    this.planMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     this.cutMeshes = {};
     for (const f of plan.faces) {
       if (!f.loops || !f.loops.length) continue;
@@ -257,19 +543,23 @@ export class Viewer {
       const U = new THREE.Vector3(...fr.u), V = new THREE.Vector3(...fr.v), N = new THREE.Vector3(...fr.n), O = new THREE.Vector3(...fr.o);
       let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
       for (const l of f.loops) for (const p of l) { u0 = Math.min(u0, p[0]); u1 = Math.max(u1, p[0]); v0 = Math.min(v0, p[1]); v1 = Math.max(v1, p[1]); }
-      const pad = 0.08 * Math.max(u1 - u0, v1 - v0) + 4;
+      const pad = Math.max(u1 - u0, v1 - v0, this.box.getSize(new THREE.Vector3()).length()*.4) * 0.3 + 5;
       u0 -= pad; u1 += pad; v0 -= pad; v1 += pad;
       const grp = new THREE.Group();
       const basis = new THREE.Matrix4().makeBasis(U, V, N);
       grp.quaternion.setFromRotationMatrix(basis);
       grp.position.copy(O);
-      const quad = new THREE.Mesh(new THREE.PlaneGeometry(u1 - u0, v1 - v0), new THREE.MeshBasicMaterial({ color: '#ffd9b8', transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }));
+      const quad = new THREE.Mesh(new THREE.PlaneGeometry(u1 - u0, v1 - v0), new THREE.MeshBasicMaterial({ color: '#ffd9b8', transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false, depthTest:false }));
       quad.position.set((u0 + u1) / 2, (v0 + v1) / 2, 0);
       quad.userData = { pick: 'cut', node: f.node };
       grp.add(quad);
-      const rim = new THREE.LineSegments(new THREE.EdgesGeometry(quad.geometry), new THREE.LineBasicMaterial({ color: '#e07a3f' }));
+      const rim = new THREE.LineSegments(new THREE.EdgesGeometry(quad.geometry), new THREE.LineBasicMaterial({ color: '#f8edb3', depthTest:false, transparent:true }));
       rim.position.copy(quad.position);
-      grp.add(rim);
+      quad.renderOrder=4;rim.renderOrder=5;grp.add(rim);
+      const pivot=new THREE.Mesh(new THREE.RingGeometry(1.4,2.1,40),new THREE.MeshBasicMaterial({color:'#ffffff',side:THREE.DoubleSide,depthTest:false}));
+      pivot.position.copy(quad.position);pivot.renderOrder=7;grp.add(pivot);
+      const normalArrow=new THREE.ArrowHelper(new THREE.Vector3(0,0,1),quad.position,Math.max(12,pad*1.8),'#a4dbff',5,2.5);
+      normalArrow.traverse(o=>{if(o.material){o.material.depthTest=false;o.renderOrder=6;}});grp.add(normalArrow);
       // section outline
       const pts = [];
       for (const l of f.loops) {
@@ -282,10 +572,15 @@ export class Viewer {
       lg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
       const outline = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: '#fff3e6' }));
       grp.add(outline);
-      const label = makeLabel(plan.tree.nodes[f.node].label || `C${f.node}`, Math.max(8, 0.06 * Math.max(u1 - u0, v1 - v0)));
+      // Fill actual material, not its bounding rectangle; nested loops retain holes.
+      const inside=(p,loop)=>{let yes=false;for(let i=0,j=loop.length-1;i<loop.length;j=i++){const a=loop[i],b=loop[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])yes=!yes;}return yes;};
+      const loops=f.loops.map(l=>l.map(p=>new THREE.Vector2(...p))),depth=f.loops.map(l=>f.loops.filter(other=>other!==l&&inside(l[0],other)).length);
+      loops.forEach((l,i)=>{if(depth[i]%2)return;const shape=new THREE.Shape(l);loops.forEach((hole,j)=>{if(depth[j]===depth[i]+1&&inside(f.loops[j][0],f.loops[i]))shape.holes.push(new THREE.Path(hole));});const cap=new THREE.Mesh(new THREE.ShapeGeometry(shape),new THREE.MeshBasicMaterial({color:'#496f66',side:THREE.DoubleSide,transparent:true,opacity:.72,depthWrite:false}));cap.userData={pick:'cut',node:f.node,tag:'material'};cap.renderOrder=3;grp.add(cap);});
+
+      const label = makeLabel(document.body.dataset.expert==='true'?(plan.tree.nodes[f.node].label || `C${f.node}`):`Cut ${plan.faces.indexOf(f)+1}`, Math.max(8, 0.06 * Math.max(u1 - u0, v1 - v0)));
       label.position.set(u1, v1, 0);
       grp.add(label);
-      grp.userData = { node: f.node, n: N.clone(), d: plan.tree.nodes[f.node].cut.d, quad, rim, center: new THREE.Vector3((u0 + u1) / 2, (v0 + v1) / 2, 0) };
+      grp.userData = { node: f.node, n: N.clone(), d: plan.tree.nodes[f.node].cut.d, quad, rim, pivot, normalArrow, center: new THREE.Vector3((u0 + u1) / 2, (v0 + v1) / 2, 0) };
       this.groups.cuts.add(grp);
       this.cutMeshes[f.node] = grp;
     }
@@ -304,7 +599,7 @@ export class Viewer {
       const basis = new THREE.Matrix4().makeBasis(new THREE.Vector3(...j.x), new THREE.Vector3(...j.y), new THREE.Vector3(...j.z));
       m.quaternion.setFromRotationMatrix(basis);
       m.position.set(...j.origin);
-      m.userData = { pick: 'joint', joint: j.id };
+      m.userData = { pick: 'joint', joint: j.id, volume:g, shaded:m.material, footprint:new THREE.CircleGeometry(j.d/2,48), flat:new THREE.MeshBasicMaterial({color:j.warnings?.length?'#ffb2a7':(KIND_COLORS[j.kind]||'#fff'),side:THREE.DoubleSide,depthTest:false}) };
       this.groups.joints.add(m);
       this.jointMeshes[j.id] = m;
     }
@@ -336,10 +631,10 @@ export class Viewer {
     for (const p of parts) {
       const g = geomFrom(p.mesh.positions, p.mesh.indices, true);
       const col = partColor(leafIndex[p.leaf] || 0);
-      const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: col, roughness: 0.55, metalness: 0.05 }));
+      const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: col, roughness: 0.5, metalness: 0.0 }));
       const c = g.boundingBox.getCenter(new THREE.Vector3());
       m.userData = { pick: 'part', leaf: p.leaf, label: p.label, center: c };
-      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g, 35), new THREE.LineBasicMaterial({ color: '#0b0e12', transparent: true, opacity: 0.35 }));
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g, 35), new THREE.LineBasicMaterial({ color: '#0d1314', transparent: true, opacity: 0.28 }));
       m.add(edges);
       this.groups.parts.add(m);
       this.partMeshes.push(m);
@@ -413,21 +708,17 @@ export class Viewer {
     const gap = 40;
     for (let k = 0; k < nPl; k++) {
       const ox = k * (bed.X + gap);
-      const plate = new THREE.Mesh(new THREE.PlaneGeometry(bed.X, bed.Y), new THREE.MeshBasicMaterial({ color: '#1b3a52', side: THREE.DoubleSide }));
+      const plate = new THREE.Mesh(new THREE.PlaneGeometry(bed.X, bed.Y), new THREE.MeshBasicMaterial({ color: '#1c3440', side: THREE.DoubleSide }));
       plate.position.set(ox + bed.X / 2, bed.Y / 2, -0.1);
       this.groups.plates.add(plate);
-      const grid = new THREE.GridHelper(Math.max(bed.X, bed.Y), Math.round(Math.max(bed.X, bed.Y) / 10), '#2c4a62', '#24405a');
-      grid.rotation.x = Math.PI / 2;
-      grid.scale.set(bed.X / Math.max(bed.X, bed.Y), 1, bed.Y / Math.max(bed.X, bed.Y));
-      grid.position.set(ox + bed.X / 2, bed.Y / 2, -0.05);
-      this.groups.plates.add(grid);
-      const box = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(bed.X, bed.Y, bed.Z)), new THREE.LineBasicMaterial({ color: '#3fa7e0', transparent: true, opacity: 0.12, depthTest: true }));
+      this.groups.plates.add(bedGrid(bed.X, bed.Y, ox + bed.X / 2, bed.Y / 2, -0.05));
+      const box = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(bed.X, bed.Y, bed.Z)), new THREE.LineBasicMaterial({ color: '#8fc9ee', transparent: true, opacity: 0.12, depthTest: true }));
       box.position.set(ox + bed.X / 2, bed.Y / 2, bed.Z / 2);
       this.groups.plates.add(box);
     }
     for (const pc of placed) {
       const it = pc.item;
-      const m = new THREE.Mesh(it.g, new THREE.MeshStandardMaterial({ color: it.color, roughness: 0.55 }));
+      const m = new THREE.Mesh(it.g, new THREE.MeshStandardMaterial({ color: it.color, roughness: 0.5 }));
       if (pc.rot) { m.rotation.z = Math.PI / 2; m.position.set(it.h, 0, 0); }
       m.position.x += pc.x + pc.plate * (bed.X + gap);
       m.position.y += pc.y;
@@ -439,6 +730,7 @@ export class Viewer {
 
   // ---------- views & selection ----------
   setView(v) {
+    this.faceFocus=false;if(this.modelMesh)this.modelMesh.visible=true;
     this.view = v;
     this.applyView();
     if (v === 'plates' && this.platesBox) this.frame(this.platesBox);
@@ -451,6 +743,7 @@ export class Viewer {
     const v = this.view;
     const g = this.groups;
     g.bed.visible = v === 'model';
+    if (this.ground) this.ground.visible = v !== 'plates' && !this.faceFocus;
     g.model.visible = v === 'model' || v === 'cuts';
     g.cuts.visible = v === 'cuts';
     g.joints.visible = v === 'cuts' || (v === 'parts' && this.explode < 0.02);
@@ -472,24 +765,27 @@ export class Viewer {
   highlight() {
     if (this.cutMeshes) {
       for (const [node, grp] of Object.entries(this.cutMeshes)) {
-        const on = this.sel.cut === +node;
-        grp.userData.quad.material.opacity = on ? 0.32 : 0.14;
-        grp.userData.rim.material.color.set(on ? '#ffffff' : '#e07a3f');
+        // S5: inactive = faint rim, hover = brighter rim + whisper of fill, selected = fill + white rim + pivot.
+        const on = this.sel.cut === +node, hov = !on && this.hoverCut === +node;
+        grp.userData.quad.material.opacity = on ? 0.18 : hov ? 0.08 : 0.025;
+        grp.userData.pivot.visible=on;grp.userData.normalArrow.visible=on;grp.userData.rim.material.opacity=on?1:hov?.85:.35;
+        grp.userData.rim.material.color.set(on ? '#ffffff' : hov ? '#f4d27f' : '#d9a066');
       }
     }
     if (this.jointMeshes) {
-      for (const [id, m] of Object.entries(this.jointMeshes)) m.material.emissive.set(this.sel.joint === +id ? '#e07a3f' : '#000000');
+      for (const [id, m] of Object.entries(this.jointMeshes)) m.material.emissive?.set(this.sel.joint === +id ? '#e07a3f' : '#000000');
     }
     // transform gizmo on the selected cut
     this.tc.detach();
     this.dragNode = null;
-    if (this.sel.cut != null && this.cutMeshes && this.cutMeshes[this.sel.cut] && this.view === 'cuts') {
+    if (this.editStep!=='join' && this.sel.cut != null && this.cutMeshes && this.cutMeshes[this.sel.cut] && this.view === 'cuts') {
       const grp = this.cutMeshes[this.sel.cut];
       if (!this.tcObj) { this.tcObj = new THREE.Object3D(); this.scene.add(this.tcObj); }
       const world = grp.userData.center.clone().applyQuaternion(grp.quaternion).add(grp.position);
       this.tcObj.position.copy(world);
       this.tcObj.quaternion.copy(grp.quaternion);
-      this.tcStart = { pos: world.clone(), grpPos: grp.position.clone(), d: grp.userData.d };
+      this.tcStart = { pos: world.clone(), grpPos: grp.position.clone(), d: grp.userData.d, quat:grp.quaternion.clone() };
+      this.dragNormal=null;
       this.tc.attach(this.tcObj);
       this.dragNode = this.sel.cut;
       this.dragD = grp.userData.d;
@@ -500,12 +796,25 @@ export class Viewer {
   onTCChange() {
     if (this.dragNode == null) return;
     const grp = this.cutMeshes[this.dragNode];
+    if(this.tc.mode==='rotate'){
+      const normal=new THREE.Vector3(0,0,1).applyQuaternion(this.tcObj.quaternion).normalize();
+      const rotation=this.tcObj.quaternion.clone().multiply(this.tcStart.quat.clone().invert());
+      grp.quaternion.copy(this.tcObj.quaternion);
+      grp.position.copy(this.tcStart.grpPos).sub(this.tcStart.pos).applyQuaternion(rotation).add(this.tcStart.pos);
+      this.dragNormal=normal.toArray();this.dragD=normal.dot(this.tcStart.pos);
+      const degrees=THREE.MathUtils.radToDeg(this.tcStart.quat.angleTo(this.tcObj.quaternion));
+      const localAxis=this.tc.axis==='X'?new THREE.Vector3(1,0,0):new THREE.Vector3(0,1,0),worldAxis=localAxis.applyQuaternion(this.tcStart.quat);
+      const k=worldAxis.toArray().findIndex(x=>Math.abs(x)>.999),label=k<0?`local ${this.tc.axis}`:['X','Y','Z'][k];
+      const signed=THREE.MathUtils.radToDeg(2*Math.atan2(new THREE.Vector3(rotation.x,rotation.y,rotation.z).dot(k<0?worldAxis:new THREE.Vector3().setComponent(k,1)),rotation.w));
+      this.cutChanged=degrees>.001;this.cb.onCutPreview?.(`Tilt about ${label} ${signed>=0?'+':''}${signed.toFixed(1)}°`);return;
+    }
     const n = grp.userData.n;
     const delta = this.tcObj.position.clone().sub(this.tcStart.pos).dot(n);
     // constrain the helper to the normal
     this.tcObj.position.copy(this.tcStart.pos).addScaledVector(n, delta);
     grp.position.copy(this.tcStart.grpPos).addScaledVector(n, delta);
-    this.dragD = this.tcStart.d + delta;
+    this.dragD = this.tcStart.d + delta;this.cutChanged=Math.abs(delta)>.001;
+    this.cb.onCutPreview?.(`${this.cutDescription()} · ${delta>=0?'+':''}${delta.toFixed(1)} mm`);
     this.cb.onCutDrag && this.cb.onCutDrag(this.dragNode, this.dragD);
   }
 
@@ -516,10 +825,13 @@ export class Viewer {
     const targets = [];
     if (this.view === 'cuts') { targets.push(this.groups.joints, this.groups.cuts); }
     if (this.view === 'parts') targets.push(this.groups.parts);
-    const hits = this.raycaster.intersectObjects(targets, true).filter((h) => h.object.userData && h.object.userData.pick);
+    const hits = this.raycaster.intersectObjects(targets, true).filter(h=>h.object.userData?.pick&&h.object.visible&&h.object.parent?.visible);
     // prefer joints over cut quads when both are hit
     hits.sort((a, b) => (a.object.userData.pick === 'joint' ? -1 : 0) - (b.object.userData.pick === 'joint' ? -1 : 0) || a.distance - b.distance);
     const h = hits[0];
+    if(!h&&this.view==='cuts'&&this.modelMesh){
+      const hit=this.raycaster.intersectObject(this.modelMesh)[0];if(hit){let leaf=this.plan.tree.root;for(let k=0;k<64;k++){const n=this.plan.tree.nodes[leaf];if(!n.cut)break;leaf=new THREE.Vector3(...n.cut.n).dot(hit.point)<n.cut.d?n.neg:n.pos;}this.cb.onPick?.({pick:'part',leaf,point:hit.point.toArray()});return;}
+    }
     this.cb.onPick && this.cb.onPick(h ? { ...h.object.userData, point: h.point.toArray() } : null, e);
   }
 

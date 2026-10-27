@@ -1,9 +1,14 @@
 // print-splitter UI controller.
-import { Viewer, partColor, KIND_COLORS } from './viewer.js';
-import { JointMap } from './jointmap.js';
-import { JointEditor } from './jointeditor.js';
-import { createBackend } from './backend.js';
-import { LIMITS, estimateTris, estimateMemMB, estimateLoadSec, estimatePlanSec, fmtTris, fmtDur, fmtMem, msgText, Progress, LOAD_STAGES, PLAN_STAGES, crumbSet, crumbClear, crumbTake } from './progress.js';
+import { Viewer, partColor, KIND_COLORS } from './viewer.js?v=59e3b4e';
+import { JointMap } from './jointmap.js?v=59e3b4e';
+import { JointEditor } from './jointeditor.js?v=59e3b4e';
+import { createBackend } from './backend.js?v=59e3b4e';
+import { GuidedFlow } from './flow.js?v=59e3b4e';
+import { DirectEditor } from './direct-editor.js?v=59e3b4e';
+import { MergeLayer } from './merge.js?v=59e3b4e';
+import { ico, plural } from './icons.js?v=59e3b4e';
+import { PlanHistory, readiness } from './readiness.js?v=59e3b4e';
+import { LIMITS, estimateTris, estimateMemMB, estimateLoadSec, estimatePlanSec, fmtTris, fmtDur, fmtMem, msgText, Progress, LOAD_STAGES, PLAN_STAGES, crumbSet, crumbClear, crumbTake } from './progress.js?v=59e3b4e';
 
 const $ = (id) => document.getElementById(id);
 const api = (p) => new URL(p, document.baseURI).href;
@@ -23,7 +28,8 @@ const S = {
 let toastT = 0;
 function toast(msg, err = false, ms = 4200) {
   const t = $('toast');
-  t.textContent = msg;
+  t.innerHTML = `${ico(err ? 'error' : 'info')}<span></span>`;
+  t.lastChild.textContent = msg;
   t.classList.toggle('err', err);
   t.classList.remove('hidden');
   clearTimeout(toastT);
@@ -41,6 +47,10 @@ function busy(text, frac = null) {
 let BE = null; // planner backend (local WASM or server)
 let PROG = null; // staged progress panel
 let DEFAULTS = null; // form values before any saved settings are applied
+let FLOW = null;
+const history=new PlanHistory();
+let DIRECT=null;
+let MERGE=null;
 function save() {
   const s = {
     printer: $('printer').value, bedX: $('bedX').value, bedY: $('bedY').value, bedZ: $('bedZ').value,
@@ -49,13 +59,18 @@ function save() {
     fits: Object.fromEntries([...document.querySelectorAll('[data-fit]')].map((i) => [i.dataset.fit, i.value])),
   };
   localStorage.setItem('ps.settings', JSON.stringify(s));
+  if (S.plan) {
+    const next=settings(), old=S.plan.settings;
+    S.settingsDirty=['bed','margin','nozzle','minPiece','upright','tilted','fits'].some(k=>JSON.stringify(next[k])!==JSON.stringify(old[k]));
+    FLOW?.sync();
+  }
 }
 function load() {
   try { return JSON.parse(localStorage.getItem('ps.settings') || 'null'); } catch (_) { return null; }
 }
 
 // ---------------- worker ----------------
-const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+const worker = new Worker(new URL('./worker.js?v=59e3b4e', import.meta.url), { type: 'module' });
 const pending = {};
 worker.onmessage = (e) => {
   const m = e.data;
@@ -82,15 +97,17 @@ function work(type, payload, expect, transfer) {
 const viewer = new Viewer($('viewport'), {
   onPick: (h) => onPick(h),
   onCutDrag: (node, d) => { const inp = $('cutOffset'); if (inp) { inp.value = fmt(d, 2); $('cutOffsetNum').value = fmt(d, 2); } },
-  onCutDragEnd: (node, d) => setCut(node, null, d),
+  onCutDragEnd: (node, d, normal) => setCut(node, normal, d),
 });
 // the inline map is a preview: it selects contacts and opens the editor
 const jmap = new JointMap($('jointMap'), {
+  onHover: id=>DIRECT?.hoverJoint(id),
   onSelectPatch: (pid) => { S.sel.patch = pid; S.sel.joint = null; renderJointPanel(); },
   onOpen: (q, jid) => { if (jid != null) selectJoint(jid); jed.show(S.face, { at: q, span: 40 }); },
 }, { preview: true });
 const jed = new JointEditor({
   S,
+  hoverJoint:id=>DIRECT?.hoverJoint(id),
   cutName: (n) => cutName(n),
   selectFace: (n) => selectFace(n, false),
   selectJoint: (id) => selectJoint(id),
@@ -154,6 +171,9 @@ async function init() {
   updateBed();
   updateSupportPreference();
   bind();
+  DIRECT=new DirectEditor({syncFlow:()=>FLOW?.sync(),S,viewer,jmap,jed,history,setView,build,selectJoint,selectFace,setAddMode,protoJoint,moveJoint,addJoint,deleteJoint,jointName,restore:restorePlan,editJoint:j=>{Object.assign(S.plan.joints.find(x=>x.id===j.id),j);updateJoint(S.plan.joints.find(x=>x.id===j.id));}});
+  FLOW = new GuidedFlow({ S, viewer, setView, split:()=>runPlan('auto'), prepare:async()=>{if(!S.built)await build();if(S.built&&S.built.parts.every(p=>p.status==='NoError'))await exportPkg();},onSync:()=>{DIRECT?.sync();MERGE?.sync();} });
+  MERGE = new MergeLayer({ S, viewer, FLOW, DIRECT, select, setView, deleteCut, deleteJoint, renderJointPanel, cutName, jointName, contactName });
 }
 
 function styleLabel(v) { const o = [...$('jointStyle').options].find((x) => x.value === v); return o ? o.textContent : v; }
@@ -215,6 +235,9 @@ function updateBed() {
 }
 
 function bind() {
+  document.addEventListener('expertchange',()=>{if(S.plan){renderPlan();renderFaces();renderCutEditor();renderJointPanel();}});
+  $('replaceModel').addEventListener('click',()=>$('fileInput').click());
+  $('removeModel').addEventListener('click',()=>{resetModel();FLOW.go('load');});
   const drop = $('drop');
   $('fileInput').addEventListener('change', (e) => { if (e.target.files[0]) upload(e.target.files[0]); e.target.value = ''; });
   for (const ev of ['dragover', 'dragenter']) document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); });
@@ -246,7 +269,8 @@ function bind() {
   $('licLink').addEventListener('click', (e) => { e.preventDefault(); $('licDlg').showModal(); });
   document.addEventListener('keydown', (e) => {
     if (jed.open) { if (e.key === 'Escape') jed.close(); return; }
-    if (e.target.matches('input, select, textarea')) return;
+    if (e.target.matches('input, select, textarea') || e.target.closest('dialog')) return;
+    if (!e.target.closest('#viewport, #planSummary, #cutEditor, #partEditor')) return;
     if (['1', '2', '3', '4'].includes(e.key)) setView(['model', 'cuts', 'parts', 'plates'][+e.key - 1]);
     if (e.key === 'Escape') { setAddMode(false); select({}); }
     if ((e.key === 'Delete' || e.key === 'Backspace') && S.sel.joint != null) deleteJoint(S.sel.joint);
@@ -256,10 +280,12 @@ function bind() {
 }
 
 function setView(v) {
-  for (const b of document.querySelectorAll('#views button')) b.classList.toggle('on', b.dataset.view === v);
+  if ((v==='cuts'&&!S.plan)||(['parts','plates'].includes(v)&&!S.built)) return;
+  for (const b of document.querySelectorAll('#views button')) { b.classList.toggle('on', b.dataset.view === v); b.setAttribute('aria-pressed', String(b.dataset.view === v)); }
   viewer.setView(v);
   if (v === 'cuts') viewer.highlight();
   hud();
+  FLOW?.sync();
 }
 
 // ---------------- model ----------------
@@ -300,6 +326,8 @@ async function upload(file, opts = {}) {
   try {
     let info = await BE.load(file, (m) => PROG.update(m), loadOpts);
     if (scale !== 1) info = await BE.scale(info, scale);
+    const rot = opts.restore && S.model ? flatRot(S.model.rot) : ROT_ID;
+    if (rot.some((v, i) => v !== ROT_ID[i]) && BE.rotate) info = await BE.rotate(info, rot);
     S.file = file; S.loadOpts = loadOpts; S.loadEst = est; S.fullDetail[fileKey(file)] = !simplify;
     PROG.setStage('kernel');
     await onModel(info, { restore: opts.restore, loadSec: PROG.elapsed() });
@@ -321,7 +349,7 @@ function loadFailed(err, file, est, simplified) {
   }
   if (err.kind === 'watertight') {
     resetModel();
-    showLoadNote(`${esc(file.name)} is not a closed solid`, esc(err.message));
+    showLoadNote(`${esc(file.name)} is not a closed solid`, `${esc(cap1(err.message))}. Splitting needs a watertight mesh: close the holes in your modelling tool, or try its “make solid” repair.`, [], 'error');
     return;
   }
   if (err.kind === 'memory') {
@@ -330,10 +358,17 @@ function loadFailed(err, file, est, simplified) {
       !simplified && est.tris > 200000 ? [['Simplify and load', () => { S.fullDetail[fileKey(file)] = false; upload(file, { full: false }); }]] : []);
     return;
   }
+  if (file) {
+    resetModel();
+    showLoadNote(`Couldn’t load ${esc(file.name)}`, `${esc(cap1(err.message))}. Re-export it from your modelling tool as STL, OBJ or 3MF, then choose it again.`, [], 'error');
+    return;
+  }
   toast(err.message, true, 9000);
 }
+const cap1 = (s) => String(s || '').replace(/^./, (c) => c.toUpperCase()).replace(/\.$/, '');
 
 function resetModel() {
+  history.reset();S.settingsDirty=false;S.addMode=false;S.face=null;S.file=null;S.mesh=null;
   S.model = null; S.plan = null; S.built = null; S.export = null; S.sel = {}; S.workerReady = false;
   $('autoSplit').disabled = true; $('buildBtn').disabled = true; $('exportBtn').disabled = true;
   for (const id of ['modelInfo', 'meshNote', 'planSummary', 'cutEditor', 'partEditor', 'mapWrap', 'buildInfo', 'exportInfo', 'unitRow', 'detailRow']) $(id).classList.add('hidden');
@@ -344,12 +379,15 @@ function resetModel() {
   if (viewer.clearAll) viewer.clearAll();
   $('empty').classList.remove('hidden');
   hud();
+  FLOW?.sync();
 }
 
-function showLoadNote(title, html, actions = []) {
+function showLoadNote(title, html, actions = [], tone = 'warn') {
   const n = $('loadNote');
-  n.innerHTML = `<h4>${title}</h4><p>${html}</p>${actions.length ? `<div class="btns">${actions.map((a, i) => `<button class="small" data-act="${i}">${esc(a[0])}</button>`).join('')}</div>` : ''}`;
-  actions.forEach((a, i) => n.querySelector(`[data-act="${i}"]`).addEventListener('click', a[1]));
+  const all = [...actions, ['Choose a file', () => $('fileInput').click()]];
+  n.dataset.tone = tone;
+  n.innerHTML = `<div class="note-head">${ico(tone === 'error' ? 'error' : 'alert')}<h4>${title}</h4></div><p>${html}</p><div class="btns">${all.map((a, i) => `<button class="${i === 0 && actions.length ? 'primary' : ''}" data-act="${i}">${esc(a[0])}</button>`).join('')}<a class="context-help" href="guide.html#faq" target="_blank" rel="noopener">How to fix a model${ico('external')}<span class="sr-only"> (new tab)</span></a></div>`;
+  all.forEach((a, i) => n.querySelector(`[data-act="${i}"]`).addEventListener('click', a[1]));
   n.classList.remove('hidden');
   n.scrollIntoView({ block: 'nearest' });
 }
@@ -372,7 +410,9 @@ async function loadSample(name) {
 }
 
 async function onModel(info, o = {}) {
+  history.reset();S.face=null;S.addMode=false;
   S.model = info;
+  S.settingsDirty = false;
   S.kernelFull = false;
   S.plan = null; S.built = null; S.export = null; S.sel = {}; S.comparison = null; S.planWasAuto = false;
   busy(info.simplified && !info.simplified.failed ? 'Loading the simplified mesh into the 3D view' : 'Loading repaired mesh', null);
@@ -400,6 +440,8 @@ async function onModel(info, o = {}) {
   $('faceList').innerHTML = ''; $('mapWrap').classList.add('hidden');
   $('buildInfo').classList.add('hidden'); $('exportInfo').classList.add('hidden');
   hud();
+  if(o.restore) { FLOW?.sync(); FLOW?.say('Model restored after cancellation. You can try the split again.'); }
+  else FLOW?.loaded();
 }
 
 // What the planner is working on, how far it is from the file, and how to
@@ -474,12 +516,12 @@ function renderModelInfo() {
   const badges = [];
   badges.push(r.closed ? '<span class="badge ok">watertight</span>' : '<span class="badge bad">not closed</span>');
   if (r.weldedVertices) badges.push(`<span class="badge">${r.weldedVertices.toLocaleString()} vertices welded</span>`);
-  if (r.holesFilled) badges.push(`<span class="badge warn">${r.holesFilled} hole(s) capped</span>`);
+  if (r.holesFilled) badges.push(`<span class="badge warn">${plural(r.holesFilled + ' hole(s)')} capped</span>`);
   if (r.flippedFaces) badges.push(`<span class="badge warn">${r.flippedFaces.toLocaleString()} faces re-oriented</span>`);
-  if (r.invertedShells) badges.push(`<span class="badge warn">${r.invertedShells} inside-out shell(s) fixed</span>`);
+  if (r.invertedShells) badges.push(`<span class="badge warn">${plural(r.invertedShells + ' inside-out shell(s)')} fixed</span>`);
   if (r.duplicateRemoved) badges.push(`<span class="badge warn">${r.duplicateRemoved} duplicate faces removed</span>`);
   if (r.degenerateRemoved) badges.push(`<span class="badge warn">${r.degenerateRemoved} degenerate faces removed</span>`);
-  if (r.debrisRemoved) badges.push(`<span class="badge warn">${r.debrisRemoved} debris shell(s) dropped</span>`);
+  if (r.debrisRemoved) badges.push(`<span class="badge warn">${plural(r.debrisRemoved + ' debris shell(s)')} dropped</span>`);
   if (r.nonManifoldResolved) badges.push(`<span class="badge warn">${r.nonManifoldResolved} non-manifold edges split</span>`);
   if (r.shells > 1) badges.push(`<span class="badge">${r.shells} shells</span>`);
   $('modelInfo').innerHTML = `<div class="kv"><b>Size</b><span>${fmt(m.size[0])} × ${fmt(m.size[1])} × ${fmt(m.size[2])} mm</span>
@@ -487,11 +529,36 @@ function renderModelInfo() {
     <b>Mesh</b><span>${m.simplified && !m.simplified.failed ? `${m.simplified.inputTris.toLocaleString()} triangles, planned on ${m.tris.toLocaleString()}` : `${m.tris.toLocaleString()} triangles`} · ${m.format}</span></div>
     <div class="badges">${badges.join('')}</div>
     ${(r.notes || []).map((n) => `<div class="small warnc">${esc(n)}</div>`).join('')}
-    ${m.unitHint ? `<div class="small warnc">⚠ ${esc(m.unitHint)}</div>` : ''}`;
+    ${m.unitHint ? `<div class="small warnc">${ico('alert')}${esc(m.unitHint)}</div>` : ''}`;
   $('modelInfo').classList.remove('hidden');
   $('unitRow').classList.remove('hidden');
   $('scalePct').value = String(Math.round(m.scale * 100 * 1000) / 1000);
 }
+
+// Whole-model quarter turn (from the Fit verdict). The backend rotates the
+// repaired mesh and any kept full-detail original, so planning, the geometry
+// kernel and exports all see the same orientation. Clears any plan.
+const ROT_ID = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+const flatRot = (r) => (Array.isArray(r?.[0]) ? r.flat() : r) || ROT_ID;
+const mulRot = (a, b) => { const r = []; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) { let v = 0; for (let k = 0; k < 3; k++) v += a[i * 3 + k] * b[k * 3 + j]; r.push(v); } return r; };
+const invRot = (a) => [a[0], a[3], a[6], a[1], a[4], a[7], a[2], a[5], a[8]];
+async function rotateModel(rot, done) {
+  if (!S.model || !BE.rotate) return;
+  try {
+    busy('Turning the model', null);
+    const info = await BE.rotate(S.model, rot);
+    await onModel(info);
+    FLOW?.go('fit', { focus: false });
+    // The verdict card is the persistent confirmation (with Undo); a toast
+    // would cover it on a phone, so the change is announced, not toasted.
+    FLOW?.say(done);
+  } catch (err) { busy(false); toast(err.message, true); }
+}
+window.addEventListener('ps-rotate', (e) => {
+  const cur = flatRot(S.model?.rot);
+  if (e.detail === 'restore') rotateModel(invRot(cur), 'Restored the file’s orientation.');
+  else rotateModel(e.detail.rot, e.detail.done);
+});
 
 async function applyScale() {
   if (!S.model) return;
@@ -511,7 +578,8 @@ function hud() {
   if (!S.model) { h.innerHTML = ''; return; }
   const s = S.model.size;
   const fitsAsIs = s[0] <= u.x && s[1] <= u.y && s[2] <= u.z;
-  let html = `<div class="fit ${fitsAsIs ? 'yes' : 'no'}">Whole model ${fmt(s[0])} × ${fmt(s[1])} × ${fmt(s[2])} mm ${fitsAsIs ? 'fits as placed' : 'does not fit as placed'} · usable ${fmt(u.x)} × ${fmt(u.y)} × ${fmt(u.z)}</div>`;
+  const printer=S.printers.find(p=>p.id===$('printer').value)?.name||'Custom printer';
+  let html=viewer.view==='model'?`<div class="volume-legend"><span><i class="volume-key"></i>Usable printer volume · ${esc(printer)}</span><span><i class="stripe-key"></i>Outside usable build volume</span></div>`:'';
   if (S.plan) {
     const n = S.plan.leaves.filter((l) => !l.empty).length;
     const bad = S.plan.leaves.filter((l) => !l.empty && !l.fits).length;
@@ -545,6 +613,11 @@ function setPatchStyle(p, style, force) {
 
 async function runPlan(mode, opts = {}) {
   if (!S.model) return;
+  const focusAfter=document.activeElement?.id;
+  const camera=viewer.camera.position.clone(),target=viewer.controls.target.clone(),up=viewer.camera.up.clone(),faceFocus=viewer.faceFocus,cameraPose=viewer.cameraPose;
+  const invalid=[...document.querySelectorAll('#stepPrinter input')].find(i=>!i.checkValidity());
+  if(invalid) { FLOW?.go('fit'); $('printerAdvanced').open=true; invalid.closest('details').open=true; invalid.reportValidity(); return; }
+  if(usable().x<=0||usable().y<=0||usable().z<=0) { FLOW?.go('fit'); $('printerAdvanced').open=true; toast('The margin leaves no usable build space. Reduce it or increase the volume.',true); return; }
   S.selJointAt = null;
   if (S.sel.joint != null && S.plan) { const j = S.plan.joints.find((x) => x.id === S.sel.joint); if (j) S.selJointAt = j.origin; }
   const seq = ++S.planSeq;
@@ -559,7 +632,7 @@ async function runPlan(mode, opts = {}) {
   }
   const splitting = mode === 'auto' || st.autoSplit;
   const tris = S.model.tris;
-  PROG.start(mode === 'auto' ? 'Planning cuts' : splitting ? 'Completing the split' : 'Updating joints', {
+  PROG.start(mode === 'auto' ? 'Planning cuts' : splitting ? 'Completing the split' : 'Updating joints', { subject: S.model?.name,
     kind: 'plan', stages: PLAN_STAGES.filter(([k]) => splitting || k !== 'cut'),
     est: splitting ? estimatePlanSec(tris) : 2 + 1.5e-5 * tris,
     cancel: BE.canCancel ? () => BE.cancel() : null,
@@ -573,6 +646,8 @@ async function runPlan(mode, opts = {}) {
     if (seq !== S.planSeq) return;
     PROG.end();
     onPlan(plan, mode === 'auto');
+    if(mode!=='auto'){viewer.camera.position.copy(camera);viewer.controls.target.copy(target);viewer.camera.up.copy(up);viewer.faceFocus=faceFocus;viewer.cameraState(cameraPose);viewer.controls.update();DIRECT?.sync();viewer.dirty();DIRECT?.feedback('Edit applied · select a pin to inspect its diameter and depth into both pieces.');}
+    if(focusAfter)requestAnimationFrame(()=>{const e=$(focusAfter);if(e?.checkVisibility()&&!e.closest('[inert]'))e.focus({preventScroll:true});});
   } catch (err) {
     crumbClear();
     PROG.end();
@@ -592,12 +667,18 @@ async function runPlan(mode, opts = {}) {
   }
 }
 
-function onPlan(plan, fresh) {
+function onPlan(plan, fresh, restoring=false) {
+  if(!restoring){
+    const settingKey=s=>JSON.stringify(Object.fromEntries(Object.entries(s).filter(([k])=>!['autoSplit','autoJoints'].includes(k))));
+    if(history.current&&settingKey(history.current.settings)!==settingKey(plan.settings))history.reset();
+    history.record(plan);
+  }
   const signature = (s) => JSON.stringify({ ...s, supportWeight: null });
   S.comparison = fresh && S.planWasAuto && S.plan && signature(S.plan.settings) === signature(plan.settings)
     ? { parts: S.plan.leaves.filter((l) => !l.empty).length, volume: S.plan.leaves.reduce((s, l) => s + (l.supportVolume || 0), 0), weight: S.plan.settings.supportWeight ?? 0.5 } : null;
   S.planWasAuto = fresh;
   S.plan = plan;
+  S.settingsDirty = false;
   updateSupportPreference();
   S.built = null; S.export = null;
   if (fresh) { S.sel = {}; $('styleNote').classList.add('hidden'); }
@@ -621,6 +702,7 @@ function onPlan(plan, fresh) {
   hud();
   const w = plan.warnings || [];
   if (w.length) toast(w[0], true, 7000);
+  FLOW?.planned();
 }
 
 function renderPlan() {
@@ -631,19 +713,19 @@ function renderPlan() {
   const previous = S.comparison ? `<div class="small mute" style="margin-top:6px">Previous auto plan (${esc(supportPreference(S.comparison.weight))}): ${S.comparison.parts} part${S.comparison.parts === 1 ? '' : 's'} · proxy ≈ ${fmt(S.comparison.volume / 1000, 0)} cm³</div>` : '';
   const chips = leaves.map((l) => {
     const i = p.leaves.indexOf(l);
-    return `<div class="chip ${l.fits ? 'ok' : 'bad'} ${S.sel.leaf === l.id ? 'sel' : ''}" data-leaf="${l.id}" title="${esc(l.printFace)} down · support proxy ≈ ${fmt((l.supportVolume || 0) / 1000)} cm³ · ${fmt(l.extent[0])}×${fmt(l.extent[1])}×${fmt(l.extent[2])} mm${l.warnings ? ' · ' + esc(l.warnings.join('; ')) : ''}"><span class="sw" style="background:${partColor(i)}"></span>${l.label}<span class="x">${l.fits ? '✓' : '✗'} ↕${fmt(l.extent[2], 0)}</span></div>`;
+    return `<button aria-pressed="${S.sel.leaf === l.id}" class="chip ${l.fits ? 'ok' : 'bad'} ${S.sel.leaf === l.id ? 'sel' : ''}" data-leaf="${l.id}" title="${esc(l.printFace)} down · support proxy ≈ ${fmt((l.supportVolume || 0) / 1000)} cm³ · ${fmt(l.extent[0])}×${fmt(l.extent[1])}×${fmt(l.extent[2])} mm${l.warnings ? ' · ' + esc(l.warnings.join('; ')) : ''}"><span class="sw" style="background:${partColor(i)}"></span>${l.label}<span class="x">${ico(l.fits?'check':'error')}<span class="sr-only">${l.fits?'Fits':'Too large'}, </span>H ${fmt(l.extent[2], 0)} mm</span></button>`;
   }).join('');
-  const cutChips = cuts.map((n) => `<div class="chip ${S.sel.cut === n.id ? 'sel' : ''}" data-cut="${n.id}" title="${esc(n.reason || 'manual cut')}"><span class="sw" style="background:#e07a3f"></span>${cutName(n.id)}<span class="x">${axisName(n.cut.n)} ${fmt(n.cut.d, 0)}</span></div>`).join('');
+  const cutChips = cuts.map((n) => `<button aria-pressed="${S.sel.cut === n.id}" class="chip ${S.sel.cut === n.id ? 'sel' : ''}" data-cut="${n.id}" title="${esc(n.reason || 'manual cut')}"><span class="sw" style="background:#e07a3f"></span>${cutName(n.id)}<span class="x">${axisName(n.cut.n)} ${fmt(n.cut.d, 0)}</span></button>`).join('');
   const fbs = p.patches.filter((x) => x.fallback || x.single);
-  const fallbackNote = fbs.length ? `<div class="fblist">${fbs.map((x) => `<button class="fbitem ${x.fallback ? '' : 'single'}" data-fbpatch="${x.id}" title="${esc(x.fallback ? x.fallback.why : (x.notes || []).join('; '))}">⚠ ${cutName(x.node)} ${contactName(x)}: ${x.fallback ? `${esc(fbText(x.fallback))}` : esc(singleNote(x))}</button>`).join('')}</div>` : '';
+  const fallbackNote = fbs.length ? `<div class="fblist">${fbs.map((x) => `<button class="fbitem ${x.fallback ? '' : 'single'}" data-fbpatch="${x.id}" title="${esc(x.fallback ? x.fallback.why : (x.notes || []).join('; '))}">${ico('alert')}${cutName(x.node)} ${contactName(x)}: ${x.fallback ? `${esc(fbText(x.fallback))}` : esc(singleNote(x))}</button>`).join('')}</div>` : '';
   $('planSummary').innerHTML = `${fallbackNote}<div><span class="big">${leaves.length}</span> part${leaves.length === 1 ? '' : 's'} · ${bad.length ? `<span class="badc">${bad.length} do not fit</span> <button class="small" id="autoComplete">Auto-complete</button>` : '<span class="okc">all fit</span>'} · calculated in ${fmt(p.timing.total, 1)} s</div>
     <div class="support-estimate"><b>Support proxy ≈ ${fmt(leaves.reduce((a, l) => a + (l.supportVolume || 0), 0) / 1000, 0)} cm³</b><br><span class="small mute">Downward faces steeper than 45° × height to bed. Before joints; excludes bridges and support density.<br>${esc(supportPreference(p.settings.supportWeight ?? 0.5))} · verify in your slicer.</span>${previous}</div>
     <div class="small mute" style="margin-top:6px">Parts (click to select, then add a cut through it)</div><div class="partlist">${chips}</div>
     <div class="small mute" style="margin-top:6px">Cuts (click, then drag the arrow in the 3D view or edit below)</div><div class="partlist">${cutChips || '<span class="mute small">none — the model fits as one part</span>'}</div>`;
   $('planSummary').classList.remove('hidden');
-  for (const c of $('planSummary').querySelectorAll('[data-leaf]')) c.addEventListener('click', () => select({ leaf: +c.dataset.leaf }));
-  for (const c of $('planSummary').querySelectorAll('[data-cut]')) c.addEventListener('click', () => select({ cut: +c.dataset.cut }));
-  for (const c of $('planSummary').querySelectorAll('[data-fbpatch]')) c.addEventListener('click', () => { const x = S.plan.patches[+c.dataset.fbpatch]; select({ cut: x.node, patch: x.id }); });
+  for (const c of $('planSummary').querySelectorAll('[data-leaf]')) c.addEventListener('click', () => { select({ leaf: +c.dataset.leaf }); $('partEditor').querySelector('button')?.focus(); });
+  for (const c of $('planSummary').querySelectorAll('[data-cut]')) c.addEventListener('click', () => { select({ cut: +c.dataset.cut }); $('cutEditor').setAttribute('tabindex','-1');$('cutEditor').focus(); });
+  for (const c of $('planSummary').querySelectorAll('[data-fbpatch]')) c.addEventListener('click', () => { const x = S.plan.patches[+c.dataset.fbpatch]; select({ cut: x.node, patch: x.id }); FLOW?.picked('patch'); });
   const ac = $('autoComplete');
   if (ac) ac.addEventListener('click', () => runPlan('tree', { autoSplit: true }));
 }
@@ -652,7 +734,15 @@ function leafName(id) { const l = S.plan.leaves.find((x) => x.id === id); return
 function contactName(p) { return `${leafName(p.negLeaf)}↔${leafName(p.posLeaf)}`; }
 function fbText(fb) { return `${fb.want} → ${fb.got}: ${fb.reason}`; }
 function singleNote(p) { return ((p.notes || []).find((n) => n.startsWith('only one')) || 'only one joint fits').split(':')[0]; }
-function cutName(id) { const n = S.plan && S.plan.tree.nodes[id]; return (n && n.label) || `Cut ${id}`; }
+function cutName(id) { const n = S.plan && S.plan.tree.nodes[id],i=S.plan?.tree.nodes.filter(n=>n.cut).findIndex(n=>n.id===id)??0; return document.body.dataset.expert==='true'?((n&&n.label)||`Cut ${id}`):`Cut ${i+1}`; }
+function jointName(j){return document.body.dataset.expert==='true'?`Joint J${j.id}`:`${cutName(S.plan.patches[j.patch].node)} · Pin ${S.plan.joints.filter(x=>S.plan.patches[x.patch].node===S.plan.patches[j.patch].node).findIndex(x=>x.id===j.id)+1}`;}
+function restorePlan(direction){
+  if(!$('busy').classList.contains('hidden')||S.settingsDirty)return;
+  const plan=history.take(direction);if(!plan)return;
+  const camera=viewer.camera.position.clone(),target=viewer.controls.target.clone(),up=viewer.camera.up.clone(),faceFocus=viewer.faceFocus,cameraPose=viewer.cameraPose;
+  S.sel={};onPlan(plan,false,true);viewer.camera.position.copy(camera);viewer.controls.target.copy(target);viewer.camera.up.copy(up);viewer.faceFocus=faceFocus;viewer.cameraState(cameraPose);viewer.controls.update();DIRECT?.sync();viewer.dirty();
+  DIRECT.feedback(`${direction==='undo'?'Undid':'Redid'} edit. Built parts must be regenerated.`);FLOW?.sync();
+}
 
 function axisName(n) {
   const a = n.map(Math.abs);
@@ -662,6 +752,7 @@ function axisName(n) {
 
 function select(sel) {
   S.sel = sel;
+
   viewer.select(sel);
   if (S.plan) renderPlan();
   renderCutEditor();
@@ -671,11 +762,12 @@ function select(sel) {
     const node = j ? S.plan.patches[j.patch].node : sel.cut;
     if (node != null) selectFace(node, false);
   }
-  renderJointPanel();
+  renderJointPanel();DIRECT?.sync();MERGE?.sync();
 }
 
 function onPick(h) {
   if (!h) { select({}); return; }
+  FLOW?.picked(h.pick);
   if (h.pick === 'cut') {
     if (S.addMode) {
       const f = S.plan.faces.find((x) => x.node === h.node);
@@ -706,15 +798,16 @@ function renderCutEditor() {
   for (const x of [b[0][0], b[1][0]]) for (const y of [b[0][1], b[1][1]]) for (const z of [b[0][2], b[1][2]]) cs.push(n.cut.n[0] * x + n.cut.n[1] * y + n.cut.n[2] * z);
   const lo = Math.min(...cs), hi = Math.max(...cs);
   const patches = S.plan.patches.filter((p) => p.node === n.id);
-  el.innerHTML = `<h3>${cutName(n.id)} ${n.locked ? '<span class="badge">manual</span>' : '<span class="badge">auto</span>'}</h3>
-    <div class="reason">${esc(n.reason || 'placed by you')}</div>
-    <div class="small">Normal ${axisName(n.cut.n)} · section ${fmt(f ? f.area : 0, 0)} mm² · ${patches.length} contact patch(es)</div>
+  el.innerHTML = `<h2>${cutName(n.id)} ${n.locked ? '<span class="badge">manual</span>' : '<span class="badge">auto</span>'}</h2>
+    <div class="reason">${esc(plural(n.reason || 'placed by you'))}</div>
+    <div class="small">Normal ${axisName(n.cut.n)} · section ${fmt(f ? f.area : 0, 0)} mm² · ${patches.length} contact ${patches.length === 1 ? 'patch' : 'patches'}</div>
+    <details class="precise-values" ${document.body.dataset.expert==='true'?'open':''}><summary>Precise values <span>Offset &amp; tilt</span></summary>
     <label>Offset along normal (mm)<input type="range" id="cutOffset" min="${lo}" max="${hi}" step="0.1" value="${n.cut.d}"></label>
     <div class="row three"><label>Offset<input id="cutOffsetNum" type="number" step="0.1" value="${fmt(n.cut.d, 2)}"></label>
-      <label>Tilt A (°)<input id="tiltA" type="number" step="1" value="0"></label><label>Tilt B (°)<input id="tiltB" type="number" step="1" value="0"></label></div>
+      <label class="ring-a"><span><i aria-hidden="true"></i>Tilt A · orange ring (°)</span><input id="tiltA" type="number" step="1" value="0"></label><label class="ring-b"><span><i aria-hidden="true"></i>Tilt B · mint ring (°)</span><input id="tiltB" type="number" step="1" value="0"></label></div>
     <div class="btns"><button class="small" data-ax="x">⟂ X</button><button class="small" data-ax="y">⟂ Y</button><button class="small" data-ax="z">⟂ Z</button>
-      <button class="small primary" id="cutApply">Apply</button><button class="small danger" id="cutDelete">Delete cut</button></div>
-    <div class="small mute">Drag the arrow in the 3D view to slide the cut. Tilt rotates the plane about its in-plane axes. Deleting merges everything below this cut back into one part.</div>`;
+      <button class="small confirm" id="cutApply">Apply</button><button class="small danger" id="cutDelete">Delete cut</button></div>
+    </details><p class="small mute">Drag the blue arrow in 3D to slide. Choose Tilt cut for rotation arcs. Release to apply; Esc cancels. Precise values provides the keyboard alternative.</p>`;
   el.classList.remove('hidden');
   $('cutOffset').addEventListener('input', (e) => { $('cutOffsetNum').value = fmt(+e.target.value, 2); previewCut(n.id, +e.target.value); });
   $('cutOffset').addEventListener('change', (e) => setCut(n.id, null, +e.target.value));
@@ -780,12 +873,12 @@ function renderPartEditor() {
   const l = S.plan.leaves.find((x) => x.id === S.sel.leaf);
   if (!l) { el.classList.add('hidden'); return; }
   const bm = l.bounds;
-  el.innerHTML = `<h3>Part ${l.label}</h3>
+  el.innerHTML = `<h2>Part ${l.label}</h2>
     <div class="kv small"><b>Print size</b><span>${fmt(l.extent[0])} × ${fmt(l.extent[1])} × ${fmt(l.extent[2])} mm ${l.fits ? '<span class="okc">fits</span>' : '<span class="badc">does not fit</span>'}</span>
     <b>Bed face</b><span>${esc(l.printFace)}</span><b>Overhang</b><span>${fmt(l.overhang * 100, 0)} % of surface</span></div>
     ${(l.warnings || []).map((w) => `<div class="small warnc">${esc(w)}</div>`).join('')}
     <div class="btns"><span class="small mute">Add a cut through its centre:</span><button class="small" data-add="x">X</button><button class="small" data-add="y">Y</button><button class="small" data-add="z">Z</button>
-      ${l.fits ? '' : '<button class="small primary" id="autoThis">Auto-split this part</button>'}</div>`;
+      ${l.fits ? '' : '<button class="small confirm" id="autoThis">Auto-split this part</button>'}</div>`;
   el.classList.remove('hidden');
   const c = [(bm.Min[0] + bm.Max[0]) / 2, (bm.Min[1] + bm.Max[1]) / 2, (bm.Min[2] + bm.Max[2]) / 2];
   for (const b of el.querySelectorAll('[data-add]')) b.addEventListener('click', () => {
@@ -811,7 +904,7 @@ function renderFaces() {
     const js = S.plan.joints.filter((j) => f.patches.includes(j.patch)).length;
     const sm = S.plan.patches.filter((p) => p.node === f.node && p.seam && p.seam.kind !== 'none').length;
     const warn = S.plan.patches.some((p) => p.node === f.node && (p.fallback || p.single));
-    return `<button data-face="${f.node}" class="${S.face === f.node ? 'sel' : ''} ${warn ? 'warn' : ''}">${warn ? '⚠ ' : ''}${cutName(f.node)} · ${js ? js + ' joints' : ''}${js && sm ? ' + ' : ''}${sm ? sm + ' seam' : ''}${!js && !sm ? 'butt' : ''}</button>`;
+    return `<button data-face="${f.node}" class="${S.face === f.node ? 'sel' : ''} ${warn ? 'warn' : ''}">${warn ? ico('alert') : ''}${cutName(f.node)} · ${js ? js + ' pins' : ''}${js && sm ? ' + ' : ''}${sm ? sm + ' seam' : ''}${!js && !sm ? 'butt' : ''}</button>`;
   }).join('');
   for (const b of fl.querySelectorAll('[data-face]')) b.addEventListener('click', () => { selectFace(+b.dataset.face, true); });
   if (S.face == null || !faces.find((f) => f.node === S.face)) selectFace(faces[0].node, false);
@@ -820,10 +913,17 @@ function renderFaces() {
 
 function selectFace(node, alsoCut) {
   S.face = node;
-  for (const b of $('faceList').querySelectorAll('[data-face]')) b.classList.toggle('sel', +b.dataset.face === node);
+  if(viewer.faceFocus)viewer.faceView(node);
+  for (const b of $('faceList').querySelectorAll('[data-face]')) { b.classList.toggle('sel', +b.dataset.face === node); b.setAttribute('aria-pressed', String(+b.dataset.face === node)); }
   const f = S.plan.faces.find((x) => x.node === node);
   $('mapWrap').classList.remove('hidden');
   if (S.sel.patch == null || !f.patches.includes(S.sel.patch)) S.sel.patch = f.patches[0];
+  $('contactList').innerHTML=f.patches.map((id,i)=>`<button data-contact="${id}" aria-pressed="${S.sel.patch===id}">${document.body.dataset.expert==='true'?`Contact C${id}`:`Contact ${i+1}`}</button>`).join('');
+  for(const b of $('contactList').querySelectorAll('button'))b.addEventListener('click',()=>{
+    select({cut:node,patch:+b.dataset.contact});
+    $('mapWrap').querySelector('details.advanced').open=true;
+    document.querySelector(`[data-contact="${b.dataset.contact}"]`)?.focus();
+  });
   jmap.set(S.plan, f, mapOpts());
   if (alsoCut) select({ cut: node });
   else renderJointPanel();
@@ -843,6 +943,7 @@ function setAddMode(on) {
   $('jointDlg').classList.toggle('adding', on);
   if (S.plan && S.face != null) jmap.set(S.plan, S.plan.faces.find((x) => x.node === S.face), mapOpts());
   if (jed.open) jed.render();
+  DIRECT?.sync();
 }
 
 // client-side estimate of the footprint radius (server recomputes exactly)
@@ -870,6 +971,12 @@ function selectJoint(id) {
 }
 
 function renderJointPanel() {
+  const face=S.plan?.faces.find(f=>f.node===S.face);
+  $('joinWarnings').innerHTML=(face?.patches||[]).map((id,i)=>{const p=S.plan.patches[id],f=p.fallback,notes=[f?`${f.want} could not fit: ${f.reason}. Using ${f.got}.`:'',p.single?'Only one pin fits here; the pieces may rotate before glue cures.':''];return notes.filter(Boolean).map(text=>`<p class="warnc">${esc(text)} <button data-review-contact="${id}">Review contact ${i+1}</button></p>`).join('');}).join('');
+  for(const b of $('joinWarnings').querySelectorAll('button'))b.onclick=()=>{S.sel.patch=+b.dataset.reviewContact;S.sel.joint=null;$('mapWrap details.advanced').open=true;renderJointPanel();$('seamEditor').scrollIntoView({block:'nearest'});};
+  const js=S.plan?.joints.filter(j=>S.plan.patches[j.patch].node===S.face)||[];
+  $('pinList').innerHTML=js.map(j=>`<button data-pin="${j.id}" aria-pressed="${j.id===S.sel.joint}">${esc(jointName(j))}</button>`).join('');
+  for(const b of $('pinList').querySelectorAll('[data-pin]'))b.onclick=()=>{selectJoint(+b.dataset.pin);$('pinDiameter')?.focus();};
   renderJointPanelInner();
   renderJointPanelHook();
 }
@@ -886,7 +993,7 @@ function renderJointPanelInner() {
     const ln = (id) => S.plan.leaves.find((l) => l.id === id).label;
     const sm = p.seam || { kind: 'none' };
     const opts = ['none', ...S.kinds.seam.map((k) => k.kind)].map((k) => `<option value="${k}" ${sm.kind === k ? 'selected' : ''}>${k === 'none' ? 'No seam joint' : S.kinds.seam.find((x) => x.kind === k).label}</option>`).join('');
-    se.innerHTML = `<h3>Contact C${pid} · ${ln(p.negLeaf)} ↔ ${ln(p.posLeaf)}</h3>
+    se.innerHTML = `<h2>${document.body.dataset.expert==='true'?`Contact C${pid}`:`Contact ${f.patches.indexOf(pid)+1}`} · ${ln(p.negLeaf)} ↔ ${ln(p.posLeaf)}</h2>
       <div class="small mute">${fmt(p.area, 0)} mm² · wall ≈ ${fmt(p.thickness)} mm · largest inscribed Ø${fmt(2 * p.rmax)} mm${p.ring ? ' · shell section' : ''}</div>
       ${fallbackBlock(p)}
       ${(p.notes || []).filter((n) => !(p.single && n.startsWith('only one'))).map((n) => `<div class="small warnc">${esc(n)}</div>`).join('')}
@@ -895,7 +1002,7 @@ function renderJointPanelInner() {
       <div class="row three"><label>Finger width<input id="seamPitch" type="number" step="0.5" min="2" max="60" value="${fmt(sm.pitch || 8, 1)}"></label>
         <label>Clearance<input id="seamClear" type="number" step="0.01" min="0" max="1" value="${fmt(sm.clear || settings().fits.seam, 2)}"></label>
         <label>Male side<select id="seamMale"><option value="neg" ${sm.male !== 'pos' ? 'selected' : ''}>${ln(p.negLeaf)}</option><option value="pos" ${sm.male === 'pos' ? 'selected' : ''}>${ln(p.posLeaf)}</option></select></label></div>
-      <div class="btns"><button class="small primary" id="seamApply">Apply seam</button></div>`;
+      <div class="btns"><button class="small confirm" id="seamApply">Apply seam</button></div>`;
     $('seamApply').addEventListener('click', () => applySeam(p));
     for (const b of se.querySelectorAll('[data-pstyle]')) b.addEventListener('click', () => setPatchStyle(p, b.dataset.pstyle, b.dataset.force === '1'));
   } else se.innerHTML = '';
@@ -910,18 +1017,19 @@ function renderJointPanelInner() {
   const sizeField = (j.kind === 'insert' || j.kind === 'bolt')
     ? `<label>Size<select id="jSize">${['M2.5', 'M3', 'M4', 'M5'].map((s) => `<option ${j.size === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Screw length<input id="jScrew" type="number" step="1" min="4" max="80" value="${j.screwLen}"></label>`
     : `<label>Ø (mm)<input id="jD" type="number" step="0.5" min="1" max="30" value="${fmt(j.d, 2)}"></label><label>${j.kind === 'magnet' ? 'Thickness' : j.kind === 'snap' ? 'Beam length' : 'Depth'}<input id="jDepth" type="number" step="0.5" min="1" max="60" value="${fmt(j.depth, 1)}"></label>`;
-  je.innerHTML = `<h3>Joint J${j.id} ${j.locked ? '<span class="badge">manual</span>' : '<span class="badge">auto</span>'}</h3>
+  je.innerHTML = `<h2>${jointName(j)} ${j.locked ? '<span class="badge">manual</span>' : '<span class="badge">auto</span>'}</h2>
     <div class="small mute">${esc(desc)}</div>
     <div class="row two"><label>Type<select id="jKind">${kindOpts}</select></label><label>Fit<select id="jFit">${['glue', 'press', 'slip', 'snap'].map((x) => `<option ${j.fit === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label></div>
     <div class="row two">${sizeField}</div>
     ${['peg', 'keyed', 'insert', 'bolt', 'snap'].includes(j.kind) ? `<div class="row two"><label>${j.kind === 'insert' ? 'Insert in' : j.kind === 'bolt' ? 'Nut in' : 'Male on'}<select id="jMale"><option value="neg" ${j.male === 'neg' ? 'selected' : ''}>${ln(pp.negLeaf)}</option><option value="pos" ${j.male === 'pos' ? 'selected' : ''}>${ln(pp.posLeaf)}</option></select></label>${j.kind === 'keyed' ? `<label>Shape<select id="jShape"><option value="hex" ${j.shape === 'hex' ? 'selected' : ''}>hex</option><option value="d" ${j.shape === 'd' ? 'selected' : ''}>D</option></select></label>` : '<span></span>'}</div>` : ''}
     <div class="small">Clearance ${fmt(j.clear, 2)} mm · holes ${fmt(j.holeNeg)} / ${fmt(j.holePos)} mm · material behind face ${fmt(j.availNeg)} / ${fmt(j.availPos)} mm</div>
-    ${(j.warnings || []).map((w) => `<div class="small badc">⚠ ${esc(w)}</div>`).join('')}
-    <div class="btns"><button class="small primary" id="jApply">Apply</button><button class="small danger" id="jDel">Delete joint</button></div>
+    ${(j.warnings || []).map((w) => `<div class="small badc">${ico('alert')}${esc(w)}</div>`).join('')}
+    <div class="btns"><button class="small confirm" id="jApply">Apply</button><button class="small danger" id="jDel">Delete joint</button></div>
     <div class="small mute">Drag the joint on the map to move it.</div>`;
   je.classList.remove('hidden');
-  $('jKind').addEventListener('change', () => { j.kind = $('jKind').value; j.d = 0; j.depth = 0; j.size = ''; j.screwLen = 0; j.shape = ''; j.fit = protoJoint(j.kind).fit; updateJoint(j); });
+  $('jKind').addEventListener('change', () => { j.kind = $('jKind').value; delete j.clearOverride; j.d = 0; j.depth = 0; j.size = ''; j.screwLen = 0; j.shape = ''; j.fit = protoJoint(j.kind).fit; updateJoint(j); });
   $('jApply').addEventListener('click', () => {
+    if(j.fit!==$('jFit').value)delete j.clearOverride;
     j.fit = $('jFit').value;
     if ($('jD')) j.d = +$('jD').value;
     if ($('jDepth')) j.depth = +$('jDepth').value;
@@ -933,7 +1041,7 @@ function renderJointPanelInner() {
   });
   $('jDel').addEventListener('click', () => deleteJoint(j.id));
 }
-function renderJointPanelHook() { if (jed.open) jed.render(); }
+function renderJointPanelHook() { if (jed.open) jed.render(); DIRECT?.sync(); }
 
 function minWall() { return Math.max(1.2, 2 * +$('nozzle').value * 1.05); }
 // badge + actions for a contact that did not get the chosen style
@@ -944,10 +1052,10 @@ function fallbackBlock(p) {
     const btn = fb.forced
       ? `<div class="small why">Forcing ${esc(fb.want.toLowerCase())} does not work here either.</div>`
       : `<button class="small" data-pstyle="${esc(p.style || '')}" data-force="1" title="Try ${esc(fb.want.toLowerCase())} again with relaxed limits (2 mm minimum hole depth, 2-perimeter walls)">Use ${esc(fb.want.toLowerCase())} here anyway</button>`;
-    return `<div class="fb small"><div class="head">⚠ ${esc(fbText(fb))}</div><div class="why">${esc(fb.why)}</div><div class="btns">${btn}${own}</div></div>`;
+    return `<div class="fb small"><div class="head">${ico('alert')}${esc(fbText(fb))}</div><div class="why">${esc(fb.why)}</div><div class="btns">${btn}${own}</div></div>`;
   }
   if (p.single) {
-    return `<div class="fb small"><div class="head">⚠ ${esc(singleNote(p))}</div><div class="why">One pin is a pivot: the parts can rotate about it. Keyed pegs or a seam stop that.</div>
+    return `<div class="fb small"><div class="head">${ico('alert')}${esc(singleNote(p))}</div><div class="why">One pin is a pivot: the parts can rotate about it. Keyed pegs or a seam stop that.</div>
       <div class="btns"><button class="small" data-pstyle="seam" data-force="0">Use seam here</button><button class="small" data-pstyle="keyed" data-force="0">Use keyed peg here</button>${own}</div></div>`;
   }
   return own ? `<div class="btns">${own}</div>` : '';
@@ -955,7 +1063,7 @@ function fallbackBlock(p) {
 function seamWallWarn(p, sm) {
   const need = { tongue: 3, lap: 2 }[sm.kind];
   if (!need || !sm.locked || p.thickness >= need * minWall()) return '';
-  return `<div class="small warnc">⚠ ${sm.kind === 'tongue' ? 'Tongue and groove' : 'Half lap'} wants a wall ≥ ${fmt(need * minWall())} mm; this one is ${fmt(p.thickness)} mm.</div>`;
+  return `<div class="small warnc">${ico('alert')}${sm.kind === 'tongue' ? 'Tongue and groove' : 'Half lap'} wants a wall ≥ ${fmt(need * minWall())} mm; this one is ${fmt(p.thickness)} mm.</div>`;
 }
 
 // any edit makes the whole patch manual so its other joints stay put
@@ -990,7 +1098,7 @@ function addJoint(pid, q) {
   const j = { id: 100000 + Math.floor(Math.random() * 1e6), patch: pid, kind, p: q, angle: S.plan.patches[pid].axis, male: 'neg', fit: pr.fit, d: 0, depth: 0, auto: false, locked: true };
   j.origin = jointOrigin(j, q);
   S.plan.joints.push(j);
-  S.sel = { patch: pid, cut: S.plan.patches[pid].node };
+  S.sel = { joint:j.id, patch: pid, cut: S.plan.patches[pid].node };
   runPlan('joints');
 }
 function deleteJoint(id) {
@@ -1021,7 +1129,7 @@ function applySeam(p) {
 
 // ---------------- build & export ----------------
 async function build() {
-  if (!S.plan) return;
+  if (!readiness(S).ok) {toast(readiness(S).text,true);return;}
   $('buildBtn').disabled = true;
   busy('Building parts in your browser (Manifold WASM)', 0.05);
   const t0 = performance.now();
@@ -1039,18 +1147,20 @@ async function build() {
   } catch (err) { toast('Build failed: ' + err.message, true, 10000); }
   busy(false);
   $('buildBtn').disabled = false;
+  FLOW?.sync();
+  if (S.built) FLOW?.say('Parts built. Review the geometry checks, then prepare downloads.');
 }
 
 function renderBuild(res, ms) {
   const leafIdx = Object.fromEntries(S.plan.leaves.map((l, i) => [l.id, i]));
   const ok = res.parts.every((p) => p.status === 'NoError');
   const maxInt = Math.max(0, ...res.checks.map((c) => c.interference));
-  const rows = res.parts.map((p) => `<tr><td><span class="sw" style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${partColor(leafIdx[p.leaf])}"></span> ${p.label}</td><td>${fmt(p.volume / 1000)} cm³</td><td>${p.status === 'NoError' ? '<span class="okc">manifold ✓</span>' : '<span class="badc">' + p.status + '</span>'}</td><td>genus ${p.genus}</td></tr>`).join('');
-  const pins = res.pins.map((p) => `<tr><td>pin Ø${fmt(p.d, 2)}</td><td>${fmt(p.len)} mm</td><td>× ${p.count}</td><td></td></tr>`).join('');
-  $('buildInfo').innerHTML = `<div>${ok ? '<span class="okc">All parts are closed manifolds.</span>' : '<span class="badc">Some parts failed.</span>'} ${fmt(ms / 1000, 1)} s</div>
+  const rows = res.parts.map((p) => `<tr><th scope="row"><span class="sw" style="background:${partColor(leafIdx[p.leaf])}"></span>${p.label}</th><td class="num">${fmt(p.volume / 1000)} cm³</td><td>${p.status === 'NoError' ? `<span class="okc">${ico('check')}Closed</span>` : '<span class="badc">' + p.status + '</span>'}</td><td class="num" title="Number of through-holes (topological genus)">${p.genus}</td></tr>`).join('');
+  const pins = res.pins.length ? `<tbody class="ver-pins">${res.pins.map((p) => `<tr><th scope="row">Pin Ø${fmt(p.d, 2)}</th><td class="num">${fmt(p.len)} mm long</td><td>× ${p.count}</td><td></td></tr>`).join('')}</tbody>` : '';
+  $('buildInfo').innerHTML = `<div class="ver-head">${ok ? `<span class="okc">${ico('success')}All parts are closed manifolds.</span>` : `<span class="badc">${ico('error')}Some parts failed.</span>`}<span class="mute small">checked in ${fmt(ms / 1000, 1)} s</span></div>
     <div class="small ${res.fromFull ? 'okc' : 'mute'}">${res.fromFull ? `Cut from the full-detail original (${fmtTris(S.model.simplified.inputTris)} triangles).` : S.model.simplified && !S.model.simplified.failed ? `Cut from the simplified mesh (${fmtTris(S.model.tris)} triangles; max deviation ${fmt(S.model.simplified.maxDev, 3)} mm).` : ''}</div>
-    <table class="ver">${rows}${pins}</table>
-    <div class="small">Mating checks: max interference ${fmt(maxInt, 3)} mm³ ${maxInt < 0.05 ? '<span class="okc">✓</span>' : '<span class="badc">✗</span>'}${res.light ? ` (within 40 mm of each cut) · whole-model void/outside checks skipped at ${fmtTris(res.tris)} triangles` : ` · material added outside the model ${fmt(res.outside, 2)} mm³ · voids (holes + clearances) ${fmt(100 * res.voids / res.original, 2)} %`}</div>`;
+    <table class="ver"><thead><tr><th scope="col">Part</th><th scope="col" class="num">Volume</th><th scope="col">Solid</th><th scope="col" class="num" title="Number of through-holes">Holes</th></tr></thead><tbody>${rows}</tbody>${pins}</table>
+    <div class="small">Mating checks: max interference ${fmt(maxInt, 3)} mm³ ${maxInt < 0.05 ? `<span class="okc">${ico('check')}<span class="sr-only">passed</span></span>` : `<span class="badc">${ico('error')}<span class="sr-only">failed</span></span>`}${res.light ? ` (within 40 mm of each cut) · whole-model void/outside checks skipped at ${fmtTris(res.tris)} triangles` : ` · material added outside the model ${fmt(res.outside, 2)} mm³ · voids (holes + clearances) ${fmt(100 * res.voids / res.original, 2)} %`}</div>`;
   $('buildInfo').classList.remove('hidden');
 }
 
@@ -1080,7 +1190,7 @@ function linkList(res) {
 }
 
 async function exportPkg() {
-  if (!S.built) return;
+  if (!S.built||!readiness(S).ok||!S.built.parts.every(p=>p.status==='NoError')) {toast('Resolve geometry warnings and build before exporting.',true);return;}
   $('exportBtn').disabled = true;
   busy('Packaging: orienting parts, packing plates, writing 3MF/STL and the assembly sheet', null);
   try {
@@ -1095,12 +1205,14 @@ async function exportPkg() {
     S.built.pins.forEach((p) => { parts.push({ label: `pin_d${fmt(p.d, 2)}_L${fmt(p.len)}`, leaf: -1, kind: 'pin', count: p.count, file: 'm' + files.length, d: p.d, len: p.len }); files.push(psm(p.mesh)); });
     const res = await BE.export(S.model, parts, files, S.plan, null, png, (m) => busy(msgText(m), null));
     S.export = res;
-    $('exportInfo').innerHTML = `<div><b>${res.parts.length}</b> files on <b>${res.plates}</b> plate(s) ${res.warnings && res.warnings.length ? '<span class="warnc">· ' + esc(res.warnings.join('; ')) + '</span>' : '<span class="okc">· all closed, all fit</span>'}</div>${linkList(res)}`;
+    $('exportInfo').innerHTML = `<div><b>${res.parts.length}</b> ${res.parts.length === 1 ? 'print file' : 'print files'} on <b>${res.plates}</b> ${res.plates === 1 ? 'plate' : 'plates'} ${res.warnings && res.warnings.length ? '<span class="warnc">· ' + esc(res.warnings.join('; ')) + '</span>' : '<span class="okc">· all closed, all fit</span>'}</div>${linkList(res)}`;
     $('exportInfo').classList.remove('hidden');
     toast('Export ready');
   } catch (err) { toast('Export failed: ' + err.message, true, 10000); }
   busy(false);
   $('exportBtn').disabled = false;
+  FLOW?.sync();
+  if (S.export) FLOW?.say('Downloads ready. The package contains parts, plates and an assembly sheet.');
 }
 
 async function coupon() {
