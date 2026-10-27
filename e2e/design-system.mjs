@@ -37,6 +37,13 @@ try {
     // Each icon-only control retains a DOM label, aria-label, or title.
     const bad=await p.evaluate(()=>[...document.querySelectorAll('button,a[href]')].filter(e=>e.querySelector('svg')&&!e.textContent.trim()&&!e.getAttribute('aria-label')&&!e.getAttribute('title')).map(e=>e.id||e.outerHTML.slice(0,80)));
     assert.deepEqual(bad,[],'named icon controls');
+    // Removing a model also removes its new scene dressing (no ghost floor).
+    await p.click('[data-sample="bracket_320mm.stl"]');
+    await p.waitForFunction(()=>window.__ps.model&&window.__ps.workerReady&&document.querySelector('#busy').classList.contains('hidden'));
+    assert.equal(await p.evaluate(()=>!!window.__viewer.ground),true,'ground added with model');
+    await p.click('#flowNav [data-step="load"]');await p.click('#removeModel');
+    assert.equal(await p.evaluate(()=>window.__viewer.ground),null,'ground removed with model');
+    await audit(p,dev+'-removed');
     await p.goto(new URL('guide.html',url).href,{waitUntil:'networkidle'});await audit(p,dev+'-guide');
     assert.equal(await p.locator('nav a[aria-current=true]').count(),1,'initial chapter current');
     await p.locator('#printing').scrollIntoViewIfNeeded();await p.waitForTimeout(300);
@@ -48,6 +55,8 @@ try {
     await ctx.close();
   }
   assert.deepEqual(report.errors,[]);
-  const r=await fetch(new URL('js/app.js',url));const js=await r.text();assert.match(js,/from '\.\/viewer.js\?v=[\w-]+'/,'module imports stamped');
+  const probe=await browser.newPage();await probe.goto(url,{waitUntil:'networkidle'});
+  const js=await probe.evaluate(async()=>await(await fetch('js/app.js')).text());await probe.close();
+  assert.match(js,/from '\.\/viewer.js\?v=[\w-]+'/,'module imports stamped');
   console.log('PASS design system',report.states.length,'states');
 } finally {fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));await browser.close();}

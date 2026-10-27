@@ -111,7 +111,7 @@ function contactShadow(box, z) {
   floor.position.set(c.x, c.y, z - 0.02); floor.renderOrder = 0; grp.add(floor);
   const m = new THREE.Mesh(new THREE.PlaneGeometry(s.x * 1.25 + 36, s.y * 1.25 + 36), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, toneMapped: false }));
   m.position.set(c.x, c.y, z); m.renderOrder = 1; grp.add(m);
-  grp.geometry = { dispose() { floor.geometry.dispose(); m.geometry.dispose(); } };
+  grp.geometry = { dispose() { floor.geometry.dispose(); floor.material.dispose(); m.geometry.dispose(); m.material.dispose(); } };
   return grp;
 }
 
@@ -249,7 +249,7 @@ export class Viewer {
     return `Offset ${axis} ${this.dragD.toFixed(1)} mm`;
   }
 
-  clearAll(){for(const k of Object.keys(this.groups))this.clear(k);this.tc.detach();this.box=null;this.modelMesh=null;this.modelGeom=null;this.modelIndexed=null;this.plan=null;this.cutMeshes={};this.jointMeshes={};this.partMeshes=[];this.dirty();}
+  clearAll(){if(this.ground){this.scene.remove(this.ground);this.ground.geometry.dispose();this.ground=null;}for(const k of Object.keys(this.groups))this.clear(k);this.tc.detach();this.box=null;this.modelMesh=null;this.modelGeom=null;this.modelIndexed=null;this.plan=null;this.cutMeshes={};this.jointMeshes={};this.partMeshes=[];this.dirty();}
 
   cutMode(mode){this.tc.setMode(mode);this.tc.showX=mode==='rotate';this.tc.showY=mode==='rotate';this.tc.showZ=mode!=='rotate';this.highlight();}
 
