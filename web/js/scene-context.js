@@ -54,14 +54,30 @@ export class SceneContext {
     this.fit(step,stage,top,bottom);
   }
   fit(step,stage,top,bottom){
-    const svg=$('fitDimensions'),v=this.v,show=step==='fit'&&v.view==='model'&&v.box;hide(svg,!show);if(!show)return;
-    const a=v.box.min,b=v.box.max,size=v.box.getSize(new THREE.Vector3()),pad=Math.max(...size.toArray())*.08;
-    const pairs=[[[a.x,a.y-pad,a.z],[b.x,a.y-pad,a.z]],[[b.x+pad,a.y,a.z],[b.x+pad,b.y,a.z]],[[a.x-pad,a.y,a.z],[a.x-pad,a.y,b.z]]];
-    const usable=[v.bed.x,v.bed.y,v.bed.z];
-    svg.innerHTML=`<defs><marker id="dimArrow" viewBox="0 0 8 8" refX="4" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M8 4 L0 0 L0 8Z" fill="context-stroke"/></marker></defs>`+pairs.map(([lo,hi],i)=>{
-      const p=this.project(vec(lo)),q=this.project(vec(hi)),label=`${['W','D','H'][i]} ${size.getComponent(i).toFixed(1)} mm`,x=clamp((p.x+q.x)/2,62,stage.width-62),y=clamp((p.y+q.y)/2+(i===0?18:-12),top+14,bottom-12);
-      return `<g data-dimension="${['width','depth','height'][i]}" class="${size.getComponent(i)>usable[i]?'over':''}"><path d="M${p.x},${p.y}L${q.x},${q.y}" marker-start="url(#dimArrow)" marker-end="url(#dimArrow)"/><rect class="dim-bg" x="${x-(label.length*7.2+18)/2}" y="${y-15}" width="${label.length*7.2+18}" height="22" rx="5"/><text x="${x}" y="${y}">${label}</text></g>`;
-    }).join('');
+    const svg=$('fitDimensions'),v=this.v,show=step==='fit'&&v.view==='model'&&v.box&&v.bed;hide(svg,!show);
+    const legend=$('fitLegend');if(legend)hide(legend,!show);if(!show)return;
+    const g=v.fitGeometry(),size=v.box.getSize(new THREE.Vector3()),usable=[v.bed.x,v.bed.y,v.bed.z];
+    const cen=this.project(g.all.getCenter(new THREE.Vector3())),edge=12,W=stage.width;
+    // Labels sit outside the geometry: pushed away from the projected centre of
+    // model ∪ volume, then held at least 12 px inside the viewport.
+    const narrow=W<560,placed=[],out=[];
+    // Order H, W, D: the failing axis is placed last so it is the one nudged
+    // into free space, and every pill keeps a 6 px gap from the others.
+    for(const i of [2,0,1]){
+      const [lo,hi]=g.lines[i],p=this.project(vec(lo)),q=this.project(vec(hi)),over=size.getComponent(i)>usable[i]+1e-6,val=size.getComponent(i).toFixed(1);
+      const label=`${['W','D','H'][i]} ${val}`+(over?` / ${usable[i].toFixed(1)} mm${narrow?'':' usable'}`:' mm');
+      const w=Math.round(label.length*7.2+22),h=24,mx=(p.x+q.x)/2,my=(p.y+q.y)/2;let dx=mx-cen.x,dy=my-cen.y;const n=Math.hypot(dx,dy)||1;dx/=n;dy/=n;
+      const off=i===2?w/2+10:i===1?28:22;
+      let x=clamp(mx+dx*off,edge+w/2,W-edge-w/2),y=clamp(my+dy*off+(i===2?0:4),top+edge+h/2,bottom-edge-h/2);
+      const hit=(x,y)=>placed.find(r=>Math.abs(r.x-x)<(r.w+w)/2+6&&Math.abs(r.y-y)<(r.h+h)/2+6);
+      for(let k=0,r;(r=hit(x,y))&&k<8;k++){const sy=y>=r.y?1:-1,ny=r.y+sy*((r.h+h)/2+6);
+        y=ny<top+edge+h/2||ny>bottom-edge-h/2?clamp(r.y-sy*((r.h+h)/2+6),top+edge+h/2,bottom-edge-h/2):ny;}
+      placed.push({x,y,w,h});
+      out[i]=`<g data-dimension="${['width','depth','height'][i]}" class="${over?'over':'ok'}"><path d="M${p.x.toFixed(1)},${p.y.toFixed(1)}L${q.x.toFixed(1)},${q.y.toFixed(1)}" marker-start="url(#dimArrow)" marker-end="url(#dimArrow)"/><rect class="dim-bg" x="${(x-w/2).toFixed(1)}" y="${(y-h/2).toFixed(1)}" width="${w}" height="${h}" rx="6"/><text x="${x.toFixed(1)}" y="${(y+4.5).toFixed(1)}">${label}</text></g>`;
+    }
+    // Lines first, pills on top, so no arrow is drawn across a label.
+    const lines=out.map(o=>o.replace(/<rect[\s\S]*$/,'</g>')).join(''),pills=out.map(o=>o.replace(/<path[^>]*\/>/,'')).join('');
+    svg.innerHTML=`<defs><marker id="dimArrow" viewBox="0 0 8 8" refX="4" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M8 4 L0 0 L0 8Z" fill="context-stroke"/></marker></defs>`+lines.replace(/data-dimension="(\w+)"/g,'data-dim-line="$1"')+pills;
   }
 }
 

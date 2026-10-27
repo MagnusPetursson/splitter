@@ -5,6 +5,30 @@ const $ = id => document.getElementById(id);
 const steps = ['load','fit','split','join','export'];
 const panels = ['stepModel','stepPrinter','stepSplit','stepJoints','stepExport'];
 const names = ['Load','Fit','Split','Join','Export'];
+const AXIS=['wide','deep','tall'],AXN=['Width','Depth','Height'],mm=v=>v.toFixed(1);
+// The fit verdict states the result first, then what Plan cuts will do about
+// it. The orientation test mirrors the planner's whole-model candidates:
+// world-axis "down" directions (only +Z when parts stay upright) and quarter
+// turns on the bed. The planner may still find a diagonal fit this misses.
+export function fitAssess(size,u,upright=false){
+  const over=[0,1,2].filter(k=>size[k]>u[k]+1e-9);
+  const perms=upright?[[0,1,2],[1,0,2]]:[[0,1,2],[1,0,2],[0,2,1],[2,0,1],[1,2,0],[2,1,0]];
+  const p=over.length?perms.slice(1).find(q=>q.every((a,i)=>size[a]<=u[i]+1e-9)):null;
+  const resolve=!over.length?'as-placed':!p?'none':p[2]===2?'turn':'side';
+  // Quarter-turn taking old axis p[i] to new axis i; one row is negated when
+  // the permutation is odd, so it is a rotation (det +1), never a mirror.
+  let rot=null;if(p){rot=[0,0,0,0,0,0,0,0,0];p.forEach((a,i)=>rot[i*3+a]=1);const odd=(p[0]>p[1])+(p[0]>p[2])+(p[1]>p[2]);if(odd%2)rot[0*3+p[0]]=-1;}
+  if(!over.length)return{over,resolve,head:'Fits as placed',metric:`${size.map(mm).join(' × ')} mm in ${u.map(mm).join(' × ')} mm usable`,
+    short:'Plan cuts chooses its print orientation',next:'No cut is needed. Plan cuts chooses the print orientation and only adds a cut if your Split preference trades one for less support.'};
+  const head=`Doesn’t fit as placed: ${over.map(k=>`${mm(size[k]-u[k])} mm too ${AXIS[k]}`).join(', ')}`;
+  const metric=over.map(k=>`${AXN[k]} ${mm(size[k])} / ${mm(u[k])} mm usable`).join(' · ');
+  const how=resolve==='turn'?'turned 90° on the bed':'laid on its side';
+  if(p)return{over,resolve,rot,how,act:resolve==='turn'?'Turn 90° on the bed':'Lay it on its side',head,metric,short:`Fits in one piece if ${how}`,
+    next:`Or go straight to Plan cuts: it tries print orientations before it cuts. Nothing is scaled.`};
+  const any=upright?'No upright orientation':'No orientation';
+  return{over,resolve,head,metric,short:`${any} fits whole · Plan cuts proposes pieces`,
+    next:`${any} fits it whole. Plan cuts proposes cuts and a print orientation for each piece; you review them before anything is built.`};
+}
 export class GuidedFlow {
   constructor({S, viewer, setView, split, prepare, onSync}) {
     this.S=S;this.viewer=viewer;this.setView=setView;this.step='load';
@@ -18,6 +42,7 @@ export class GuidedFlow {
       $('supportWeight').value=b.dataset.weight;$('supportWeight').dispatchEvent(new Event('input'));this.sync();
     }));
     $('supportWeight').addEventListener('input',()=>this.sync());
+    $('upright').addEventListener('change',()=>this.sync());
     $('printer').addEventListener('change',()=>{if($('printer').value==='custom')$('printerAdvanced').open=true;this.sync();});
     for(const id of ['bedX','bedY','bedZ','margin','nozzle'])$(id).addEventListener('input',()=>this.sync());
     $('frameModel').addEventListener('click',()=>viewer.frameCurrent());
@@ -134,12 +159,18 @@ export class GuidedFlow {
     $('spreadParts').textContent=this.viewer.explode>=.02?'Exploded':'Assembled';
     const x=+$('bedX').value,y=+$('bedY').value,z=+$('bedZ').value,m=+$('margin').value;
     const u=[Math.max(0,x-2*m),Math.max(0,y-2*m),Math.max(0,z-m)];
-    $('fitReadout').innerHTML=`<div class="readout-head"><b>Usable volume</b><span>W × D × H · mm</span></div><dl class="metrics">${['Width','Depth','Height'].map((n,k)=>`<div class="${S.model&&S.model.size[k]>u[k]?'over':''}"><dt>${n}</dt><dd>${u[k]}${S.model?` <span>model ${S.model.size[k].toFixed(1)}</span>`:''}</dd></div>`).join('')}</dl><p>Bed ${x} × ${y} × ${z} mm. Reserve ${m} mm at each side and at the top for clearance; nothing is scaled.</p>`;
-    const over=S.model?S.model.size.map((s,k)=>s>u[k]?`${(s-u[k]).toFixed(1)} mm too ${['wide','deep','tall'][k]} for the usable space (${['Width','Depth','Height'][k]} ${s.toFixed(1)} mm > ${u[k]} mm).`:'').filter(Boolean):[];
-    {const pn=this.printerName(),head=over.map(o=>o.split(' for the usable')[0]),k=(over.length?'o':'f')+pn+over.join('|');if($('fitVerdict').dataset.k!==k){$('fitVerdict').dataset.k=k;$('fitVerdict').dataset.summary=over.length?head.join(' · ')+'.':'Fits as placed.';
-      $('fitVerdict').innerHTML=!S.model?'':over.length?`${ico('alert')}<div><b>${head.join(' · ')}</b><p>${over.map(o=>o.replace(/^.*\((\w+) ([\d.]+) mm > ([\d.]+) mm\)\.$/,'$1 $2 mm, usable $3 mm')).join(' · ')} on <span class="pn"></span> (the usable space).</p><p class="sub">Splitting finds pieces that fit. Review the cuts and joints before anything is built.</p></div>`:`${ico('success')}<div><b>Whole model fits as placed</b><p>on <span class="pn"></span>. The planner can keep it in one piece.</p></div>`;
-      $('fitVerdict').querySelectorAll('.pn').forEach(e=>e.textContent=pn);}}
-    $('fitVerdict').classList.toggle('over',!!over.length);
+    const f=S.model?fitAssess(S.model.size,u,$('upright').checked):null,turnedNow=S.model?.rot&&JSON.stringify(S.model.rot.flat?S.model.rot.flat():S.model.rot)!=='[1,0,0,0,1,0,0,0,1]';if(f&&turnedNow&&!f.over.length)f.head='Fits as turned';
+    $('fitReadout').innerHTML=`<div class="readout-head"><b>Model vs usable volume</b><span>W × D × H · mm</span></div><dl class="metrics">${['Width','Depth','Height'].map((n,k)=>`<div class="${f&&f.over.includes(k)?'over':''}"><dt>${n}</dt><dd>${S.model?`${S.model.size[k].toFixed(1)}<span>of ${u[k].toFixed(1)} usable</span>`:u[k].toFixed(1)}</dd></div>`).join('')}</dl><p>Usable = bed ${x} × ${y} × ${z} mm less clearance. Reserve ${m} mm at each side and the top; nothing is scaled.</p>`;
+    {const pn=this.printerName(),k=JSON.stringify([pn,f,S.model?.rot]);if($('fitVerdict').dataset.k!==k){$('fitVerdict').dataset.k=k;
+      $('fitVerdict').dataset.summary=f?f.head+'\n'+f.short:'';
+      const turned=S.model&&JSON.stringify((S.model.rot||[]).flat())!=='[1,0,0,0,1,0,0,0,1]'&&S.model.rot;
+      const fix=f&&f.rot?`<div class="fit-fix"><button type="button" data-fit-rotate>${ico('rotate')}${f.act}</button><span>Fits in one piece ${f.how}.</span></div>`:'';
+      const undo=turned?`<p class="fit-turned">Turned from the file’s orientation. <button type="button" class="linkish" data-fit-restore>Restore file orientation</button></p>`:'';
+      $('fitVerdict').innerHTML=!f?'':`${ico(f.over.length?'alert':'success')}<div><b class="fit-head">${f.head}</b><p class="fit-metric">${f.metric} on <span class="pn"></span></p>${fix}<p class="fit-next">${f.next}</p>${undo}</div>`;
+      $('fitVerdict').querySelector('[data-fit-rotate]')?.addEventListener('click',()=>dispatchEvent(new CustomEvent('ps-rotate',{detail:{rot:f.rot,done:`Turned: it now fits in one piece (${f.how}).`}})));
+      $('fitVerdict').querySelector('[data-fit-restore]')?.addEventListener('click',()=>dispatchEvent(new CustomEvent('ps-rotate',{detail:'restore'})));$('fitVerdict').querySelectorAll('.pn').forEach(e=>e.textContent=pn);}}
+    $('fitVerdict').classList.toggle('over',!!f&&f.over.length>0);
+    $('fitVerdict').dataset.resolve=f?f.resolve:'';
     const simp=S.model?.simplified;$('fitMeshNote').hidden=!simp;
     $('fitMeshNote').textContent=simp?`Simplified for planning: ${simp.inputTris.toLocaleString()} → ${simp.outputTris.toLocaleString()} triangles. Maximum sampled deviation ${simp.maxDev.toFixed(3)} mm. ${S.model.originalKept?'Full-detail original retained for export.':'Export will use this simplified mesh.'} See Load for the complete repair and simplification report.`:'';
     document.querySelectorAll('[data-weight]').forEach(b=>b.setAttribute('aria-pressed',String(+$('supportWeight').value===+b.dataset.weight)));

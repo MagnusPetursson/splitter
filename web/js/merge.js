@@ -60,6 +60,11 @@ export class MergeLayer {
     this.sheetOpen = store('ps.sheet') === 'open' ? true : null;
     $('sheetToggle').addEventListener('click', () => { this.sheetOpen = !this.isSheetOpen(); store('ps.sheet', this.sheetOpen ? 'open' : 'peek'); this.sync(); if (this.sheetOpen) $('side').querySelector('.step:not([hidden])')?.focus({preventScroll:true}); });
     addEventListener('resize', () => this.sync());
+    // Scroll affordance: the panel fades and shows "More below" only while
+    // content actually continues below the fold; at the end nothing looks cut.
+    const side = $('side'), more = () => { const left = side.scrollHeight - side.scrollTop - side.clientHeight; side.dataset.more = String(left > 6); };
+    side.addEventListener('scroll', more, {passive: true}); new ResizeObserver(more).observe(side);
+    new MutationObserver(more).observe(side, {subtree: true, childList: true, attributes: true, attributeFilter: ['hidden', 'open', 'class']}); this.more = more;
   }
   isSheetOpen() {
     if (!phone()) return true;
@@ -102,9 +107,20 @@ export class MergeLayer {
     const btn = $('autoSplit'), home = $('autoSplitHome');
     if (show && btn.parentElement !== $('resultActions')) $('resultActions').append(btn);
     if (!show && btn.previousElementSibling !== home) home.after(btn);
-    const label = show ? 'Regenerate' : S.plan ? 'Plan cuts again' : 'Plan cuts automatically';
+    // One primary per view, one label per action: while Split still needs a
+    // plan, the in-panel button is the action and the footer's identical
+    // "Plan cuts" steps aside (on a phone peek the panel button is hidden, so
+    // the footer keeps it).
+    const needsPlan = step === 'split' && (!S.plan || S.settingsDirty) && !show;
+    const label = show ? 'Regenerate' : S.plan && !S.settingsDirty ? 'Plan cuts again' : 'Plan cuts';
     if (btn.firstChild?.nodeType === 3 && btn.firstChild.textContent.trim() !== label) btn.firstChild.textContent = label + ' ';
-    btn.classList.toggle('primary', !show && !S.plan); btn.classList.toggle('wide', !show);
+    else if (!btn.firstChild) btn.textContent = label + ' ';
+    btn.classList.toggle('primary', needsPlan); btn.classList.toggle('wide', !show);
+    $('flowNext').hidden = needsPlan && document.body.dataset.sheet !== 'peek';
+    const intro = $('stepSplit').querySelector('.step-intro'), whole = S.plan && S.plan.leaves?.length === 1, introText = S.plan && !S.settingsDirty ? (whole ? 'No cut needed: it prints in one piece in the orientation shown. Add a cut only if you want one; otherwise continue.' : 'Plan first, build later. Review the suggested cuts; drag the highlighted arrow to move one, or use Tilt cut.') : S.plan ? 'Settings changed since these cuts were planned. Plan cuts again to apply them.' : 'Choose what matters more, then Plan cuts. You review the proposed cuts here before anything is built.';
+    if (intro.textContent !== introText) intro.textContent = introText;
+    const help = $('stepSplit').querySelector('.context-help'), helpText = S.plan && !whole ? 'Why these cuts?' : 'How cuts are chosen';
+    if (help.firstChild.textContent !== helpText) help.firstChild.textContent = helpText;
     if (!show) return;
     const parts = S.plan.leaves.filter(l => !l.empty), bad = parts.filter(l => !l.fits).length;
     const cuts = S.plan.tree.nodes.filter(n => n.cut).length, seams = S.plan.patches.filter(p => p.seam && p.seam.kind !== 'none').length;
@@ -311,12 +327,17 @@ export class MergeLayer {
     $('sheetToggle').setAttribute('aria-expanded', String(open));
     const why = document.body.dataset.step === 'fit' && $('fitVerdict').classList.contains('over');
     $('sheetToggle').textContent = open ? 'Less' : why ? 'Why?' : 'Details';
-    const sum = this.summary(); if ($('sheetSummary').textContent !== sum) $('sheetSummary').textContent = sum;
+    const sum = this.summary(), el = $('sheetSummary');
+    if (el.dataset.t !== sum) { el.dataset.t = sum; const [h, sub] = sum.split('\n'); el.replaceChildren(); const b = document.createElement('b'); b.textContent = h; el.append(b); if (sub) { const s2 = document.createElement('span'); s2.textContent = sub; el.append(s2); } el.dataset.lines = sub ? '2' : '1'; el.dataset.tone = document.body.dataset.step === 'fit' && $('fitVerdict').classList.contains('over') ? 'over' : ''; }
     const ol = this.isOutlinerOpen();
     $('outliner').hidden = !ol; $('objectsBtn').setAttribute('aria-expanded', String(ol)); $('objectsBtn').hidden = !expert || !S.model;
     document.body.dataset.outliner = String(ol);
     if (ol) this.renderOutliner();
-    this.renderInspector(); this.renderResult(); this.renderOutput(); this.syncCutFields();
+    this.renderInspector(); this.renderResult(); this.renderOutput(); this.syncCutFields(); this.more?.();
+    // One primary per view: a local editor's Apply (pin, cut, seam) owns the
+    // emphasis while it is open; the footer step action steps down to secondary.
+    const next = $('flowNext'), local = [...document.querySelectorAll('.primary')].some(e => e !== next && !e.closest('dialog') && e.checkVisibility());
+    next.classList.toggle('primary', !local);
     $('commandBtn').hidden = !expert;
     if (phone()) { const step = document.body.dataset.step, t = step === 'split' && S.plan ? 'Drag the blue arrow to move a cut · two fingers pan' : step === 'join' ? 'Tap a pin to edit · drag to move it' : 'Drag to orbit · pinch to zoom · two fingers pan'; if ($('viewerHint').textContent !== t) $('viewerHint').textContent = t; }
   }

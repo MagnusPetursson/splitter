@@ -3,7 +3,10 @@
 // fitting and Euclidean distance transforms.
 package geom
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 // Vec3 is a 3D vector in millimetres.
 type Vec3 [3]float64
@@ -145,3 +148,40 @@ func AlignToDown(d Vec3) Mat3 {
 
 // Clamp limits v to [lo,hi].
 func Clamp(v, lo, hi float64) float64 { return math.Max(lo, math.Min(hi, v)) }
+
+// QuarterTurn validates a row-major 3×3 matrix as a whole-model quarter-turn
+// rotation: a signed permutation with determinant +1 (no mirroring, no
+// scaling). Used to lay a model on another side before planning.
+func QuarterTurn(a []float64) (Mat3, error) {
+	var m Mat3
+	if len(a) != 9 {
+		return m, fmt.Errorf("rotation needs 9 values, got %d", len(a))
+	}
+	var used [3]bool
+	for i := 0; i < 3; i++ {
+		n := 0
+		for j := 0; j < 3; j++ {
+			v := a[i*3+j]
+			m[i][j] = v
+			switch v {
+			case 0:
+			case 1, -1:
+				if used[j] {
+					return m, fmt.Errorf("rotation is not a signed permutation")
+				}
+				used[j] = true
+				n++
+			default:
+				return m, fmt.Errorf("rotation entries must be -1, 0 or 1")
+			}
+		}
+		if n != 1 {
+			return m, fmt.Errorf("rotation is not a signed permutation")
+		}
+	}
+	det := m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1]) - m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0]) + m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0])
+	if det != 1 {
+		return m, fmt.Errorf("rotation would mirror the model")
+	}
+	return m, nil
+}

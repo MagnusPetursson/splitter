@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MagnusPetursson/splitter/internal/geom"
 	"github.com/MagnusPetursson/splitter/internal/mesh"
 	"github.com/MagnusPetursson/splitter/internal/plan"
 	"github.com/MagnusPetursson/splitter/internal/printers"
@@ -54,6 +55,7 @@ type model struct {
 	Bytes    int64              `json:"bytes"`
 	Repair   *mesh.RepairReport `json:"repair"`
 	Scale    float64            `json:"scale"`
+	Rot      geom.Mat3          `json:"rot"` // cumulative quarter-turn applied to base
 	Bounds   [2][3]float64      `json:"bounds"`
 	Size     [3]float64         `json:"size"`
 	Tris     int                `json:"tris"`
@@ -136,6 +138,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/models/{id}", s.handleModel)
 	mux.HandleFunc("GET /api/models/{id}/mesh", s.handleMesh)
 	mux.HandleFunc("POST /api/models/{id}/scale", s.handleScale)
+	mux.HandleFunc("POST /api/models/{id}/rotate", s.handleRotate)
 	mux.HandleFunc("POST /api/models/{id}/plan", s.handlePlan)
 	mux.HandleFunc("POST /api/models/{id}/export", s.handleExport)
 	mux.HandleFunc("POST /api/coupon/export", s.handleCouponExport)
@@ -302,7 +305,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		if !rep.Closed {
 			return nil, fmt.Errorf("the mesh could not be made watertight (%s)", strings.Join(rep.Notes, "; "))
 		}
-		md := &model{ID: newID(), Name: name, Format: format, Bytes: int64(len(data)), Repair: rep, Scale: 1, Created: time.Now(), base: m, touched: time.Now()}
+		md := &model{ID: newID(), Name: name, Format: format, Bytes: int64(len(data)), Repair: rep, Scale: 1, Rot: geom.Mat3{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, Created: time.Now(), base: m, touched: time.Now()}
 		md.applyScale(1)
 		md.UnitHint = mesh.UnitHint(md.Size)
 		s.mu.Lock()
@@ -332,7 +335,7 @@ func (m *model) applyScale(f float64) {
 
 func (m *model) info() map[string]any {
 	return map[string]any{"id": m.ID, "name": m.Name, "format": m.Format, "bytes": m.Bytes, "repair": m.Repair, "scale": m.Scale,
-		"bounds": m.Bounds, "size": m.Size, "tris": m.Tris, "volume": m.Volume, "unitHint": m.UnitHint}
+		"bounds": m.Bounds, "size": m.Size, "tris": m.Tris, "volume": m.Volume, "unitHint": m.UnitHint, "rot": m.Rot}
 }
 
 func (s *Server) handleModel(w http.ResponseWriter, r *http.Request) {
@@ -374,6 +377,35 @@ func (s *Server) handleScale(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	m.applyScale(req.Scale)
+	writeJSON(w, m.info())
+}
+
+// handleRotate applies a quarter-turn (signed permutation, det +1) to the
+// model, keeping its scale: {"rot": [9 numbers, row-major]}.
+func (s *Server) handleRotate(w http.ResponseWriter, r *http.Request) {
+	m := s.getModel(r.PathValue("id"))
+	if m == nil {
+		httpErr(w, 404, "model expired or unknown")
+		return
+	}
+	var req struct {
+		Rot []float64 `json:"rot"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&req); err != nil {
+		httpErr(w, 400, "bad rotation")
+		return
+	}
+	rot, err := geom.QuarterTurn(req.Rot)
+	if err != nil {
+		httpErr(w, 400, "%v", err)
+		return
+	}
+	m.mu.Lock()
+	m.base.Transform(rot, geom.Vec3{})
+	m.Rot = rot.Mul(m.Rot)
+	f := m.Scale
+	m.mu.Unlock()
+	m.applyScale(f)
 	writeJSON(w, m.info())
 }
 

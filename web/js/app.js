@@ -326,6 +326,8 @@ async function upload(file, opts = {}) {
   try {
     let info = await BE.load(file, (m) => PROG.update(m), loadOpts);
     if (scale !== 1) info = await BE.scale(info, scale);
+    const rot = opts.restore && S.model ? flatRot(S.model.rot) : ROT_ID;
+    if (rot.some((v, i) => v !== ROT_ID[i]) && BE.rotate) info = await BE.rotate(info, rot);
     S.file = file; S.loadOpts = loadOpts; S.loadEst = est; S.fullDetail[fileKey(file)] = !simplify;
     PROG.setStage('kernel');
     await onModel(info, { restore: opts.restore, loadSec: PROG.elapsed() });
@@ -532,6 +534,30 @@ function renderModelInfo() {
   $('unitRow').classList.remove('hidden');
   $('scalePct').value = String(Math.round(m.scale * 100 * 1000) / 1000);
 }
+
+// Whole-model quarter turn (from the Fit verdict). The backend rotates the
+// repaired mesh and any kept full-detail original, so planning, the geometry
+// kernel and exports all see the same orientation. Clears any plan.
+const ROT_ID = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+const flatRot = (r) => (Array.isArray(r?.[0]) ? r.flat() : r) || ROT_ID;
+const mulRot = (a, b) => { const r = []; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) { let v = 0; for (let k = 0; k < 3; k++) v += a[i * 3 + k] * b[k * 3 + j]; r.push(v); } return r; };
+const invRot = (a) => [a[0], a[3], a[6], a[1], a[4], a[7], a[2], a[5], a[8]];
+async function rotateModel(rot, done) {
+  if (!S.model || !BE.rotate) return;
+  try {
+    busy('Turning the model', null);
+    const info = await BE.rotate(S.model, rot);
+    await onModel(info);
+    FLOW?.go('fit', { focus: false });
+    toast(done);
+    FLOW?.say(done);
+  } catch (err) { busy(false); toast(err.message, true); }
+}
+window.addEventListener('ps-rotate', (e) => {
+  const cur = flatRot(S.model?.rot);
+  if (e.detail === 'restore') rotateModel(invRot(cur), 'Restored the file’s orientation.');
+  else rotateModel(e.detail.rot, e.detail.done);
+});
 
 async function applyScale() {
   if (!S.model) return;
@@ -779,7 +805,7 @@ function renderCutEditor() {
     <div class="row three"><label>Offset<input id="cutOffsetNum" type="number" step="0.1" value="${fmt(n.cut.d, 2)}"></label>
       <label class="ring-a"><span><i aria-hidden="true"></i>Tilt A · orange ring (°)</span><input id="tiltA" type="number" step="1" value="0"></label><label class="ring-b"><span><i aria-hidden="true"></i>Tilt B · mint ring (°)</span><input id="tiltB" type="number" step="1" value="0"></label></div>
     <div class="btns"><button class="small" data-ax="x">⟂ X</button><button class="small" data-ax="y">⟂ Y</button><button class="small" data-ax="z">⟂ Z</button>
-      <button class="small primary" id="cutApply">Apply</button><button class="small danger" id="cutDelete">Delete cut</button></div>
+      <button class="small confirm" id="cutApply">Apply</button><button class="small danger" id="cutDelete">Delete cut</button></div>
     </details><p class="small mute">Drag the blue arrow in 3D to slide. Choose Tilt cut for rotation arcs. Release to apply; Esc cancels. Precise values provides the keyboard alternative.</p>`;
   el.classList.remove('hidden');
   $('cutOffset').addEventListener('input', (e) => { $('cutOffsetNum').value = fmt(+e.target.value, 2); previewCut(n.id, +e.target.value); });
@@ -851,7 +877,7 @@ function renderPartEditor() {
     <b>Bed face</b><span>${esc(l.printFace)}</span><b>Overhang</b><span>${fmt(l.overhang * 100, 0)} % of surface</span></div>
     ${(l.warnings || []).map((w) => `<div class="small warnc">${esc(w)}</div>`).join('')}
     <div class="btns"><span class="small mute">Add a cut through its centre:</span><button class="small" data-add="x">X</button><button class="small" data-add="y">Y</button><button class="small" data-add="z">Z</button>
-      ${l.fits ? '' : '<button class="small primary" id="autoThis">Auto-split this part</button>'}</div>`;
+      ${l.fits ? '' : '<button class="small confirm" id="autoThis">Auto-split this part</button>'}</div>`;
   el.classList.remove('hidden');
   const c = [(bm.Min[0] + bm.Max[0]) / 2, (bm.Min[1] + bm.Max[1]) / 2, (bm.Min[2] + bm.Max[2]) / 2];
   for (const b of el.querySelectorAll('[data-add]')) b.addEventListener('click', () => {
@@ -975,7 +1001,7 @@ function renderJointPanelInner() {
       <div class="row three"><label>Finger width<input id="seamPitch" type="number" step="0.5" min="2" max="60" value="${fmt(sm.pitch || 8, 1)}"></label>
         <label>Clearance<input id="seamClear" type="number" step="0.01" min="0" max="1" value="${fmt(sm.clear || settings().fits.seam, 2)}"></label>
         <label>Male side<select id="seamMale"><option value="neg" ${sm.male !== 'pos' ? 'selected' : ''}>${ln(p.negLeaf)}</option><option value="pos" ${sm.male === 'pos' ? 'selected' : ''}>${ln(p.posLeaf)}</option></select></label></div>
-      <div class="btns"><button class="small primary" id="seamApply">Apply seam</button></div>`;
+      <div class="btns"><button class="small confirm" id="seamApply">Apply seam</button></div>`;
     $('seamApply').addEventListener('click', () => applySeam(p));
     for (const b of se.querySelectorAll('[data-pstyle]')) b.addEventListener('click', () => setPatchStyle(p, b.dataset.pstyle, b.dataset.force === '1'));
   } else se.innerHTML = '';
@@ -997,7 +1023,7 @@ function renderJointPanelInner() {
     ${['peg', 'keyed', 'insert', 'bolt', 'snap'].includes(j.kind) ? `<div class="row two"><label>${j.kind === 'insert' ? 'Insert in' : j.kind === 'bolt' ? 'Nut in' : 'Male on'}<select id="jMale"><option value="neg" ${j.male === 'neg' ? 'selected' : ''}>${ln(pp.negLeaf)}</option><option value="pos" ${j.male === 'pos' ? 'selected' : ''}>${ln(pp.posLeaf)}</option></select></label>${j.kind === 'keyed' ? `<label>Shape<select id="jShape"><option value="hex" ${j.shape === 'hex' ? 'selected' : ''}>hex</option><option value="d" ${j.shape === 'd' ? 'selected' : ''}>D</option></select></label>` : '<span></span>'}</div>` : ''}
     <div class="small">Clearance ${fmt(j.clear, 2)} mm · holes ${fmt(j.holeNeg)} / ${fmt(j.holePos)} mm · material behind face ${fmt(j.availNeg)} / ${fmt(j.availPos)} mm</div>
     ${(j.warnings || []).map((w) => `<div class="small badc">${ico('alert')}${esc(w)}</div>`).join('')}
-    <div class="btns"><button class="small primary" id="jApply">Apply</button><button class="small danger" id="jDel">Delete joint</button></div>
+    <div class="btns"><button class="small confirm" id="jApply">Apply</button><button class="small danger" id="jDel">Delete joint</button></div>
     <div class="small mute">Drag the joint on the map to move it.</div>`;
   je.classList.remove('hidden');
   $('jKind').addEventListener('change', () => { j.kind = $('jKind').value; delete j.clearOverride; j.d = 0; j.depth = 0; j.size = ''; j.screwLen = 0; j.shape = ''; j.fit = protoJoint(j.kind).fit; updateJoint(j); });

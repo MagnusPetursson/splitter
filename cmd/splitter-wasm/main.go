@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/MagnusPetursson/splitter/internal/bundle"
+	"github.com/MagnusPetursson/splitter/internal/geom"
 	"github.com/MagnusPetursson/splitter/internal/mesh"
 	"github.com/MagnusPetursson/splitter/internal/plan"
 	"github.com/MagnusPetursson/splitter/internal/printers"
@@ -36,6 +37,8 @@ type state struct {
 	// keep. simp reports the simplification.
 	orig *mesh.Mesh
 	simp *mesh.SimplifyReport
+	// rot is the cumulative quarter-turn applied to base (and orig).
+	rot geom.Mat3
 }
 
 var cur *state
@@ -130,11 +133,22 @@ func (s *state) applyScale(f float64) {
 	s.md = plan.NewModel(c)
 }
 
+// rotate turns the model (and the kept full-detail original) by a validated
+// quarter-turn rotation, keeping the current scale.
+func (s *state) rotate(r geom.Mat3) {
+	s.base.Transform(r, geom.Vec3{})
+	if s.orig != nil {
+		s.orig.Transform(r, geom.Vec3{})
+	}
+	s.rot = r.Mul(s.rot)
+	s.applyScale(s.scale)
+}
+
 func (s *state) info() map[string]any {
 	b := s.cur.Bounds()
 	m := map[string]any{"id": "local", "name": s.name, "format": s.format, "bytes": s.bytes, "repair": s.repair, "scale": s.scale,
 		"bounds": [2][3]float64{b.Min, b.Max}, "size": b.Size(), "tris": len(s.cur.F), "volume": s.cur.Volume(), "unitHint": s.unitHint,
-		"memMB": memMB()}
+		"memMB": memMB(), "rot": s.rot}
 	if s.simp != nil {
 		m["simplified"] = s.simp
 		m["originalKept"] = s.orig != nil
@@ -198,7 +212,7 @@ func main() {
 				b, _ := json.Marshal(map[string]any{"error": rep.Explain(), "kind": "watertight", "repair": rep})
 				return string(b)
 			}
-			s := &state{name: name, format: format, bytes: nbytes, repair: rep, base: m}
+			s := &state{name: name, format: format, bytes: nbytes, repair: rep, base: m, rot: geom.Mat3{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}}
 			if opt.Simplify != "off" && opt.Threshold > 0 && len(m.F) > opt.Threshold && opt.Target < len(m.F) {
 				t0 := time.Now()
 				step("simplify", 0, len(m.F)-opt.Target, fmt.Sprintf("simplifying %d triangles", len(m.F)))
@@ -251,6 +265,22 @@ func main() {
 			var buf bytes.Buffer
 			cur.cur.EncodeBinary(&buf)
 			return toJS(buf.Bytes())
+		}),
+		// rotate([9]float64) → info; a quarter-turn (signed permutation, det +1)
+		"rotate": guard(func(a []js.Value) any {
+			if cur == nil || len(a) == 0 {
+				return errJSON(fmt.Errorf("no model"))
+			}
+			var v []float64
+			if err := json.Unmarshal([]byte(a[0].String()), &v); err != nil {
+				return errJSON(err)
+			}
+			r, err := geom.QuarterTurn(v)
+			if err != nil {
+				return errJSON(err)
+			}
+			cur.rotate(r)
+			return jsonOf(cur.info())
 		}),
 		"scale": guard(func(a []js.Value) any {
 			f := a[0].Float()

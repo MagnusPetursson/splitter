@@ -78,8 +78,8 @@ export class DirectEditor {
   popover(){
     const S=this.a.S,j=S.plan?.joints.find(j=>j.id===S.sel.joint),el=$('pinPopover');
     el.hidden=!j||this.step()!=='join'||this.v.view!=='cuts';
-    if(el.hidden){this.popKey=null;if(S.pendingPin){S.pendingPin=false;queueMicrotask(()=>this.a.syncFlow());}return;}
-    const key=JSON.stringify([j,document.body.dataset.expert]);if(key===this.popKey)return;this.popKey=key;
+    if(el.hidden){const was=this.popKey!=null;this.popKey=null;if(S.pendingPin||was){S.pendingPin=false;queueMicrotask(()=>this.a.syncFlow());}return;}
+    const key=JSON.stringify([j,document.body.dataset.expert]);if(key===this.popKey)return;const first=this.popKey==null;this.popKey=key;if(first)queueMicrotask(()=>this.a.syncFlow());
     if(S.pendingPin){S.pendingPin=false;queueMicrotask(()=>this.a.syncFlow());}
     const name=this.a.jointName(j),fixed=j.kind==='filament'||['insert','bolt'].includes(j.kind);
     el.innerHTML=`<header><b>${esc(name)}</b><button id="pinClose" class="icon-btn" aria-label="Deselect pin"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button></header><div class="pin-fields"><div class="row three"><label>Diameter (mm)<input id="pinDiameter" type="number" min="1" max="30" step="0.25" value="${j.d||3}" ${fixed?'disabled':''}></label><label>Depth (mm)<input id="pinDepth" type="number" min="1" max="60" step="0.5" value="${j.depth||8}"></label><label>Clearance (mm)<input id="pinClearance" type="number" min="0" max="1" step="0.01" value="${j.clear}"></label></div><p class="small mute">Radial clearance for this joint only. ${fixed?'Diameter is fixed by its type; hardware sizes are in Advanced.':''}</p>${this.clearance(j)}${depthProfile(j)}${(j.warnings||[]).map(w=>`<p class="badc">${esc(w)}</p>`).join('')}</div><div class="pin-actions"><p id="pinState" class="small" role="status">Applied · preview shows accepted geometry</p><div class="btns"><button id="pinApply" class="primary" disabled>Apply pin</button><button id="pinDelete" class="danger">Delete pin</button></div></div>`;

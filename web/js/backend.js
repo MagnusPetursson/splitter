@@ -52,6 +52,7 @@ function serverBackend(printers) {
     },
     async mesh(info) { return (await fetch(api(`api/models/${info.id}/mesh`))).arrayBuffer(); },
     scale: (info, f) => getJSON(`api/models/${info.id}/scale`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scale: f }) }),
+    rotate: (info, rot) => getJSON(`api/models/${info.id}/rotate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rot }) }),
     async plan(info, body, onMsg) {
       const r = await getJSON(`api/models/${info.id}/plan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       return pollJob(r.job, (m) => onMsg({ message: m }));
@@ -131,6 +132,7 @@ function localBackend() {
     async mesh() { const u = await call('mesh', []); return u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength); },
     async fullMesh() { const u = await call('fullMesh', []); return u ? u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength) : null; },
     scale: async (info, f) => parse(await call('scale', [f])),
+    rotate: async (info, rot) => parse(await call('rotate', [JSON.stringify(rot)])),
     plan: async (info, body, onMsg) => parse(await call('plan', [JSON.stringify(body)], onMsg)),
     async export(info, parts, blobs, planObj, bed, snapshot, onMsg) {
       const bufs = await Promise.all(blobs.map(async (b) => new Uint8Array(await b.arrayBuffer())));

@@ -48,7 +48,7 @@ function outOfBedMaterial(color) {
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWorldP;\nuniform vec3 boxMin;\nuniform vec3 boxMax;')
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
         bool outside = any(lessThan(vWorldP, boxMin)) || any(greaterThan(vWorldP, boxMax));
-        if (outside) { float s = step(0.5, fract((vWorldP.x + vWorldP.y + vWorldP.z) * 0.12)); gl_FragColor.rgb = mix(gl_FragColor.rgb, mix(vec3(0.93,0.36,0.30), vec3(0.78,0.24,0.20), s), 0.62); }`);
+        if (outside) { float s = step(0.5, fract((vWorldP.x + vWorldP.y + vWorldP.z) * 0.09)); float l = dot(gl_FragColor.rgb, vec3(0.3,0.5,0.2)); gl_FragColor.rgb = mix(vec3(1.0,0.50,0.42) * (0.55 + 0.6 * l), vec3(0.42,0.10,0.09) * (0.7 + 0.5 * l), s); }`);
   };
   return mat;
 }
@@ -149,17 +149,27 @@ export class Viewer {
     matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{this.controls.enableDamping=!e.matches;});
     this.controls.addEventListener('change', () => this.dirty());
     this.controls.addEventListener('start',()=>this.cameraState('custom'));
-    // S1: three-point lighting. Warm key from the front-left, cool rim from behind, soft sky fill.
-    const hemi = new THREE.HemisphereLight('#e4efe9', '#2b2620', 1.15);
+    // S1: warm key from the front-left (above), cool fill from the camera's right, cool rim from behind, low sky fill.
+    // Round 2: lower sky fill and a lower key so up-facing surfaces (helmet
+    // tops) keep a gradient instead of saturating; the rim separates the
+    // silhouette. Four analytic lights, no shadow maps: cheap on an iGPU.
+    const hemi = new THREE.HemisphereLight('#dbe7e2', '#3a342c', 0.6);
     hemi.position.set(0, 0, 1);
     this.scene.add(hemi);
-    this.sun = new THREE.DirectionalLight('#fff3e2', 2.1);
-    this.sun.position.set(0.55, -0.85, 1.35);
+    this.sun = new THREE.DirectionalLight('#fff1dc', 1.3);
+    this.sun.position.set(-0.35, -1.0, 0.5);
     this.scene.add(this.sun);
-    this.rim = new THREE.DirectionalLight('#a9d4ff', 0.9);
-    this.rim.position.set(-0.7, 0.9, 0.55);
+    this.fillLight = new THREE.DirectionalLight('#cfe3ff', 0.5);
+    this.fillLight.position.set(1.0, 0.25, 0.2);
+    this.scene.add(this.fillLight);
+    // A soft point key near the model adds distance falloff, so large flat
+    // up-facing areas get a gradient instead of one uniform value.
+    this.keyPt = new THREE.PointLight('#fff1dc', 0, 0, 1.5);
+    this.scene.add(this.keyPt);
+    this.rim = new THREE.DirectionalLight('#a9d4ff', 1.1);
+    this.rim.position.set(-0.6, 1.0, 0.7);
     this.scene.add(this.rim);
-    this.camLight = new THREE.DirectionalLight('#ffffff', 0.35);
+    this.camLight = new THREE.DirectionalLight('#ffffff', 0.22);
     this.camera.add(this.camLight);
     this.scene.add(this.camera);
     this.groups = {};
@@ -336,6 +346,8 @@ export class Viewer {
     this.groups.model.add(this.modelMesh);
     this.box = this.modelGeom.boundingBox.clone();
     this.center = this.box.getCenter(new THREE.Vector3());
+    { const d = this.box.getSize(new THREE.Vector3()).length(), off = new THREE.Vector3(-0.45, -0.75, 0.85).normalize().multiplyScalar(d * 0.75);
+      this.keyPt.position.copy(this.center).add(off); this.keyPt.intensity = 1.7 * Math.pow(off.length(), 1.5); }
     this.frame();
     this.updateBed();
     this.dirty();
@@ -345,11 +357,10 @@ export class Viewer {
     if (!box) return;
     // In the Fit step on wider screens, the printer volume is the subject too:
     // frame model ∪ build volume so neither is cropped (phones keep the model).
-    const fitBed = box === this.box && this.view === 'model' && this.bed && document.body.dataset.step === 'fit' && (this.el.clientWidth || 0) > 760;
-    if (fitBed) {
-      const c0 = this.center, z0 = this.box.min.z, b = this.bed;
-      box = this.box.clone().union(new THREE.Box3(new THREE.Vector3(c0.x - b.x / 2, c0.y - b.y / 2, z0), new THREE.Vector3(c0.x + b.x / 2, c0.y + b.y / 2, z0 + b.z)));
-    }
+    // Frame model ∪ build volume ∪ dimension lines on every screen size, so the
+    // box, the failing face and the labels are all inside the view.
+    const fitBed = box === this.box && this.view === 'model' && this.bed && document.body.dataset.step === 'fit';
+    if (fitBed) box = this.fitGeometry().frame;
     this.faceFocus=false;if(this.ground)this.ground.visible=this.view!=='plates';if(this.modelMesh)this.modelMesh.visible=true;this.cameraState('iso');
     const c = box.getCenter(new THREE.Vector3());
     const r = box.getSize(new THREE.Vector3()).length() * 0.5 || 100;
@@ -362,7 +373,7 @@ export class Viewer {
     // fill ~82 % of the limiting screen dimension (exact for the box, unlike a
     // bounding sphere), so the model dominates phones and desktops alike.
     const up = new THREE.Vector3(0, 0, 1), right = new THREE.Vector3().crossVectors(up, dir).normalize(), camUp = new THREE.Vector3().crossVectors(dir, right);
-    const fill = aspect < 1 ? 0.9 : fitBed ? 0.92 : 0.82;
+    const fill = fitBed ? (aspect < 1 ? 0.84 : 0.86) : aspect < 1 ? 0.9 : 0.82;
     const tv = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * fill, th = tv * aspect;
     let dist = 0;
     const pts = [];
@@ -398,6 +409,36 @@ export class Viewer {
 
   setBed(x, y, z) { this.bed = { x, y, z }; this.updateBed(); }
 
+  // Fit-step geometry shared by framing and the dimension annotations: the
+  // usable box (centred on the model, on its floor), the dimension lines
+  // placed outside both, and the box faces the model crosses.
+  fitGeometry() {
+    const m = this.box, c = this.center, b = this.bed, z0 = m.min.z;
+    const bed = new THREE.Box3(new THREE.Vector3(c.x - b.x / 2, c.y - b.y / 2, z0), new THREE.Vector3(c.x + b.x / 2, c.y + b.y / 2, z0 + b.z));
+    const all = m.clone().union(bed), size = all.getSize(new THREE.Vector3()), pad = Math.max(size.x, size.y, size.z) * 0.07;
+    const a = all.min, e = all.max, mi = m.min, ma = m.max;
+    const lines = [
+      [[mi.x, a.y - pad, z0], [ma.x, a.y - pad, z0]],          // W along the front floor edge
+      [[e.x + pad, mi.y, z0], [e.x + pad, ma.y, z0]],          // D along the right floor edge
+      [[a.x - pad, a.y, mi.z], [a.x - pad, a.y, ma.z]],        // H up the front-left corner
+    ];
+    const frame = all.clone(); frame.min.x -= pad * 1.4; frame.min.y -= pad * 1.4; frame.max.x += pad * 1.4;
+    const crossed = [];
+    for (let k = 0; k < 3; k++) { const ax = 'xyz'[k]; if (m.min[ax] < bed.min[ax] - 0.01) crossed.push([k, -1]); if (m.max[ax] > bed.max[ax] + 0.01) crossed.push([k, 1]); }
+    return { bed, all, pad, lines, frame, crossed };
+  }
+  // Smallest distance (px) from any build-volume corner or dimension-line end
+  // to the canvas edge; negative means something is cropped. Used by tests.
+  fitFrameMargin() {
+    if (!this.box || !this.bed) return null;
+    const g = this.fitGeometry(), w = this.el.clientWidth, h = this.el.clientHeight, pts = [];
+    for (const x of [g.bed.min.x, g.bed.max.x]) for (const y of [g.bed.min.y, g.bed.max.y]) for (const z of [g.bed.min.z, g.bed.max.z]) pts.push(new THREE.Vector3(x, y, z));
+    for (const [a, b] of g.lines) pts.push(new THREE.Vector3(...a), new THREE.Vector3(...b));
+    let m = Infinity;
+    for (const p of pts) { const q = p.project(this.camera), sx = (q.x + 1) / 2 * w, sy = (1 - q.y) / 2 * h; m = Math.min(m, sx, w - sx, sy, h - sy); }
+    return Math.round(m);
+  }
+
   updateBed() {
     this.clear('bed');
     if (!this.bed || !this.box) return;
@@ -416,6 +457,17 @@ export class Viewer {
     plate.position.set(c.x, c.y, zmin - 0.05);
     this.groups.bed.add(plate);
     this.groups.bed.add(bedGrid(x, y, c.x, c.y, zmin - 0.02));
+    // Exceeded boundary faces: a translucent red wall with a solid outline,
+    // so the failing side of the volume reads before any number does.
+    for (const [k, sgn] of this.fitGeometry().crossed) {
+      const dims = [[y, z], [x, z], [x, y]][k], g2 = new THREE.PlaneGeometry(...dims);
+      if (k === 0) g2.rotateY(Math.PI / 2); else if (k === 1) g2.rotateX(Math.PI / 2);
+      const pos = new THREE.Vector3(c.x, c.y, zmin + z / 2); pos.setComponent(k, k === 2 ? (sgn > 0 ? zmin + z : zmin) : c.getComponent(k) + sgn * [x, y, z][k] / 2);
+      const wall = new THREE.Mesh(g2, new THREE.MeshBasicMaterial({ color: '#ff8f80', transparent: true, opacity: 0.13, side: THREE.DoubleSide, depthWrite: false }));
+      wall.position.copy(pos); wall.renderOrder = 2; wall.userData.boundary = [k, sgn]; this.groups.bed.add(wall);
+      const rim = new THREE.LineSegments(new THREE.EdgesGeometry(g2), new THREE.LineBasicMaterial({ color: '#ff9a8c', transparent: true, opacity: 0.95 }));
+      rim.position.copy(pos); this.groups.bed.add(rim);
+    }
     const u = this.modelMat && this.modelMat.userData.uniforms;
     if (u) {
       u.boxMin.value.copy(min).addScalar(-0.01);

@@ -37,7 +37,10 @@ async function audit(p, name, {axe = true} = {}) {
       if (a.left < -1 || a.right > innerWidth + 1 || a.top < -1 || a.bottom > innerHeight + 1) collide.push(`${boxes[i].id} off-screen`);
       for (let j = i + 1; j < boxes.length; j++) { const b = boxes[j].r, w = Math.min(a.right, b.right) - Math.max(a.left, b.left), h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top); if (w > 2 && h > 2) collide.push(`${boxes[i].id} × ${boxes[j].id}`); }
     }
-    return {collide, leaks: text.split('\n').filter(t => /\[object|\bundefined\b|\bNaN\b/.test(t)).slice(0, 5), overflow: document.documentElement.scrollWidth > innerWidth + 1, small};
+    // One primary per view (DESIGN.md V7). An open modal dialog is its own view.
+    const modal = document.querySelector('dialog[open]'), scope = modal || document;
+    const primaries = [...scope.querySelectorAll('.primary')].filter(vis).filter(e => modal || !e.closest('dialog')).map(e => e.id || e.textContent.trim().slice(0, 30));
+    return {primaries, collide, leaks: text.split('\n').filter(t => /\[object|\bundefined\b|\bNaN\b/.test(t)).slice(0, 5), overflow: document.documentElement.scrollWidth > innerWidth + 1, small};
   });
   let violations = [];
   if (axe) {
@@ -51,6 +54,7 @@ async function audit(p, name, {axe = true} = {}) {
   assert.deepEqual(data.small, [], `targets under 44 px in ${name}`);
   assert.deepEqual(data.collide, [], `overlapping or off-screen controls in ${name}`);
   assert.deepEqual(violations, [], `axe violations in ${name}`);
+  assert.ok(data.primaries.length <= 1, `more than one primary in ${name}: ${data.primaries.join(', ')}`);
 }
 
 async function page(viewport, expert) {
@@ -86,6 +90,13 @@ try {
         await p.click('#sheetToggle'); assert.ok(await p.locator('#fitReadout').isVisible());
       }
       await audit(p, `${tag}-fit`);
+      // Split before any plan: one "Plan cuts" primary and pre-plan copy only.
+      await p.click('#flowNav [data-step="split"]');
+      await audit(p, `${tag}-split-preplan`);
+      const pre = await p.evaluate(() => ({intro: document.querySelector('#stepSplit .step-intro').textContent, help: document.querySelector('#stepSplit .context-help').textContent}));
+      assert.doesNotMatch(pre.intro, /suggested cuts|drag the highlighted/i, 'pre-plan intro must not describe cuts that do not exist');
+      assert.doesNotMatch(pre.help, /these cuts/i, 'pre-plan help link must not say "these cuts"');
+      await p.click('#flowNav [data-step="fit"]');
       await p.click('#flowNext'); await p.waitForFunction(() => window.__ps.plan); await idle(p);
       await p.click('#flowNav [data-step="split"]');
       await audit(p, `${tag}-split`);
