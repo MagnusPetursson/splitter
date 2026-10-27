@@ -1,0 +1,175 @@
+{
+  "build": "98f6fd9",
+  "simpleActivations": 4,
+  "redFailures": 29,
+  "redChecks": 53,
+  "greenChecks": 53,
+  "axeStates": 30,
+  "axeViolations": 0,
+  "smallTargets": 0,
+  "overflows": 0,
+  "states": [
+    {
+      "name": "desktop-empty",
+      "controlsBefore": 15,
+      "controlsAfter": 15,
+      "renderedBefore": 16,
+      "renderedAfter": 16,
+      "viewerHeightBefore": 626,
+      "viewerHeightAfter": 626
+    },
+    {
+      "name": "desktop-fit",
+      "controlsBefore": 17,
+      "controlsAfter": 17,
+      "renderedBefore": 18,
+      "renderedAfter": 18,
+      "viewerHeightBefore": 626,
+      "viewerHeightAfter": 552
+    },
+    {
+      "name": "desktop-join",
+      "controlsBefore": 25,
+      "controlsAfter": 22,
+      "renderedBefore": 27,
+      "renderedAfter": 23,
+      "viewerHeightBefore": 502,
+      "viewerHeightAfter": 502
+    },
+    {
+      "name": "desktop-cut",
+      "controlsBefore": 24,
+      "controlsAfter": 22,
+      "renderedBefore": 28,
+      "renderedAfter": 26,
+      "viewerHeightBefore": 502,
+      "viewerHeightAfter": 502
+    },
+    {
+      "name": "desktop-pin",
+      "controlsBefore": 31,
+      "controlsAfter": 22,
+      "renderedBefore": 33,
+      "renderedAfter": 31,
+      "viewerHeightBefore": 502,
+      "viewerHeightAfter": 502
+    },
+    {
+      "name": "desktop-draft",
+      "controlsBefore": 31,
+      "controlsAfter": 22,
+      "renderedBefore": 33,
+      "renderedAfter": 31,
+      "viewerHeightBefore": 502,
+      "viewerHeightAfter": 502
+    },
+    {
+      "name": "desktop-map",
+      "controlsBefore": 22,
+      "controlsAfter": 21,
+      "renderedBefore": 28,
+      "renderedAfter": 26,
+      "viewerHeightBefore": 502,
+      "viewerHeightAfter": 502
+    },
+    {
+      "name": "desktop-export",
+      "controlsBefore": 21,
+      "controlsAfter": 21,
+      "renderedBefore": 26,
+      "renderedAfter": 24,
+      "viewerHeightBefore": 626,
+      "viewerHeightAfter": 626
+    },
+    {
+      "name": "desktop-expert",
+      "controlsBefore": 23,
+      "controlsAfter": 23,
+      "renderedBefore": 29,
+      "renderedAfter": 29,
+      "viewerHeightBefore": 626,
+      "viewerHeightAfter": 626
+    },
+    {
+      "name": "phone-empty",
+      "controlsBefore": 12,
+      "controlsAfter": 12,
+      "renderedBefore": 15,
+      "renderedAfter": 15,
+      "viewerHeightBefore": 199.75,
+      "viewerHeightAfter": 199.75
+    },
+    {
+      "name": "phone-fit",
+      "controlsBefore": 12,
+      "controlsAfter": 13,
+      "renderedBefore": 17,
+      "renderedAfter": 18,
+      "viewerHeightBefore": 284.15625,
+      "viewerHeightAfter": 289
+    },
+    {
+      "name": "phone-join",
+      "controlsBefore": 18,
+      "controlsAfter": 16,
+      "renderedBefore": 26,
+      "renderedAfter": 23,
+      "viewerHeightBefore": 146.15625,
+      "viewerHeightAfter": 263
+    },
+    {
+      "name": "phone-cut",
+      "controlsBefore": 23,
+      "controlsAfter": 20,
+      "renderedBefore": 27,
+      "renderedAfter": 26,
+      "viewerHeightBefore": 146.15625,
+      "viewerHeightAfter": 263
+    },
+    {
+      "name": "phone-pin",
+      "controlsBefore": 29,
+      "controlsAfter": 27,
+      "renderedBefore": 32,
+      "renderedAfter": 31,
+      "viewerHeightBefore": 146.15625,
+      "viewerHeightAfter": 263
+    },
+    {
+      "name": "phone-draft",
+      "controlsBefore": 29,
+      "controlsAfter": 27,
+      "renderedBefore": 32,
+      "renderedAfter": 31,
+      "viewerHeightBefore": 146.15625,
+      "viewerHeightAfter": 263
+    },
+    {
+      "name": "phone-map",
+      "controlsBefore": 21,
+      "controlsAfter": 21,
+      "renderedBefore": 27,
+      "renderedAfter": 26,
+      "viewerHeightBefore": 146.15625,
+      "viewerHeightAfter": 263
+    },
+    {
+      "name": "phone-export",
+      "controlsBefore": 15,
+      "controlsAfter": 15,
+      "renderedBefore": 25,
+      "renderedAfter": 24,
+      "viewerHeightBefore": 284.15625,
+      "viewerHeightAfter": 377
+    },
+    {
+      "name": "phone-expert",
+      "controlsBefore": 17,
+      "controlsAfter": 18,
+      "renderedBefore": 28,
+      "renderedAfter": 29,
+      "viewerHeightBefore": 284.15625,
+      "viewerHeightAfter": 377
+    }
+  ]
+}

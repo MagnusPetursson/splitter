@@ -6,7 +6,7 @@ import {createRequire} from 'node:module';
 const {chromium}=createRequire(import.meta.url)(process.env.SPLITTER_PLAYWRIGHT || 'playwright');
 const [url='http://127.0.0.1:8765/',out='evidence/mobile-ui-repair/green']=process.argv.slice(2);
 fs.mkdirSync(out,{recursive:true});
-const browser=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader',...(process.env.SPLITTER_HOST_RESOLVER_RULES?['--host-resolver-rules='+process.env.SPLITTER_HOST_RESOLVER_RULES]:[])]});
 const page=await browser.newPage();
 const errors=[],failures=[],results={url,tabs:[],maps:[],errors,failures};
 page.on('pageerror',e=>errors.push(e.message));
