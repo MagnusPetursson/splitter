@@ -548,6 +548,8 @@ body:has(#fitVerdict.turnable) .fit-legend-chip .over-only { display:flex; }
 /* R4.1 the verdict is the Fit headline; the printer is a subordinate row */
 #fitHeading[data-tone=over] { color:var(--warn); }
 #fitHeading { margin-bottom:var(--s-2); }
+/* 22 px keeps the longest verdict ("Fits in one piece after a 90° turn", 354 px at 24 px) on one line in the 351 px desktop panel */
+@media (min-width:761px) and (min-height:821px) { #fitHeading[data-tone]:not([data-tone='']) { font-size:22px; letter-spacing:-.01em; } }
 .printer-row { position:relative; display:flex; align-items:center; gap:var(--s-2); box-sizing:content-box; min-height:var(--target); margin:0 0 var(--s-1); padding-left:var(--s-3); background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r-sm); }
 .printer-row:hover { border-color:var(--border-strong); }
 .printer-row label { flex:none; margin:0; font-size:var(--fs-13); font-weight:var(--fw-regular, 400); color:var(--text-muted); }
