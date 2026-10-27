@@ -1,7 +1,7 @@
 // Reachability and wiring of advanced capabilities, through their real controls.
 import fs from 'node:fs';import path from 'node:path';import assert from 'node:assert/strict';import {createRequire} from 'node:module';
 const {chromium}=createRequire(import.meta.url)(process.env.SPLITTER_PLAYWRIGHT||'playwright');const [url='http://127.0.0.1:8792/',out='evidence/expert-controls']=process.argv.slice(2);fs.mkdirSync(out,{recursive:true});
-const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await b.newPage({viewport:{width:1440,height:900}});const report={styles:[],errors:[]};p.on('pageerror',e=>report.errors.push(e.message));
+const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader',...(process.env.SPLITTER_HOST_RESOLVER_RULES?['--host-resolver-rules='+process.env.SPLITTER_HOST_RESOLVER_RULES]:[])]});const p=await b.newPage({viewport:{width:1440,height:900}});const report={styles:[],errors:[]};p.on('pageerror',e=>report.errors.push(e.message));
 const idle=()=>p.waitForFunction(()=>document.querySelector('#busy').classList.contains('hidden'),null,{timeout:300000});const seq=()=>p.evaluate(()=>window.__ps.planSeq);const changed=async n=>{await p.waitForFunction(n=>window.__ps.planSeq>n&&document.querySelector('#busy').classList.contains('hidden'),n,{timeout:300000});};
 try{
  await p.goto(url,{waitUntil:'networkidle'});await p.waitForFunction(()=>document.querySelector('#printer').options.length>5);await p.click('#expertMode');await p.click('[data-sample="bracket_320mm.stl"]');await p.waitForFunction(()=>window.__ps.workerReady);await idle();

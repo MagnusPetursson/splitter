@@ -7,7 +7,7 @@ const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.SPLITTER_PLAYWRIGHT||'playwright');
 const axe=fs.readFileSync(process.env.SPLITTER_AXE||require.resolve('axe-core/axe.min.js'),'utf8');
 const [url='http://127.0.0.1:8792/',out='evidence/audit']=process.argv.slice(2);fs.mkdirSync(out,{recursive:true});
-const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader',...(process.env.SPLITTER_HOST_RESOLVER_RULES?['--host-resolver-rules='+process.env.SPLITTER_HOST_RESOLVER_RULES]:[])]});
 const report={states:[],errors:[]};
 const idle=p=>p.waitForFunction(()=>document.querySelector('#busy').classList.contains('hidden'),null,{timeout:600000});
 async function audit(p,name) {

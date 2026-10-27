@@ -8,7 +8,7 @@ const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.SPLITTER_PLAYWRIGHT || 'playwright');
 const [url='http://127.0.0.1:8792/',out='evidence/flow']=process.argv.slice(2);
 fs.mkdirSync(out,{recursive:true});
-const browser=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader',...(process.env.SPLITTER_HOST_RESOLVER_RULES?['--host-resolver-rules='+process.env.SPLITTER_HOST_RESOLVER_RULES]:[])]});
 const page=await browser.newPage({viewport:{width:1440,height:900},acceptDownloads:true});
 const errors=[],report={url,errors,actions:[]};
 page.on('pageerror',e=>errors.push(e.message));

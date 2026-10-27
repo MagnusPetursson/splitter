@@ -1,0 +1,67 @@
+{
+  "baseline_revision": "e404028",
+  "implementation_revision": "faba8f1",
+  "viewport_desktop": [
+    1440,
+    900
+  ],
+  "viewport_phone": [
+    390,
+    844
+  ],
+  "definition": "Controls with rendered CSS layout: button, input, select, summary, link; includes disabled navigation. Viewport count also requires full bounds in viewport. Excludes closed-dialog descendants.",
+  "control_counts": {
+    "before": {
+      "empty": {
+        "rendered": 30,
+        "inViewport": 24
+      },
+      "planned": {
+        "rendered": 44,
+        "inViewport": 24
+      }
+    },
+    "after": {
+      "empty": {
+        "rendered": 17,
+        "inViewport": 16
+      },
+      "planned": {
+        "rendered": 27,
+        "inViewport": 24
+      }
+    }
+  },
+  "path_actions": {
+    "baseline": 5,
+    "guided": 9,
+    "definition": "Sample load to ZIP download with default settings; excludes file dialog, printer changes and optional editing."
+  },
+  "accessibility": {
+    "app_states": 24,
+    "guide_states": 2,
+    "axe_violations": 0,
+    "sub_44px_control_targets": 0,
+    "overflow_states": 0,
+    "certification": false
+  },
+  "real_mesh": {
+    "triangles": 226172,
+    "parts": 4,
+    "manifold": true,
+    "fits": true,
+    "files": 20,
+    "plates": 4,
+    "loadMs": 1949,
+    "planMs": 44955,
+    "totalMs": 57098
+  },
+  "real_pointer_cut_drag_mm": {
+    "before": 160,
+    "after": 184.15045619223065
+  },
+  "phone_end_content_bounds": {
+    "help": 658.640625,
+    "footer": 772
+  }
+}
