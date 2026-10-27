@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
+const {chromium}=require(process.env.SPLITTER_PLAYWRIGHT||'playwright');
+const [url='http://127.0.0.1:8792/',out='evidence/baseline']=process.argv.slice(2);
+fs.mkdirSync(out,{recursive:true});
+const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const p=await b.newPage({viewport:{width:1440,height:900}});
+await p.goto(url,{waitUntil:'networkidle'});await p.waitForFunction(()=>document.querySelector('#printer').options.length>5);
+const count=()=>p.evaluate(()=>{const all=[...document.querySelectorAll('button,input,select,summary,a[href]')].filter(e=>e.checkVisibility()&&!e.closest('dialog:not([open])'));return {rendered:all.length,inViewport:all.filter(e=>{const r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth}).length,controls:all.map(e=>e.id||e.textContent.trim())};});
+const report={empty:await count()};await p.screenshot({path:out+'/desktop.png'});
+await p.click('[data-sample="bracket_320mm.stl"]');await p.waitForFunction(()=>window.__ps.workerReady&&document.querySelector('#busy').classList.contains('hidden'),null,{timeout:300000});
+await p.click('#autoSplit');await p.waitForFunction(()=>window.__ps.plan&&document.querySelector('#busy').classList.contains('hidden'),null,{timeout:600000});
+report.planned=await count();await p.screenshot({path:out+'/planned.png'});
+await p.setViewportSize({width:390,height:844});await p.screenshot({path:out+'/phone.png'});
+fs.writeFileSync(out+'/counts.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));await b.close();
