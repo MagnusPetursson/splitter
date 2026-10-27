@@ -18,6 +18,7 @@ go vet ./...
 node e2e/guided-flow.mjs "$URL" evidence/flow
 node e2e/round2-editing.mjs "$URL" evidence/direct
 node e2e/round2-touch.mjs "$URL" evidence/touch
+node e2e/round3-context.mjs "$URL" evidence/context
 node e2e/ux-audit.mjs "$URL" evidence/audit
 node e2e/interactions.mjs "$URL" evidence/interactions
 node e2e/expert-controls.mjs "$URL" evidence/expert

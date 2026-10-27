@@ -205,7 +205,7 @@ body:is([data-step=split],[data-step=join]) .hud { display:none; }
 .direct-tools { position:absolute;top:74px;left:20px;right:20px;z-index:4; }
 .tool-row { display:flex;gap:6px;flex-wrap:wrap; }
 .tool-row button { background:#203230; }
-.tool-row [aria-pressed=true] { background:#a6e4c9;color:#102b23; }
+.tool-row [aria-pressed=true],.tool-row [aria-pressed=true]:hover:not(:disabled) { background:#a6e4c9;color:#102b23; }
 #editFeedback { display:block;min-height:26px;margin-top:7px;font-size:14px;color:var(--mute);pointer-events:none; }
 #editFeedback[data-valid=false] { color:#ffb2a7;background:#3d211d;padding:6px 10px;width:fit-content;max-width:100%; }
 body:is([data-step=split],[data-step=join]):has(#directTools:not([hidden])) #viewport { top:170px;bottom:78px; }
@@ -235,5 +235,58 @@ body[data-expert=false] #views button:is([data-view=model],[data-view=cuts]) { d
  .stage.expanded #viewport { bottom:80px; }
  .side { padding:16px 20px; }.step-intro { font-size:14px; }
  #viewCaption { font-size:12px; }.hud .fit { font-size:12px; }
+}
+/* Round three: annotation space is separate from controls. */
+.loaded-strip { display:none; }
+.scene-annotations { position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3;overflow:visible; }
+#fitDimensions path { stroke:#c0d8d3;stroke-width:1.5;fill:none; }
+#fitDimensions text { fill:#e6f3ec;paint-order:stroke;stroke:#101819;stroke-width:5px;stroke-linejoin:round;text-anchor:middle;font:600 13px "Segoe UI",sans-serif; }
+#fitDimensions .over path { stroke:#ffb2a7; }#fitDimensions .over text { fill:#ffb2a7; }
+#fitDimensions marker path { stroke:none;fill:#c0d8d3; }
+.cut-readout { position:absolute;pointer-events:none;z-index:3;max-width:calc(100% - 24px);padding:7px 10px;border:1px solid #a4dbff;background:#15242b;color:#e1f4ff;border-radius:4px;font:600 14px/1.4 ui-monospace,monospace; }
+.cut-readout[data-dragging=true] { border-color:white;background:#244238; }
+.pin-badge { position:absolute;pointer-events:none;z-index:4;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:#f6d48b;color:#1d241f;border:2px solid #101819;font-size:14px;font-weight:750; }
+.pin-leader { z-index:4; }.pin-leader path { fill:none;stroke:#f6d48b;stroke-width:1.5;stroke-dasharray:4 3; }
+#pinDepthPreview { margin:10px 0 0; }#pinDepthPreview figcaption { font-size:12px;color:var(--mute); }#pinDepthPreview svg { display:block;width:100%;height:82px; }#pinDepthPreview text { fill:#f0f4ed;text-anchor:middle;font:12px "Segoe UI",sans-serif; }
+#pinState { color:#f6d48b; }
+.pin-popover { position:relative;inset:auto;width:100%;max-height:none;margin-bottom:18px;z-index:5; }
+body[data-expert=false] :is(#editUndo,#editRedo):disabled { display:none; }
+body[data-expert=false][data-exported=true] :is(#buildBtn,#exportBtn) { display:none; }
+#precisionMap:not([open])>.mapframe { display:none; }
+body[data-step=fit] .hud { top:70px; }
+body[data-step=fit] #viewport { top:138px; }
+body[data-step=fit] .hud>.fit,body[data-step=fit] .hud>br { display:none; }
+@media(max-width:760px) {
+ body[data-loaded=true] { grid-template-rows:60px 62px minmax(420px,50dvh) minmax(0,1fr) 72px; }
+ body[data-loaded=true][data-step=fit] { grid-template-rows:60px 62px minmax(450px,53dvh) minmax(0,1fr) 72px; }
+ .loaded-strip { display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:0 0 8px;margin-bottom:12px; }
+ .loaded-strip span { flex:1;min-width:0;overflow-wrap:anywhere;font-size:12px; }
+ .loaded-strip button { flex:none; }
+ .viewer-tools { left:8px;right:8px;bottom:6px;border-top:1px solid #405254;padding-top:5px;background:#101819; }
+ .viewer-tools #expandView { margin-right:auto; }
+ body[data-step=fit] .hud { top:43px; }
+ body[data-step=fit] #viewport { top:102px;bottom:58px; }
+ body:is([data-step=split],[data-step=join]):has(#directTools:not([hidden])) #viewport { top:100px;bottom:58px; }
+ .direct-tools { top:44px; }
+ #editFeedback { position:fixed;left:8px;right:8px;bottom:76px;width:calc(100% - 16px);z-index:9;background:#182b25;padding:5px 8px;min-height:0; }
+ #editFeedback:empty { display:none; }
+ .pin-popover { position:fixed;left:8px;right:8px;bottom:76px;width:auto;max-height:none;padding:10px;margin:0;z-index:9; }
+ .pin-popover header { margin-bottom:4px; }.pin-popover .row { margin-top:0; }.pin-popover p { margin:4px 0; }
+ .pin-popover .small { font-size:12px; }
+ .pin-popover { display:flex;flex-direction:column; }
+ .pin-popover header,.pin-actions { flex-shrink:0; }
+ .pin-fields { min-height:0;overflow:auto;scrollbar-width:thin;padding:0 3px; }
+ .pin-actions { border-top:1px solid var(--line);padding-top:6px;background:var(--panel); }
+ .stage.expanded .pin-popover { position:fixed;bottom:76px; }
+ .stage.expanded:has(#pinPopover:not([hidden])) .viewer-tools { z-index:6; }
+ .stage.expanded:has(#pinPopover:not([hidden])) #editFeedback { display:none; }
+ #pinDepthPreview { margin-top:4px; }#pinDepthPreview svg { height:70px; }
+ body[data-step=fit] .fit-card { font-size:14px;line-height:1.5; }
+ .step h1 { margin-top:6px; }
+}
+@media(max-height:700px) and (max-width:760px) {
+ body[data-loaded=true] { height:auto;min-height:100dvh;overflow:auto;grid-template-rows:60px 62px 360px auto 72px; }
+ html { height:auto;overflow:auto; }.side { overflow:visible; }.flow-footer { position:sticky;bottom:0;z-index:8; }
+ .pin-popover { max-height:45dvh; }
 }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important;transition:none!important;scroll-behavior:auto!important; } .busy.indet #busyFill { width:100%!important;opacity:.5; } }

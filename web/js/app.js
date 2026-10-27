@@ -539,7 +539,7 @@ function hud() {
   const s = S.model.size;
   const fitsAsIs = s[0] <= u.x && s[1] <= u.y && s[2] <= u.z;
   const printer=S.printers.find(p=>p.id===$('printer').value)?.name||'Custom printer';
-  let html=viewer.view==='model'?`<div class="volume-legend"><span><i class="volume-key"></i>Printer build volume · ${esc(printer)}</span><span><i class="stripe-key"></i>Outside usable build volume</span></div>`:'';
+  let html=viewer.view==='model'?`<div class="volume-legend"><span><i class="volume-key"></i>Usable printer volume · ${esc(printer)}</span><span><i class="stripe-key"></i>Outside usable build volume</span></div>`:'';
   if (S.plan) {
     const n = S.plan.leaves.filter((l) => !l.empty).length;
     const bad = S.plan.leaves.filter((l) => !l.empty && !l.fits).length;
@@ -574,7 +574,7 @@ function setPatchStyle(p, style, force) {
 async function runPlan(mode, opts = {}) {
   if (!S.model) return;
   const focusAfter=document.activeElement?.id;
-  const camera=viewer.camera.position.clone(),target=viewer.controls.target.clone(),up=viewer.camera.up.clone(),faceFocus=viewer.faceFocus;
+  const camera=viewer.camera.position.clone(),target=viewer.controls.target.clone(),up=viewer.camera.up.clone(),faceFocus=viewer.faceFocus,cameraPose=viewer.cameraPose;
   const invalid=[...document.querySelectorAll('#stepPrinter input')].find(i=>!i.checkValidity());
   if(invalid) { FLOW?.go('fit'); $('printerAdvanced').open=true; invalid.closest('details').open=true; invalid.reportValidity(); return; }
   if(usable().x<=0||usable().y<=0||usable().z<=0) { FLOW?.go('fit'); $('printerAdvanced').open=true; toast('The margin leaves no usable build space. Reduce it or increase the volume.',true); return; }
@@ -606,7 +606,7 @@ async function runPlan(mode, opts = {}) {
     if (seq !== S.planSeq) return;
     PROG.end();
     onPlan(plan, mode === 'auto');
-    if(mode!=='auto'){viewer.camera.position.copy(camera);viewer.controls.target.copy(target);viewer.camera.up.copy(up);viewer.faceFocus=faceFocus;viewer.controls.update();DIRECT?.sync();viewer.dirty();DIRECT?.feedback('Edit applied · pin footprints show diameter; inspect depth in the built parts.');}
+    if(mode!=='auto'){viewer.camera.position.copy(camera);viewer.controls.target.copy(target);viewer.camera.up.copy(up);viewer.faceFocus=faceFocus;viewer.cameraState(cameraPose);viewer.controls.update();DIRECT?.sync();viewer.dirty();DIRECT?.feedback('Edit applied · select a pin to inspect its diameter and depth into both pieces.');}
     if(focusAfter)requestAnimationFrame(()=>{const e=$(focusAfter);if(e?.checkVisibility()&&!e.closest('[inert]'))e.focus({preventScroll:true});});
   } catch (err) {
     crumbClear();
@@ -695,12 +695,12 @@ function contactName(p) { return `${leafName(p.negLeaf)}↔${leafName(p.posLeaf)
 function fbText(fb) { return `${fb.want} → ${fb.got}: ${fb.reason}`; }
 function singleNote(p) { return ((p.notes || []).find((n) => n.startsWith('only one')) || 'only one joint fits').split(':')[0]; }
 function cutName(id) { const n = S.plan && S.plan.tree.nodes[id],i=S.plan?.tree.nodes.filter(n=>n.cut).findIndex(n=>n.id===id)??0; return document.body.dataset.expert==='true'?((n&&n.label)||`Cut ${id}`):`Cut ${i+1}`; }
-function jointName(j){return document.body.dataset.expert==='true'?`Joint J${j.id}`:`${cutName(S.plan.patches[j.patch].node)} · Pin ${S.plan.joints.filter(x=>x.patch===j.patch).findIndex(x=>x.id===j.id)+1}`;}
+function jointName(j){return document.body.dataset.expert==='true'?`Joint J${j.id}`:`${cutName(S.plan.patches[j.patch].node)} · Pin ${S.plan.joints.filter(x=>S.plan.patches[x.patch].node===S.plan.patches[j.patch].node).findIndex(x=>x.id===j.id)+1}`;}
 function restorePlan(direction){
   if(!$('busy').classList.contains('hidden')||S.settingsDirty)return;
   const plan=history.take(direction);if(!plan)return;
-  const camera=viewer.camera.position.clone(),target=viewer.controls.target.clone(),up=viewer.camera.up.clone(),faceFocus=viewer.faceFocus;
-  S.sel={};onPlan(plan,false,true);viewer.camera.position.copy(camera);viewer.controls.target.copy(target);viewer.camera.up.copy(up);viewer.faceFocus=faceFocus;viewer.controls.update();DIRECT?.sync();viewer.dirty();
+  const camera=viewer.camera.position.clone(),target=viewer.controls.target.clone(),up=viewer.camera.up.clone(),faceFocus=viewer.faceFocus,cameraPose=viewer.cameraPose;
+  S.sel={};onPlan(plan,false,true);viewer.camera.position.copy(camera);viewer.controls.target.copy(target);viewer.camera.up.copy(up);viewer.faceFocus=faceFocus;viewer.cameraState(cameraPose);viewer.controls.update();DIRECT?.sync();viewer.dirty();
   DIRECT.feedback(`${direction==='undo'?'Undid':'Redid'} edit. Built parts must be regenerated.`);FLOW?.sync();
 }
 

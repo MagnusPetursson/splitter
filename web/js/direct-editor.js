@@ -1,18 +1,21 @@
 // Direct manipulation is an input adapter over the application's accepted plan.
 // The preview is disposable; only pointer release submits a geometry request.
 import * as THREE from 'three';
+import {SceneContext,depthProfile} from './scene-context.js';
 const $=id=>document.getElementById(id);
 const v3=a=>new THREE.Vector3(...a);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 export class DirectEditor {
   constructor(app){
     this.a=app;this.v=app.viewer;this.dom=this.v.renderer.domElement;
-    this.ray=new THREE.Raycaster();this.drag=null;this.hover=null;
+    this.ray=new THREE.Raycaster();this.drag=null;this.hover=null;this.context=new SceneContext(this);$('stepJoints').prepend($('pinPopover'));
+    const camera=()=>{$('cameraView').value=this.v.cameraPose||'iso';$('viewFace').setAttribute('aria-pressed',String(this.v.cameraPose==='face'));};
+    document.addEventListener('viewer-camera',camera);
     this.ghost=new THREE.Mesh(new THREE.RingGeometry(.85,1,48),new THREE.MeshBasicMaterial({color:'#a6e4c9',side:THREE.DoubleSide,depthTest:false,transparent:true}));
     this.ghost.visible=false;this.ghost.renderOrder=30;this.v.scene.add(this.ghost);
     for(const [id,mode] of [['cutMove','translate'],['cutTilt','rotate']])$(id).addEventListener('click',()=>{this.v.cutMode(mode);this.feedback(mode==='rotate'?'Drag a coloured arc to tilt · release to apply · Esc cancels':'Drag the blue arrow along the cut normal · release to apply · Esc cancels');this.sync();});
     $('viewAddJoint').addEventListener('click',()=>{app.setAddMode(!app.S.addMode);this.sync();});
-    $('viewFace').addEventListener('click',()=>{if(this.v.view!=='cuts')app.setView('cuts');this.v.faceView(app.S.face);this.feedback('Section view · other geometry hidden to expose this cut face');});
+    $('viewFace').addEventListener('click',()=>{if(this.v.view!=='cuts')app.setView('cuts');this.v.faceView(app.S.face);this.feedback('Section view · true-size holes; gold ring marks your selection');});
     $('joinExplode').addEventListener('click',async()=>{
       if(this.v.view==='parts'){app.setView('cuts');this.sync();return;}
       if(!app.S.built)await app.build();
@@ -42,7 +45,7 @@ export class DirectEditor {
       }
     },true);
     this.v.tc.addEventListener('change',()=>{if(this.v.tc.axis)this.dom.style.cursor=this.v.tc.dragging?'grabbing':'grab';});
-    this.v.cb.onCutPreview=(text)=>this.feedback(text);
+    this.v.cb.onCutPreview=(text)=>{this.context.cutText=text;this.feedback('Release to apply · Esc cancels');};
   }
   step(){return document.body.dataset.step;}
   active(){return !!this.a.S.plan&&!this.a.S.settingsDirty&&$('busy').classList.contains('hidden')&&!this.dom.closest('[inert]');}
@@ -57,7 +60,7 @@ export class DirectEditor {
     $('viewFace').hidden=!S.plan?.faces.length||!(join||S.sel.cut!=null);
     $('viewAddJoint').setAttribute('aria-pressed',String(!!S.addMode));
     $('viewAddJoint').textContent=S.addMode?'Stop adding':'Add pin';
-    $('viewFace').setAttribute('aria-pressed',String(!!this.v.faceFocus));
+    $('viewFace').setAttribute('aria-pressed',String(this.v.cameraPose==='face'));
     $('joinExplode').setAttribute('aria-pressed',String(this.v.view==='parts'));
     $('joinExplode').textContent=this.v.view==='parts'?'Back to joints':'Explode';
     $('editUndo').disabled=!history.past.length||!this.active();$('editRedo').disabled=!history.future.length||!this.active();
@@ -67,8 +70,8 @@ export class DirectEditor {
     if(this.v.planMat){this.v.planMat.transparent=join;this.v.planMat.opacity=join ? 0.20 : 1;this.v.planMat.depthWrite=!join;}
     if(this.v.modelMesh)this.v.modelMesh.visible=!this.v.faceFocus;
     if(changed)this.v.highlight();
-    this.v.groups.cuts.children.forEach(g=>{g.visible=!join||g.userData.node===S.face;if(g.userData.quad)g.userData.quad.visible=!join;if(g.userData.rim)g.userData.rim.visible=!join;g.children.filter(o=>o.isSprite).forEach(o=>o.visible=!join);});
-    Object.values(this.v.jointMeshes||{}).forEach(m=>{const j=S.plan?.joints.find(j=>j.id===m.userData.joint);m.visible=!join||S.plan?.patches[j?.patch]?.node===S.face;m.scale.set(1,1,join ? 0.06 : 1);});
+    this.v.groups.cuts.children.forEach(g=>{g.visible=!join||g.userData.node===S.face;if(g.userData.quad)g.userData.quad.visible=!join;if(g.userData.rim)g.userData.rim.visible=!join;if(g.userData.pivot)g.userData.pivot.visible=!join&&g.userData.node===S.sel.cut;if(g.userData.normalArrow)g.userData.normalArrow.visible=!join&&g.userData.node===S.sel.cut;g.children.filter(o=>o.isSprite).forEach(o=>o.visible=!join);});
+    Object.values(this.v.jointMeshes||{}).forEach(m=>{const j=S.plan?.joints.find(j=>j.id===m.userData.joint);m.visible=!join||S.plan?.patches[j?.patch]?.node===S.face;m.scale.set(1,1,1);m.geometry=join?m.userData.footprint:m.userData.volume;m.material=join?m.userData.flat:m.userData.shaded;});
     if(!S.addMode&&!this.drag)this.ghost.visible=false;
     this.v.dirty();this.popover();
   }
@@ -76,11 +79,16 @@ export class DirectEditor {
     const S=this.a.S,j=S.plan?.joints.find(j=>j.id===S.sel.joint),el=$('pinPopover');
     el.hidden=!j||this.step()!=='join'||this.v.view!=='cuts';
     if(el.hidden){this.popKey=null;if(S.pendingPin){S.pendingPin=false;queueMicrotask(()=>this.a.syncFlow());}return;}
-    const key=JSON.stringify(j);if(key===this.popKey)return;this.popKey=key;
+    const key=JSON.stringify([j,document.body.dataset.expert]);if(key===this.popKey)return;this.popKey=key;
     if(S.pendingPin){S.pendingPin=false;queueMicrotask(()=>this.a.syncFlow());}
     const name=this.a.jointName(j),fixed=j.kind==='filament'||['insert','bolt'].includes(j.kind);
-    el.innerHTML=`<header><b>${esc(name)}</b><button id="pinClose" aria-label="Deselect pin">×</button></header><div class="row three"><label>Diameter (mm)<input id="pinDiameter" type="number" min="1" max="30" step="0.25" value="${j.d||3}" ${fixed?'disabled':''}></label><label>Depth (mm)<input id="pinDepth" type="number" min="1" max="60" step="0.5" value="${j.depth||8}"></label><label>Clearance (mm)<input id="pinClearance" type="number" min="0" max="1" step="0.01" value="${j.clear}"></label></div><p class="small mute">Radial clearance for this joint only. ${fixed?'Diameter is fixed by its type; hardware sizes are in Advanced.':''}</p>${(j.warnings||[]).map(w=>`<p class="badc">${esc(w)}</p>`).join('')}<div class="btns"><button id="pinApply" class="primary">Apply pin</button><button id="pinDelete" class="danger">Delete pin</button></div>`;
-    for(const input of el.querySelectorAll('input'))input.oninput=()=>{S.pendingPin=true;this.a.syncFlow();};
+    el.innerHTML=`<header><b>${esc(name)}</b><button id="pinClose" aria-label="Deselect pin">×</button></header><div class="pin-fields"><div class="row three"><label>Diameter (mm)<input id="pinDiameter" type="number" min="1" max="30" step="0.25" value="${j.d||3}" ${fixed?'disabled':''}></label><label>Depth (mm)<input id="pinDepth" type="number" min="1" max="60" step="0.5" value="${j.depth||8}"></label><label>Clearance (mm)<input id="pinClearance" type="number" min="0" max="1" step="0.01" value="${j.clear}"></label></div><p class="small mute">Radial clearance for this joint only. ${fixed?'Diameter is fixed by its type; hardware sizes are in Advanced.':''}</p>${depthProfile(j)}${(j.warnings||[]).map(w=>`<p class="badc">${esc(w)}</p>`).join('')}</div><div class="pin-actions"><p id="pinState" class="small" role="status">Applied · preview shows accepted geometry</p><div class="btns"><button id="pinApply" class="primary" disabled>Apply pin</button><button id="pinDelete" class="danger">Delete pin</button></div></div>`;
+    for(const input of el.querySelectorAll('input'))input.oninput=()=>{
+      const changed=+$('pinDiameter').value!==j.d||+$('pinDepth').value!==j.depth||Math.abs(+$('pinClearance').value-j.clear)>1e-9;
+      const valid=[...el.querySelectorAll('input')].every(i=>i.checkValidity());
+      S.pendingPin=changed;$('pinApply').disabled=!changed||!valid;
+      $('pinState').textContent=changed?'Not applied · preview still shows accepted geometry':'Applied · preview shows accepted geometry';this.a.syncFlow();
+    };
     $('pinClose').onclick=()=>{this.a.selectFace(S.face,true);this.dom.focus();};
     $('pinDelete').onclick=()=>{this.a.deleteJoint(j.id);this.dom.focus();};
     $('pinApply').onclick=()=>{
@@ -109,7 +117,7 @@ export class DirectEditor {
   }
   hoverJoint(id){
     if(id===this.hover)return;this.hover=id;
-    for(const [key,m] of Object.entries(this.v.jointMeshes||{}))m.material.emissive.set(+key===id||+key===this.a.S.sel.joint?'#8a5b29':'#000');
+    for(const [key,m] of Object.entries(this.v.jointMeshes||{}))m.material.emissive?.set(+key===id||+key===this.a.S.sel.joint?'#8a5b29':'#000');
     this.a.jmap.opts.hover=id;this.a.jmap.draw();
     if(this.a.jed.open){this.a.jed.map.opts.hover=id;this.a.jed.map.draw();}
     this.v.dirty();
@@ -133,7 +141,7 @@ export class DirectEditor {
     this.preview={...p,world,check};
     const need=j?.rreq||this.a.protoJoint($('addKind').value).rreq;
     this.ghost.position.copy(world);this.ghost.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),v3(fr.n));this.ghost.scale.setScalar(need);this.ghost.visible=true;this.ghost.material.color.set(check.valid?'#a6e4c9':'#ff655b');
-    if(j&&this.drag.moved){const m=this.v.jointMeshes[j.id];m.position.copy(world);m.material.emissive.set(check.valid?'#4b8a63':'#ff2222');}
+    if(j&&this.drag.moved){const m=this.v.jointMeshes[j.id];m.position.copy(world);m.material.color.set(check.valid?'#a6e4c9':'#ff655b');}
     this.dom.style.cursor=this.drag?'grabbing':'crosshair';this.feedback(check.text,check.valid);this.v.dirty();
   }
   up(e){

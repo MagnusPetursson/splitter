@@ -18,7 +18,7 @@ try{for(const [device,width,height] of [['desktop',1440,900],['phone',390,844]])
  await p.click('[data-step="split"]');await p.locator('[data-cut]').first().click();await state(p,device+'-cut');
  check(device+' active plane outline and pivot',await p.evaluate(()=>{const v=window.__viewer,g=v.cutMeshes[v.sel.cut];return g.userData.rim.material.depthTest===false&&!!g.userData.pivot&&!!g.userData.normalArrow;}));
  check(device+' anchored axis readout',await p.locator('#cutReadout').isVisible()&&/Offset X/.test(await p.locator('#cutReadout').innerText()));
- await p.click('[data-step="join"]');await p.click('#viewFace');await p.locator('#pinList button').nth(1).click();await state(p,device+'-pin');
+ await p.click('[data-step="join"]');await p.click('#viewFace');await p.click('#pinSelector summary');await p.locator('#pinList button').nth(1).click();await state(p,device+'-pin');
  check(device+' unchanged Apply disabled',await p.locator('#pinApply').isDisabled());
  check(device+' pin selection badge',await p.locator('#pinBadge').isVisible()&&/2/.test(await p.locator('#pinBadge').innerText()));
  check(device+' popover leader',await p.locator('#pinLeader').isVisible());

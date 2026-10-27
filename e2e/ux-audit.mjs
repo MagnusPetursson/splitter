@@ -46,7 +46,7 @@ try {
   assert.ok(await p.evaluate(()=>window.__ps.plan.tree.nodes.some(n=>n.locked&&n.reason==='moved by you')));
   await audit(p,device+'-cut-edit');
   await p.click('#flowNext');await audit(p,device+'-join');
-  await p.click('#pinList button');await audit(p,device+'-pin-popover');await p.click('#pinClose');
+  await p.click('#pinSelector summary');await p.click('#pinList button');await audit(p,device+'-pin-popover');await p.click('#pinClose');
   await p.click('#viewFace');await audit(p,device+'-face-view');
   await p.click('#precisionMap summary');await audit(p,device+'-precision-map');
   await p.click('#openEditor');await audit(p,device+'-joint-editor');

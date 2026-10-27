@@ -9,7 +9,7 @@ try{
  await p.goto(url,{waitUntil:'networkidle'});await p.waitForFunction(()=>document.querySelector('#printer').options.length>5);
  await activate('[data-sample="bracket_320mm.stl"]');await p.waitForFunction(()=>window.__ps.workerReady);await idle();
  assert.equal(await p.locator('body').getAttribute('data-step'),'fit','loading automatically advances to the named printer');
- assert.match(await p.locator('#flowNext').innerText(),/Split for Prusa CORE One/);
+ assert.match(await p.locator('#flowNext').innerText(),/Plan cuts for Prusa CORE One/);
  assert.match(await p.locator('#fitVerdict').innerText(),/Width.*320.*244/s,'fit card explains the exact failed dimension');
  assert.match(await p.locator('#fitReadout').innerText(),/each side.*top/s,'usable volume explains margins');
  await activate('#flowNext');await p.waitForFunction(()=>window.__ps.plan);await idle();

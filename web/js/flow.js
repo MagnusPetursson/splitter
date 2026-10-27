@@ -20,6 +20,7 @@ export class GuidedFlow {
     $('printer').addEventListener('change',()=>{if($('printer').value==='custom')$('printerAdvanced').open=true;this.sync();});
     for(const id of ['bedX','bedY','bedZ','margin','nozzle'])$(id).addEventListener('input',()=>this.sync());
     $('frameModel').addEventListener('click',()=>viewer.frameCurrent());
+    $('replaceCompact').addEventListener('click',()=>$('fileInput').click());
     $('expandView').addEventListener('click',()=>this.expand(!this.expanded));
     document.addEventListener('keydown',e=>{
       if(!this.expanded)return;
@@ -43,7 +44,7 @@ export class GuidedFlow {
     this.expert=on;document.body.dataset.expert=String(on);
     $('expertMode').setAttribute('aria-pressed',String(on));
     document.querySelectorAll('details.advanced').forEach(d=>{d.open=on;});
-    localStorage.setItem('ps.expert',on?'1':'0');
+    localStorage.setItem('ps.expert',on?'1':'0');$('pinSelector').open=on;
     document.dispatchEvent(new Event('expertchange'));this.onSync?.();this.sync();
     if(announce)this.say(on?'Expert mode on. Detailed controls are open in each step.':'Guided mode on. Advanced controls remain available in each step.');
   }
@@ -93,10 +94,12 @@ export class GuidedFlow {
     $('readiness').textContent=ready.text;
     $('readiness').classList.toggle('warnc',!ready.ok);
     $('loadedActions').hidden=!S.model;$('drop').hidden=!!S.model;
+    $('loadedStrip').hidden=!S.model||this.step==='load';
+    $('loadedStripText').textContent=S.model?`✓ ${S.model.name} loaded · ${Math.abs((S.model.scale||1)-1)<1e-9?'original scale':`scale ${S.model.scale}×`}`:'';
     document.querySelector('#stepModel .samples').hidden=!!S.model;
     $('loadHeading').textContent=S.model?`${S.model.name.replace(/\.[^.]+$/,'').replace(/_/g,' ')} loaded`:'Start with your model.';
     document.querySelector('#stepModel .step-intro').textContent=S.model?`${Math.abs((S.model.scale||1)-1)<1e-9?'Original size retained.':`Scale ${S.model.scale}× applied.`} Replace the file or review its measurements below.`:'Keep its size. We’ll make the pieces fit your printer.';
-    document.body.dataset.loaded=String(!!S.model);
+    document.body.dataset.loaded=String(!!S.model);document.body.dataset.exported=String(!!S.export);
     $('exportBtn').disabled=busy||!S.built||!!S.settingsDirty;
     document.querySelectorAll('#flowNav button').forEach((b,j)=>{
       b.disabled=busy||!this.allowed(steps[j]);
@@ -112,7 +115,7 @@ export class GuidedFlow {
     $('flowBack').disabled=busy||i===0;
     const canAct=i===0?!!S.model:i<=2?!!S.model:i>=3?ready.ok:false;
     $('flowNext').disabled=busy||!canAct;
-    $('flowNext').textContent=i===0?(S.model?'Check printer →':'Choose a model first'):i===1||i===2&&(!S.plan||S.settingsDirty)?`Split for ${this.printerName()}`:i===2?'Review joints →':!ready.ok?'Resolve warnings first':S.export?'Download ZIP':S.built?'Prepare downloads':'Build & prepare downloads';
+    $('flowNext').textContent=i===0?(S.model?'Check printer →':'Choose a model first'):i===1||i===2&&(!S.plan||S.settingsDirty)?`Plan cuts for ${this.printerName()}`:i===2?'Review joints →':!ready.ok?(S.pendingPin?'Apply or discard pin edits':'Resolve warnings first'):S.export?'Download ZIP':S.built?'Prepare downloads':'Build & prepare downloads';
     const editing=!$('jointDlg').classList.contains('hidden');
     $('side').inert=busy||editing||!!this.expanded;
     for(const el of document.querySelectorAll('.top, #flowNav, .flow-footer'))el.inert=editing||!!this.expanded;
@@ -130,9 +133,9 @@ export class GuidedFlow {
     $('spreadParts').textContent=this.viewer.explode>=.02?'Exploded':'Assembled';
     const x=+$('bedX').value,y=+$('bedY').value,z=+$('bedZ').value,m=+$('margin').value;
     const u=[Math.max(0,x-2*m),Math.max(0,y-2*m),Math.max(0,z-m)];
-    $('fitReadout').innerHTML=`${x} × ${y} × ${z} mm nominal<small>Usable: ${u.join(' × ')} mm.<br>Reserve ${m} mm at each side and at the top for clearance; nothing is scaled.</small>`;
-    const over=S.model?S.model.size.map((s,k)=>s>u[k]?`${['Width','Depth','Height'][k]} ${s.toFixed(1)} mm > usable ${u[k]} mm.`:'').filter(Boolean):[];
-    $('fitVerdict').textContent=S.model?`${this.printerName()}: ${over.length?over.join(' ')+' Splitting will make the pieces fit.':'Whole model fits as placed. The planner can keep it in one piece.'}`:'';
+    $('fitReadout').innerHTML=`<b>W × D × H</b> · mm<small>${x} × ${y} × ${z} nominal<br>Usable: ${u.join(' × ')} mm.<br>Reserve ${m} mm at each side and at the top for clearance; nothing is scaled.</small>`;
+    const over=S.model?S.model.size.map((s,k)=>s>u[k]?`${(s-u[k]).toFixed(1)} mm too ${['wide','deep','tall'][k]} for the usable space (${['Width','Depth','Height'][k]} ${s.toFixed(1)} mm > ${u[k]} mm).`:'').filter(Boolean):[];
+    $('fitVerdict').textContent=S.model?`${this.printerName()}: ${over.length?over.join(' ')+' Splitting finds pieces that fit. Review the cuts and joints before anything is built.':'Whole model fits as placed. The planner can keep it in one piece.'}`:'';
     $('fitVerdict').classList.toggle('over',!!over.length);
     const simp=S.model?.simplified;$('fitMeshNote').hidden=!simp;
     $('fitMeshNote').textContent=simp?`Simplified for planning: ${simp.inputTris.toLocaleString()} → ${simp.outputTris.toLocaleString()} triangles. Maximum sampled deviation ${simp.maxDev.toFixed(3)} mm. ${S.model.originalKept?'Full-detail original retained for export.':'Export will use this simplified mesh.'} See Load for the complete repair and simplification report.`:'';

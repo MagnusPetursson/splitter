@@ -84,6 +84,7 @@ export class Viewer {
     this.controls.enableDamping = !matchMedia('(prefers-reduced-motion: reduce)').matches;
     matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{this.controls.enableDamping=!e.matches;});
     this.controls.addEventListener('change', () => this.dirty());
+    this.controls.addEventListener('start',()=>this.cameraState('custom'));
     const hemi = new THREE.HemisphereLight('#dfe8f2', '#30261f', 1.4);
     hemi.position.set(0, 0, 1);
     this.scene.add(hemi);
@@ -101,7 +102,8 @@ export class Viewer {
     this.tc = new TransformControls(this.camera, this.renderer.domElement);
     this.tc.setSpace('local');
     this.tc.showX = false; this.tc.showY = false;
-    this.tc.setSize(1.05);
+    this.tc.setSize(1.25);
+    this.tc.setColors('#efb779','#b3e7dc','#a4dbff','#ffffff');
     this.tcHelper = this.tc.getHelper();
     this.scene.add(this.tcHelper);
     this.tc.addEventListener('dragging-changed', (e) => {
@@ -111,6 +113,7 @@ export class Viewer {
     });
     this.tc.addEventListener('objectChange', () => this.onTCChange());
     this.tc.addEventListener('change', () => this.dirty());
+    this.tc.addEventListener('axis-changed',e=>this.tc.setSize(e.value?1.4:1.25));
     this.raycaster = new THREE.Raycaster();
     this.view = 'model';
     this.explode = 0.35;
@@ -134,6 +137,8 @@ export class Viewer {
       this.controls.update();
       if (this._dirty) {
         this.groups.cuts.traverse(o=>{if(o.isSprite){const pos=o.getWorldPosition(new THREE.Vector3()),size=this.camera.position.distanceTo(pos)*2*Math.tan(THREE.MathUtils.degToRad(this.camera.fov/2))*24/this.renderer.domElement.clientHeight;o.scale.set(size*2,size,1);}});
+        this.camera.updateMatrixWorld(true);this.scene.updateMatrixWorld(true);
+        this.styleHandles();this.cb.onFrame?.();
         this._dirty = false; this.renderer.render(this.scene, this.camera);
       }
     };
@@ -141,6 +146,24 @@ export class Viewer {
   }
 
   dirty() { this._dirty = true; }
+
+  cameraState(pose){this.cameraPose=pose;document.dispatchEvent(new CustomEvent('viewer-camera',{detail:pose}));}
+
+  styleHandles(){
+    // Style visible handles only; never alter the raycast picker or vendor code.
+    const mode=this.tc.mode,axis=this.tc.axis;
+    this.tcHelper.traverse(o=>{if(!o.material||o.parent?.name==='picker'||!['X','Y','Z'].includes(o.name))return;
+      if(o.parent!==this.tc._gizmo.gizmo[mode])return;
+      o.onBeforeRender=()=>{o.material.opacity=this.tc.axis&&o.name!==this.tc.axis?0.28:1;};
+    });
+  }
+
+  cutDescription(){
+    if(this.dragNode==null)return '';
+    const n=this.dragNormal||this.plan.tree.nodes[this.dragNode].cut.n;
+    const k=n.findIndex(x=>Math.abs(x)>.9999),axis=k<0?'normal':['X','Y','Z'][k];
+    return `Offset ${axis} ${this.dragD.toFixed(1)} mm`;
+  }
 
   clearAll(){for(const k of Object.keys(this.groups))this.clear(k);this.tc.detach();this.box=null;this.modelMesh=null;this.modelGeom=null;this.modelIndexed=null;this.plan=null;this.cutMeshes={};this.jointMeshes={};this.partMeshes=[];this.dirty();}
 
@@ -158,7 +181,7 @@ export class Viewer {
     const points=f.loops.flat(),u0=Math.min(...points.map(p=>p[0])),u1=Math.max(...points.map(p=>p[0])),v0=Math.min(...points.map(p=>p[1])),v1=Math.max(...points.map(p=>p[1]));
     const fr=f.frame,c=new THREE.Vector3(...fr.o).addScaledVector(new THREE.Vector3(...fr.u),(u0+u1)/2).addScaledVector(new THREE.Vector3(...fr.v),(v0+v1)/2);
     const distance=Math.max((v1-v0)*1.5,(u1-u0)/this.camera.aspect)*1.65;
-    this.faceFocus=true;this.modelMesh.visible=false;
+    this.faceFocus=true;this.modelMesh.visible=false;this.cameraState('face');
     this.camera.up.set(...fr.v);this.controls._quat.setFromUnitVectors(this.camera.up,new THREE.Vector3(0,1,0));this.controls._quatInverse.copy(this.controls._quat).invert();this.camera.position.copy(c).addScaledVector(new THREE.Vector3(...fr.n),Math.max(20,distance));this.controls.target.copy(c);this.controls.update();this.dirty();
   }
 
@@ -170,7 +193,7 @@ export class Viewer {
     const c = this.controls.target, d = this.camera.position.distanceTo(c);
     const dirs = {top:[0,-.001,1],front:[0,-1,0],right:[1,0,0]};
     if (dirs[view]) this.camera.position.copy(c).addScaledVector(new THREE.Vector3(...dirs[view]).normalize(),d);
-    this.controls.update(); this.dirty();
+    this.controls.update(); this.camera.updateMatrixWorld(true);this.cameraState(view);this.dirty();
   }
 
   cameraKey(e) {
@@ -186,6 +209,7 @@ export class Viewer {
         const v=new THREE.Vector3().setFromMatrixColumn(this.camera.matrix,0).multiplyScalar(dx*r*.025).addScaledVector(new THREE.Vector3().setFromMatrixColumn(this.camera.matrix,1),dy*r*.025);
         this.camera.position.add(v);this.controls.target.add(v);
       } else {
+        this.cameraState('custom');
         const theta=Math.atan2(delta.y,delta.x)+dx*.12,phi=THREE.MathUtils.clamp(Math.acos(delta.z/r)-dy*.12,.05,Math.PI-.05);
         this.camera.position.copy(this.controls.target).add(new THREE.Vector3(r*Math.sin(phi)*Math.cos(theta),r*Math.sin(phi)*Math.sin(theta),r*Math.cos(phi)));
       }
@@ -206,8 +230,15 @@ export class Viewer {
   clear(g) {
     const grp = this.groups[g];
     while (grp.children.length) {
-      const c = grp.children.pop();
-      c.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.dispose) o.material.dispose(); });
+      const c = grp.children[0];grp.remove(c);
+      c.traverse(o => {
+        if(o.userData.pick==='joint'){
+          for(const x of new Set([o.geometry,o.userData.volume,o.userData.footprint,o.material,o.userData.shaded,o.userData.flat]))x?.dispose();
+        } else {
+          o.geometry?.dispose();
+          for(const material of [o.material].flat())material?.dispose();
+        }
+      });
     }
   }
 
@@ -228,7 +259,7 @@ export class Viewer {
 
   frame(box = this.box) {
     if (!box) return;
-    this.faceFocus=false;if(this.modelMesh)this.modelMesh.visible=true;
+    this.faceFocus=false;if(this.modelMesh)this.modelMesh.visible=true;this.cameraState('iso');
     const c = box.getCenter(new THREE.Vector3());
     const r = box.getSize(new THREE.Vector3()).length() * 0.5 || 100;
     this.camera.up.set(0,0,1);this.controls._quat.setFromUnitVectors(this.camera.up,new THREE.Vector3(0,1,0));this.controls._quatInverse.copy(this.controls._quat).invert();
@@ -319,19 +350,23 @@ export class Viewer {
       const U = new THREE.Vector3(...fr.u), V = new THREE.Vector3(...fr.v), N = new THREE.Vector3(...fr.n), O = new THREE.Vector3(...fr.o);
       let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
       for (const l of f.loops) for (const p of l) { u0 = Math.min(u0, p[0]); u1 = Math.max(u1, p[0]); v0 = Math.min(v0, p[1]); v1 = Math.max(v1, p[1]); }
-      const pad = 0.08 * Math.max(u1 - u0, v1 - v0) + 4;
+      const pad = Math.max(u1 - u0, v1 - v0, this.box.getSize(new THREE.Vector3()).length()*.4) * 0.3 + 5;
       u0 -= pad; u1 += pad; v0 -= pad; v1 += pad;
       const grp = new THREE.Group();
       const basis = new THREE.Matrix4().makeBasis(U, V, N);
       grp.quaternion.setFromRotationMatrix(basis);
       grp.position.copy(O);
-      const quad = new THREE.Mesh(new THREE.PlaneGeometry(u1 - u0, v1 - v0), new THREE.MeshBasicMaterial({ color: '#ffd9b8', transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }));
+      const quad = new THREE.Mesh(new THREE.PlaneGeometry(u1 - u0, v1 - v0), new THREE.MeshBasicMaterial({ color: '#ffd9b8', transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false, depthTest:false }));
       quad.position.set((u0 + u1) / 2, (v0 + v1) / 2, 0);
       quad.userData = { pick: 'cut', node: f.node };
       grp.add(quad);
-      const rim = new THREE.LineSegments(new THREE.EdgesGeometry(quad.geometry), new THREE.LineBasicMaterial({ color: '#e07a3f' }));
+      const rim = new THREE.LineSegments(new THREE.EdgesGeometry(quad.geometry), new THREE.LineBasicMaterial({ color: '#f8edb3', depthTest:false, transparent:true }));
       rim.position.copy(quad.position);
-      grp.add(rim);
+      quad.renderOrder=4;rim.renderOrder=5;grp.add(rim);
+      const pivot=new THREE.Mesh(new THREE.RingGeometry(1.4,2.1,40),new THREE.MeshBasicMaterial({color:'#ffffff',side:THREE.DoubleSide,depthTest:false}));
+      pivot.position.copy(quad.position);pivot.renderOrder=7;grp.add(pivot);
+      const normalArrow=new THREE.ArrowHelper(new THREE.Vector3(0,0,1),quad.position,Math.max(12,pad*1.8),'#a4dbff',5,2.5);
+      normalArrow.traverse(o=>{if(o.material){o.material.depthTest=false;o.renderOrder=6;}});grp.add(normalArrow);
       // section outline
       const pts = [];
       for (const l of f.loops) {
@@ -352,7 +387,7 @@ export class Viewer {
       const label = makeLabel(document.body.dataset.expert==='true'?(plan.tree.nodes[f.node].label || `C${f.node}`):`Cut ${plan.faces.indexOf(f)+1}`, Math.max(8, 0.06 * Math.max(u1 - u0, v1 - v0)));
       label.position.set(u1, v1, 0);
       grp.add(label);
-      grp.userData = { node: f.node, n: N.clone(), d: plan.tree.nodes[f.node].cut.d, quad, rim, center: new THREE.Vector3((u0 + u1) / 2, (v0 + v1) / 2, 0) };
+      grp.userData = { node: f.node, n: N.clone(), d: plan.tree.nodes[f.node].cut.d, quad, rim, pivot, normalArrow, center: new THREE.Vector3((u0 + u1) / 2, (v0 + v1) / 2, 0) };
       this.groups.cuts.add(grp);
       this.cutMeshes[f.node] = grp;
     }
@@ -371,7 +406,7 @@ export class Viewer {
       const basis = new THREE.Matrix4().makeBasis(new THREE.Vector3(...j.x), new THREE.Vector3(...j.y), new THREE.Vector3(...j.z));
       m.quaternion.setFromRotationMatrix(basis);
       m.position.set(...j.origin);
-      m.userData = { pick: 'joint', joint: j.id };
+      m.userData = { pick: 'joint', joint: j.id, volume:g, shaded:m.material, footprint:new THREE.CircleGeometry(j.d/2,48), flat:new THREE.MeshBasicMaterial({color:j.warnings?.length?'#ffb2a7':(KIND_COLORS[j.kind]||'#fff'),side:THREE.DoubleSide,depthTest:false}) };
       this.groups.joints.add(m);
       this.jointMeshes[j.id] = m;
     }
@@ -541,12 +576,13 @@ export class Viewer {
     if (this.cutMeshes) {
       for (const [node, grp] of Object.entries(this.cutMeshes)) {
         const on = this.sel.cut === +node;
-        grp.userData.quad.material.opacity = on ? 0.32 : 0.14;
+        grp.userData.quad.material.opacity = on ? 0.20 : 0.035;
+        grp.userData.pivot.visible=on;grp.userData.normalArrow.visible=on;grp.userData.rim.material.opacity=on?1:.25;
         grp.userData.rim.material.color.set(on ? '#ffffff' : '#e07a3f');
       }
     }
     if (this.jointMeshes) {
-      for (const [id, m] of Object.entries(this.jointMeshes)) m.material.emissive.set(this.sel.joint === +id ? '#e07a3f' : '#000000');
+      for (const [id, m] of Object.entries(this.jointMeshes)) m.material.emissive?.set(this.sel.joint === +id ? '#e07a3f' : '#000000');
     }
     // transform gizmo on the selected cut
     this.tc.detach();
@@ -576,7 +612,10 @@ export class Viewer {
       grp.position.copy(this.tcStart.grpPos).sub(this.tcStart.pos).applyQuaternion(rotation).add(this.tcStart.pos);
       this.dragNormal=normal.toArray();this.dragD=normal.dot(this.tcStart.pos);
       const degrees=THREE.MathUtils.radToDeg(this.tcStart.quat.angleTo(this.tcObj.quaternion));
-      this.cutChanged=degrees>.001;this.cb.onCutPreview?.(`Tilt ${degrees.toFixed(1)}° · release to apply · Esc cancels`);return;
+      const localAxis=this.tc.axis==='X'?new THREE.Vector3(1,0,0):new THREE.Vector3(0,1,0),worldAxis=localAxis.applyQuaternion(this.tcStart.quat);
+      const k=worldAxis.toArray().findIndex(x=>Math.abs(x)>.999),label=k<0?`local ${this.tc.axis}`:['X','Y','Z'][k];
+      const signed=THREE.MathUtils.radToDeg(2*Math.atan2(new THREE.Vector3(rotation.x,rotation.y,rotation.z).dot(k<0?worldAxis:new THREE.Vector3().setComponent(k,1)),rotation.w));
+      this.cutChanged=degrees>.001;this.cb.onCutPreview?.(`Tilt about ${label} ${signed>=0?'+':''}${signed.toFixed(1)}°`);return;
     }
     const n = grp.userData.n;
     const delta = this.tcObj.position.clone().sub(this.tcStart.pos).dot(n);
@@ -584,7 +623,7 @@ export class Viewer {
     this.tcObj.position.copy(this.tcStart.pos).addScaledVector(n, delta);
     grp.position.copy(this.tcStart.grpPos).addScaledVector(n, delta);
     this.dragD = this.tcStart.d + delta;this.cutChanged=Math.abs(delta)>.001;
-    this.cb.onCutPreview?.(`Offset ${this.dragD.toFixed(1)} mm · ${delta>=0?'+':''}${delta.toFixed(1)} mm · release to apply · Esc cancels`);
+    this.cb.onCutPreview?.(`${this.cutDescription()} · ${delta>=0?'+':''}${delta.toFixed(1)} mm`);
     this.cb.onCutDrag && this.cb.onCutDrag(this.dragNode, this.dragD);
   }
 
