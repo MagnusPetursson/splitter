@@ -29,7 +29,15 @@ async function audit(p, name, {axe = true} = {}) {
       if (e.closest('.credits,.privacy,p,li:not([role=option]),td') && e.matches('a')) return []; // inline text links (WCAG 2.5.8 exception)
       return r.width < 43.9 || r.height < 43.9 ? [{id: e.id || e.textContent.trim().slice(0, 40), w: Math.round(r.width), h: Math.round(r.height)}] : [];
     });
-    return {leaks: text.split('\n').filter(t => /\[object|\bundefined\b|\bNaN\b/.test(t)).slice(0, 5), overflow: document.documentElement.scrollWidth > innerWidth + 1, small};
+    // Visible controls in the header and the view must not cover each other or leave the screen.
+    const boxes = [...document.querySelectorAll('.top button,.top a[href],.flow-nav button,.stage button,.stage select,.stage input,#orientationTriad')].filter(vis).filter(e => !e.closest('#outliner,#pinPopover,#busy,.toast,dialog')).map(e => ({id: e.id || e.textContent.trim().slice(0, 24), r: e.getBoundingClientRect()}));
+    const collide = [];
+    for (let i = 0; i < boxes.length; i++) {
+      const a = boxes[i].r;
+      if (a.left < -1 || a.right > innerWidth + 1 || a.top < -1 || a.bottom > innerHeight + 1) collide.push(`${boxes[i].id} off-screen`);
+      for (let j = i + 1; j < boxes.length; j++) { const b = boxes[j].r, w = Math.min(a.right, b.right) - Math.max(a.left, b.left), h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top); if (w > 2 && h > 2) collide.push(`${boxes[i].id} × ${boxes[j].id}`); }
+    }
+    return {collide, leaks: text.split('\n').filter(t => /\[object|\bundefined\b|\bNaN\b/.test(t)).slice(0, 5), overflow: document.documentElement.scrollWidth > innerWidth + 1, small};
   });
   let violations = [];
   if (axe) {
@@ -41,6 +49,7 @@ async function audit(p, name, {axe = true} = {}) {
   assert.deepEqual(data.leaks, [], `text leak in ${name}`);
   assert.equal(data.overflow, false, `horizontal overflow in ${name}`);
   assert.deepEqual(data.small, [], `targets under 44 px in ${name}`);
+  assert.deepEqual(data.collide, [], `overlapping or off-screen controls in ${name}`);
   assert.deepEqual(violations, [], `axe violations in ${name}`);
 }
 

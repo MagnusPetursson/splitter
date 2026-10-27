@@ -271,15 +271,33 @@ export class Viewer {
     // fill ~82 % of the limiting screen dimension (exact for the box, unlike a
     // bounding sphere), so the model dominates phones and desktops alike.
     const up = new THREE.Vector3(0, 0, 1), right = new THREE.Vector3().crossVectors(up, dir).normalize(), camUp = new THREE.Vector3().crossVectors(dir, right);
-    const tv = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * 0.82, th = tv * aspect;
+    const fill = aspect < 1 ? 0.9 : 0.82;
+    const tv = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * fill, th = tv * aspect;
     let dist = 0;
-    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
-      const p = new THREE.Vector3(x, y, z).sub(c);
-      const depth = p.dot(dir);
+    const pts = [];
+    const fitPoint = (x, y, z) => {
+      const p = new THREE.Vector3(x, y, z).sub(c), depth = p.dot(dir);
+      pts.push(p);
       dist = Math.max(dist, depth + Math.abs(p.dot(right)) / th, depth + Math.abs(p.dot(camUp)) / tv);
-    }
+    };
+    // For the whole model use (sampled) vertices: rounded shapes such as
+    // helmets fill far less of the screen than their box corners suggest.
+    const pos = box === this.box && this.modelGeom?.attributes.position;
+    if (pos) { const step = Math.max(1, Math.floor(pos.count / 40000)); for (let i = 0; i < pos.count; i += step) fitPoint(pos.getX(i), pos.getY(i), pos.getZ(i)); }
+    else for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) fitPoint(x, y, z);
     if (!(dist > 0)) dist = r * 2.9 * Math.max(1, 1.25 / aspect);
-    this.camera.position.copy(c).addScaledVector(dir, Math.max(dist, r * 1.05));
+    dist = Math.max(dist, r * 1.05);
+    // Centre the projected silhouette (not the box centre), then re-fit once:
+    // asymmetric shapes otherwise waste one side of a narrow phone view.
+    if (pts.length) {
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const p of pts) { const z = dist - p.dot(dir), x = p.dot(right) / z, y = p.dot(camUp) / z; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+      c.addScaledVector(right, (x0 + x1) / 2 * dist).addScaledVector(camUp, (y0 + y1) / 2 * dist);
+      let d2 = 0;
+      for (const p0 of pts) { const p = p0.clone().sub(new THREE.Vector3().addScaledVector(right, (x0 + x1) / 2 * dist).addScaledVector(camUp, (y0 + y1) / 2 * dist)), depth = p.dot(dir); d2 = Math.max(d2, depth + Math.abs(p.dot(right)) / th, depth + Math.abs(p.dot(camUp)) / tv); }
+      if (d2 > 0) dist = Math.max(d2, r * 1.05);
+    }
+    this.camera.position.copy(c).addScaledVector(dir, dist);
     this.camera.near = r / 50; this.camera.far = r * 60;
     this.camera.updateProjectionMatrix();
     this.controls.target.copy(c);

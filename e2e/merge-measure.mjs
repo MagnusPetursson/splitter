@@ -38,7 +38,9 @@ try{
       const key=s=>`${device}-${expert?'expert':'simple'}-${s}`;
       const take=async s=>{await p.waitForTimeout(250);report.states[key(s)]=await sample(p);await p.screenshot({path:path.join(out,key(s)+'.png')});};
       await take('empty');
-      await p.click('[data-sample="bracket_320mm.stl"]');await idle(p);await take('fit');
+      if(process.env.MEASURE_MODEL)await p.setInputFiles('#fileInput',process.env.MEASURE_MODEL);else await p.click('[data-sample="bracket_320mm.stl"]');
+      await p.waitForFunction(()=>window.__ps.model);await idle(p);await take('fit');
+      if(process.env.MEASURE_FIT_ONLY){await ctx.close();continue;}
       await p.click('#flowNext');await p.waitForFunction(()=>window.__ps.plan);await idle(p);
       await p.click('#flowNav [data-step="split"]');await take('split');
       const cut=await p.evaluate(()=>window.__ps.plan.tree.nodes.find(n=>n.cut)?.id);
