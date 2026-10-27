@@ -31,27 +31,31 @@ try {
   if(device==='desktop'){await p.click('#helpBtn');await audit(p,'desktop-help');await p.keyboard.press('Escape');}
   await p.click('#licLink');await audit(p,device+'-licenses');await p.keyboard.press('Escape');
   await p.click('[data-sample="bracket_320mm.stl"]');await p.waitForFunction(()=>window.__ps.workerReady,null,{timeout:300000});await idle(p);
-  await p.click('#flowNext');await audit(p,device+'-fit');
+  await audit(p,device+'-fit');
   await p.selectOption('#printer','prusa-mini');
   await p.click('#expertMode');await audit(p,device+'-fit-expert');await p.click('#expertMode');
-  await p.click('#flowNext');await p.click('#autoSplit');await p.waitForFunction(()=>window.__ps.plan,null,{timeout:600000});await idle(p);
+  await p.click('[data-step="split"]');await p.click('#autoSplit');await p.waitForFunction(()=>window.__ps.plan,null,{timeout:600000});await idle(p);
   await audit(p,device+'-split');
   if(device==='phone'){await p.click('#expandView');await audit(p,'phone-expanded');await p.keyboard.press('Escape');}
   // Select a real cut; keyboard offset applies to the same 3D plan.
   await p.locator('[data-cut]').first().click();
+  await p.click('#cutEditor .precise-values summary');
   const old=await p.inputValue('#cutOffsetNum');await p.locator('#cutOffsetNum').fill(String(+old+2));
   const seq=await p.evaluate(()=>window.__ps.planSeq);await p.click('#cutApply');
   await p.waitForFunction(s=>window.__ps.planSeq>s&&document.querySelector('#busy').classList.contains('hidden'),seq,{timeout:600000});
   assert.ok(await p.evaluate(()=>window.__ps.plan.tree.nodes.some(n=>n.locked&&n.reason==='moved by you')));
   await audit(p,device+'-cut-edit');
   await p.click('#flowNext');await audit(p,device+'-join');
+  await p.click('#pinList button');await audit(p,device+'-pin-popover');await p.click('#pinClose');
+  await p.click('#viewFace');await audit(p,device+'-face-view');
+  await p.click('#precisionMap summary');await audit(p,device+'-precision-map');
   await p.click('#openEditor');await audit(p,device+'-joint-editor');
   await p.focus('#jdMap');await p.keyboard.press('ArrowRight');
   assert.ok(await p.evaluate(()=>window.__ps.sel.joint!=null));
   await p.keyboard.press('Tab');assert.notEqual(await p.evaluate(()=>document.activeElement.id),'jdMap');
   await p.keyboard.press('Escape');assert.equal(await p.locator('#jointDlg').getAttribute('aria-hidden'),'true');
   await p.click('#expertMode');await audit(p,device+'-join-expert');await p.click('#expertMode');
-  await p.click('#flowNext');await p.click('#buildBtn');await p.waitForFunction(()=>window.__ps.built,null,{timeout:600000});await idle(p);
+  await p.click('[data-step="export"]');await p.click('#buildBtn');await p.waitForFunction(()=>window.__ps.built,null,{timeout:600000});await idle(p);
   await p.click('#exportBtn');await p.waitForFunction(()=>window.__ps.export,null,{timeout:600000});await idle(p);
   await audit(p,device+'-export');
   await p.click('[data-view="plates"]');await audit(p,device+'-plates');

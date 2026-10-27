@@ -1,0 +1,352 @@
+{
+  "viewports": {
+    "desktop": [
+      1440,
+      900
+    ],
+    "phone": [
+      390,
+      844
+    ]
+  },
+  "simple_path": {
+    "round1_activations": 9,
+    "round2_activations": 4,
+    "actions": [
+      "[data-sample=\"bracket_320mm.stl\"]",
+      "#flowNext",
+      "#flowNext",
+      "#exportInfo a[download$=\".zip\"]"
+    ],
+    "keyboard": "real Tab/Enter; downloaded ZIP"
+  },
+  "core_edits": {
+    "round1_viewport": 2,
+    "round2_viewport": 6,
+    "total": 6,
+    "note": "delete uses viewer-contextual popover; others spatial pointer gestures or selection"
+  },
+  "audit": {
+    "states": 30,
+    "axe_violations": 0,
+    "undersized_targets": 0,
+    "overflow_states": 0,
+    "errors": []
+  },
+  "controls": {
+    "round1": [
+      {
+        "state": "desktop-load",
+        "rendered": 16,
+        "in_view": 16
+      },
+      {
+        "state": "desktop-fit",
+        "rendered": 22,
+        "in_view": 22
+      },
+      {
+        "state": "desktop-fit-expert",
+        "rendered": 29,
+        "in_view": 26
+      },
+      {
+        "state": "desktop-split",
+        "rendered": 28,
+        "in_view": 24
+      },
+      {
+        "state": "desktop-cut-edit",
+        "rendered": 37,
+        "in_view": 32
+      },
+      {
+        "state": "desktop-join",
+        "rendered": 25,
+        "in_view": 21
+      },
+      {
+        "state": "desktop-joint-editor",
+        "rendered": 43,
+        "in_view": 40
+      },
+      {
+        "state": "desktop-join-expert",
+        "rendered": 40,
+        "in_view": 21
+      },
+      {
+        "state": "desktop-export",
+        "rendered": 28,
+        "in_view": 23
+      },
+      {
+        "state": "desktop-plates",
+        "rendered": 27,
+        "in_view": 22
+      },
+      {
+        "state": "phone-load",
+        "rendered": 15,
+        "in_view": 13
+      },
+      {
+        "state": "phone-fit",
+        "rendered": 21,
+        "in_view": 19
+      },
+      {
+        "state": "phone-fit-expert",
+        "rendered": 28,
+        "in_view": 21
+      },
+      {
+        "state": "phone-split",
+        "rendered": 27,
+        "in_view": 20
+      },
+      {
+        "state": "phone-expanded",
+        "rendered": 27,
+        "in_view": 20
+      },
+      {
+        "state": "phone-cut-edit",
+        "rendered": 36,
+        "in_view": 31
+      },
+      {
+        "state": "phone-join",
+        "rendered": 24,
+        "in_view": 18
+      },
+      {
+        "state": "phone-joint-editor",
+        "rendered": 41,
+        "in_view": 34
+      },
+      {
+        "state": "phone-join-expert",
+        "rendered": 39,
+        "in_view": 24
+      },
+      {
+        "state": "phone-export",
+        "rendered": 27,
+        "in_view": 22
+      },
+      {
+        "state": "phone-plates",
+        "rendered": 26,
+        "in_view": 21
+      }
+    ],
+    "round2": [
+      {
+        "state": "desktop-load",
+        "rendered": 16,
+        "in_view": 15
+      },
+      {
+        "state": "desktop-help",
+        "rendered": 18,
+        "in_view": 17
+      },
+      {
+        "state": "desktop-licenses",
+        "rendered": 18,
+        "in_view": 18
+      },
+      {
+        "state": "desktop-fit",
+        "rendered": 18,
+        "in_view": 17
+      },
+      {
+        "state": "desktop-fit-expert",
+        "rendered": 29,
+        "in_view": 25
+      },
+      {
+        "state": "desktop-split",
+        "rendered": 26,
+        "in_view": 22
+      },
+      {
+        "state": "desktop-cut-edit",
+        "rendered": 30,
+        "in_view": 25
+      },
+      {
+        "state": "desktop-join",
+        "rendered": 28,
+        "in_view": 26
+      },
+      {
+        "state": "desktop-pin-popover",
+        "rendered": 34,
+        "in_view": 32
+      },
+      {
+        "state": "desktop-face-view",
+        "rendered": 28,
+        "in_view": 26
+      },
+      {
+        "state": "desktop-precision-map",
+        "rendered": 29,
+        "in_view": 23
+      },
+      {
+        "state": "desktop-joint-editor",
+        "rendered": 47,
+        "in_view": 44
+      },
+      {
+        "state": "desktop-join-expert",
+        "rendered": 54,
+        "in_view": 38
+      },
+      {
+        "state": "desktop-export",
+        "rendered": 26,
+        "in_view": 21
+      },
+      {
+        "state": "desktop-plates",
+        "rendered": 25,
+        "in_view": 20
+      },
+      {
+        "state": "phone-load",
+        "rendered": 15,
+        "in_view": 12
+      },
+      {
+        "state": "phone-licenses",
+        "rendered": 17,
+        "in_view": 17
+      },
+      {
+        "state": "phone-fit",
+        "rendered": 17,
+        "in_view": 12
+      },
+      {
+        "state": "phone-fit-expert",
+        "rendered": 28,
+        "in_view": 16
+      },
+      {
+        "state": "phone-split",
+        "rendered": 25,
+        "in_view": 18
+      },
+      {
+        "state": "phone-expanded",
+        "rendered": 25,
+        "in_view": 18
+      },
+      {
+        "state": "phone-cut-edit",
+        "rendered": 29,
+        "in_view": 24
+      },
+      {
+        "state": "phone-join",
+        "rendered": 27,
+        "in_view": 19
+      },
+      {
+        "state": "phone-pin-popover",
+        "rendered": 33,
+        "in_view": 30
+      },
+      {
+        "state": "phone-face-view",
+        "rendered": 27,
+        "in_view": 24
+      },
+      {
+        "state": "phone-precision-map",
+        "rendered": 28,
+        "in_view": 22
+      },
+      {
+        "state": "phone-joint-editor",
+        "rendered": 45,
+        "in_view": 37
+      },
+      {
+        "state": "phone-join-expert",
+        "rendered": 53,
+        "in_view": 37
+      },
+      {
+        "state": "phone-export",
+        "rendered": 25,
+        "in_view": 19
+      },
+      {
+        "state": "phone-plates",
+        "rendered": 24,
+        "in_view": 18
+      }
+    ]
+  },
+  "touch": {
+    "errors": [],
+    "targets": [
+      {
+        "id": "viewAddJoint",
+        "right": 72.265625,
+        "width": 64.265625,
+        "height": 44
+      },
+      {
+        "id": "viewFace",
+        "right": 174.765625,
+        "width": 96.5,
+        "height": 44
+      },
+      {
+        "id": "joinExplode",
+        "right": 247.796875,
+        "width": 67.03125,
+        "height": 44
+      },
+      {
+        "id": "editUndo",
+        "right": 303.734375,
+        "width": 49.9375,
+        "height": 44
+      },
+      {
+        "id": "editRedo",
+        "right": 358.546875,
+        "width": 48.8125,
+        "height": 44
+      }
+    ],
+    "pass": true
+  },
+  "fixtures": {
+    "private": {
+      "triangles": 226172,
+      "fitting_manifold_model_parts": 4,
+      "export_files": 20,
+      "plates": 4
+    },
+    "large": {
+      "triangles_in": 720000,
+      "triangles_planning": 400000,
+      "max_sampled_deviation_mm": 0.0032784373791405197,
+      "full_detail_build_manifold": true
+    }
+  },
+  "limitations": [
+    "Chromium software WebGL, not real-device GPU evidence",
+    "No human screen-reader or cross-engine audit",
+    "No physical printing or mechanical-strength proof"
+  ]
+}

@@ -95,7 +95,7 @@ try {
   check(m.simp.maxDev < 0.1 && m.simp.samples > 50000, `measured deviation ${m.simp.maxDev.toFixed(4)} mm over ${m.simp.samples} samples`);
   check(/Simplified for planning: 720 k → /.test(m.note) && /max 0\.\d+ mm/.test(m.note) && /full-detail original/.test(m.note), 'banner states simplification, deviation and export source');
   check(await page.locator('#meshNote button', { hasText: 'Use full detail' }).isEnabled(), '"Use full detail" offered');
-  await page.locator('#meshNote').scrollIntoViewIfNeeded();
+  await page.click('[data-step="load"]');await page.locator('#meshNote').scrollIntoViewIfNeeded();
   await shot('03-simplified-banner');
 
   await page.click('[data-step="fit"]');await page.selectOption('#printer','bambu-a1-mini');await page.click('[data-step="split"]');
@@ -138,7 +138,7 @@ try {
   // 4. joint editor
   await page.locator('#mapWrap').scrollIntoViewIfNeeded();
   await shot('06-inline-preview');
-  await page.click('#openEditor');
+  await page.click('#precisionMap summary');await page.click('#openEditor');
   await page.waitForFunction(() => !document.getElementById('jointDlg').classList.contains('hidden'), null, { timeout: 10000 });
   await page.waitForTimeout(300);
   const dlg = await page.evaluate(() => { const r = document.getElementById('jdMap').getBoundingClientRect(); return { w: r.width, h: r.height, focus: document.activeElement.id, title: document.getElementById('jdTitle').textContent, chips: document.querySelectorAll('#jdJoints [data-jdj]').length, side: !!document.querySelector('#jdSide #seamEditor') }; });
@@ -224,7 +224,7 @@ try {
   await pp.click('[data-step="fit"]');await pp.selectOption('#printer','bambu-a1-mini');await pp.click('[data-step="split"]');
   await pp.click('#autoSplit');
   await pp.waitForFunction(() => window.__ps.plan && document.getElementById('busy').classList.contains('hidden'), null, { timeout: 600000 });
-  await pp.click('[data-step="join"]');await pp.locator('#jointMap').scrollIntoViewIfNeeded();
+  await pp.click('[data-step="join"]');await pp.click('#precisionMap summary');await pp.locator('#jointMap').scrollIntoViewIfNeeded();
   await pp.screenshot({ path: path.join(out, '11-phone-inline.png') });
   await pp.locator('#jointMap').tap();
   await pp.waitForFunction(() => !document.getElementById('jointDlg').classList.contains('hidden'), null, { timeout: 10000 });

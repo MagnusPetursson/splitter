@@ -31,7 +31,7 @@ const summary = () => page.evaluate(() => {
     singles: P.patches.filter((p) => p.single).length, badgeEls: document.querySelectorAll('.fbitem').length };
 });
 async function loadSample(name) {
-  await idle();await page.click('[data-step="load"]');
+  await idle();await page.click('[data-step="load"]');if(await page.locator('#removeModel').isVisible())await page.click('#removeModel');
   if(name!=='bracket_320mm.stl'&&!(await page.locator('.samples details').evaluate(e=>e.open)))await page.click('.samples summary');
   await page.click(`[data-sample="${name}"]`);
   await page.waitForFunction((n) => window.__ps.model && window.__ps.model.name === n && window.__ps.workerReady, name, { timeout: 600000 });

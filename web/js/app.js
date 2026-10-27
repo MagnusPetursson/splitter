@@ -4,6 +4,8 @@ import { JointMap } from './jointmap.js';
 import { JointEditor } from './jointeditor.js';
 import { createBackend } from './backend.js';
 import { GuidedFlow } from './flow.js';
+import { DirectEditor } from './direct-editor.js';
+import { PlanHistory, readiness } from './readiness.js';
 import { LIMITS, estimateTris, estimateMemMB, estimateLoadSec, estimatePlanSec, fmtTris, fmtDur, fmtMem, msgText, Progress, LOAD_STAGES, PLAN_STAGES, crumbSet, crumbClear, crumbTake } from './progress.js';
 
 const $ = (id) => document.getElementById(id);
@@ -43,6 +45,8 @@ let BE = null; // planner backend (local WASM or server)
 let PROG = null; // staged progress panel
 let DEFAULTS = null; // form values before any saved settings are applied
 let FLOW = null;
+const history=new PlanHistory();
+let DIRECT=null;
 function save() {
   const s = {
     printer: $('printer').value, bedX: $('bedX').value, bedY: $('bedY').value, bedZ: $('bedZ').value,
@@ -89,15 +93,17 @@ function work(type, payload, expect, transfer) {
 const viewer = new Viewer($('viewport'), {
   onPick: (h) => onPick(h),
   onCutDrag: (node, d) => { const inp = $('cutOffset'); if (inp) { inp.value = fmt(d, 2); $('cutOffsetNum').value = fmt(d, 2); } },
-  onCutDragEnd: (node, d) => setCut(node, null, d),
+  onCutDragEnd: (node, d, normal) => setCut(node, normal, d),
 });
 // the inline map is a preview: it selects contacts and opens the editor
 const jmap = new JointMap($('jointMap'), {
+  onHover: id=>DIRECT?.hoverJoint(id),
   onSelectPatch: (pid) => { S.sel.patch = pid; S.sel.joint = null; renderJointPanel(); },
   onOpen: (q, jid) => { if (jid != null) selectJoint(jid); jed.show(S.face, { at: q, span: 40 }); },
 }, { preview: true });
 const jed = new JointEditor({
   S,
+  hoverJoint:id=>DIRECT?.hoverJoint(id),
   cutName: (n) => cutName(n),
   selectFace: (n) => selectFace(n, false),
   selectJoint: (id) => selectJoint(id),
@@ -161,7 +167,8 @@ async function init() {
   updateBed();
   updateSupportPreference();
   bind();
-  FLOW = new GuidedFlow({ S, viewer, setView });
+  DIRECT=new DirectEditor({syncFlow:()=>FLOW?.sync(),S,viewer,jmap,jed,history,setView,build,selectJoint,selectFace,setAddMode,protoJoint,moveJoint,addJoint,deleteJoint,jointName,restore:restorePlan,editJoint:j=>{Object.assign(S.plan.joints.find(x=>x.id===j.id),j);updateJoint(S.plan.joints.find(x=>x.id===j.id));}});
+  FLOW = new GuidedFlow({ S, viewer, setView, split:()=>runPlan('auto'), prepare:async()=>{if(!S.built)await build();if(S.built&&S.built.parts.every(p=>p.status==='NoError'))await exportPkg();},onSync:()=>DIRECT?.sync() });
 }
 
 function styleLabel(v) { const o = [...$('jointStyle').options].find((x) => x.value === v); return o ? o.textContent : v; }
@@ -223,6 +230,9 @@ function updateBed() {
 }
 
 function bind() {
+  document.addEventListener('expertchange',()=>{if(S.plan){renderPlan();renderFaces();renderCutEditor();renderJointPanel();}});
+  $('replaceModel').addEventListener('click',()=>$('fileInput').click());
+  $('removeModel').addEventListener('click',()=>{resetModel();FLOW.go('load');});
   const drop = $('drop');
   $('fileInput').addEventListener('change', (e) => { if (e.target.files[0]) upload(e.target.files[0]); e.target.value = ''; });
   for (const ev of ['dragover', 'dragenter']) document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); });
@@ -345,6 +355,7 @@ function loadFailed(err, file, est, simplified) {
 }
 
 function resetModel() {
+  history.reset();S.settingsDirty=false;S.addMode=false;S.face=null;S.file=null;S.mesh=null;
   S.model = null; S.plan = null; S.built = null; S.export = null; S.sel = {}; S.workerReady = false;
   $('autoSplit').disabled = true; $('buildBtn').disabled = true; $('exportBtn').disabled = true;
   for (const id of ['modelInfo', 'meshNote', 'planSummary', 'cutEditor', 'partEditor', 'mapWrap', 'buildInfo', 'exportInfo', 'unitRow', 'detailRow']) $(id).classList.add('hidden');
@@ -384,6 +395,7 @@ async function loadSample(name) {
 }
 
 async function onModel(info, o = {}) {
+  history.reset();S.face=null;S.addMode=false;
   S.model = info;
   S.settingsDirty = false;
   S.kernelFull = false;
@@ -526,7 +538,8 @@ function hud() {
   if (!S.model) { h.innerHTML = ''; return; }
   const s = S.model.size;
   const fitsAsIs = s[0] <= u.x && s[1] <= u.y && s[2] <= u.z;
-  let html = `<div class="fit ${fitsAsIs ? 'yes' : 'no'}">Whole model ${fmt(s[0])} × ${fmt(s[1])} × ${fmt(s[2])} mm ${fitsAsIs ? 'fits as placed' : 'does not fit as placed'} · usable ${fmt(u.x)} × ${fmt(u.y)} × ${fmt(u.z)}</div>`;
+  const printer=S.printers.find(p=>p.id===$('printer').value)?.name||'Custom printer';
+  let html=viewer.view==='model'?`<div class="volume-legend"><span><i class="volume-key"></i>Printer build volume · ${esc(printer)}</span><span><i class="stripe-key"></i>Outside usable build volume</span></div>`:'';
   if (S.plan) {
     const n = S.plan.leaves.filter((l) => !l.empty).length;
     const bad = S.plan.leaves.filter((l) => !l.empty && !l.fits).length;
@@ -561,6 +574,7 @@ function setPatchStyle(p, style, force) {
 async function runPlan(mode, opts = {}) {
   if (!S.model) return;
   const focusAfter=document.activeElement?.id;
+  const camera=viewer.camera.position.clone(),target=viewer.controls.target.clone(),up=viewer.camera.up.clone(),faceFocus=viewer.faceFocus;
   const invalid=[...document.querySelectorAll('#stepPrinter input')].find(i=>!i.checkValidity());
   if(invalid) { FLOW?.go('fit'); $('printerAdvanced').open=true; invalid.closest('details').open=true; invalid.reportValidity(); return; }
   if(usable().x<=0||usable().y<=0||usable().z<=0) { FLOW?.go('fit'); $('printerAdvanced').open=true; toast('The margin leaves no usable build space. Reduce it or increase the volume.',true); return; }
@@ -592,6 +606,7 @@ async function runPlan(mode, opts = {}) {
     if (seq !== S.planSeq) return;
     PROG.end();
     onPlan(plan, mode === 'auto');
+    if(mode!=='auto'){viewer.camera.position.copy(camera);viewer.controls.target.copy(target);viewer.camera.up.copy(up);viewer.faceFocus=faceFocus;viewer.controls.update();DIRECT?.sync();viewer.dirty();DIRECT?.feedback('Edit applied · pin footprints show diameter; inspect depth in the built parts.');}
     if(focusAfter)requestAnimationFrame(()=>{const e=$(focusAfter);if(e?.checkVisibility()&&!e.closest('[inert]'))e.focus({preventScroll:true});});
   } catch (err) {
     crumbClear();
@@ -612,7 +627,12 @@ async function runPlan(mode, opts = {}) {
   }
 }
 
-function onPlan(plan, fresh) {
+function onPlan(plan, fresh, restoring=false) {
+  if(!restoring){
+    const settingKey=s=>JSON.stringify(Object.fromEntries(Object.entries(s).filter(([k])=>!['autoSplit','autoJoints'].includes(k))));
+    if(history.current&&settingKey(history.current.settings)!==settingKey(plan.settings))history.reset();
+    history.record(plan);
+  }
   const signature = (s) => JSON.stringify({ ...s, supportWeight: null });
   S.comparison = fresh && S.planWasAuto && S.plan && signature(S.plan.settings) === signature(plan.settings)
     ? { parts: S.plan.leaves.filter((l) => !l.empty).length, volume: S.plan.leaves.reduce((s, l) => s + (l.supportVolume || 0), 0), weight: S.plan.settings.supportWeight ?? 0.5 } : null;
@@ -664,7 +684,7 @@ function renderPlan() {
     <div class="small mute" style="margin-top:6px">Cuts (click, then drag the arrow in the 3D view or edit below)</div><div class="partlist">${cutChips || '<span class="mute small">none — the model fits as one part</span>'}</div>`;
   $('planSummary').classList.remove('hidden');
   for (const c of $('planSummary').querySelectorAll('[data-leaf]')) c.addEventListener('click', () => { select({ leaf: +c.dataset.leaf }); $('partEditor').querySelector('button')?.focus(); });
-  for (const c of $('planSummary').querySelectorAll('[data-cut]')) c.addEventListener('click', () => { select({ cut: +c.dataset.cut }); $('cutOffsetNum')?.focus(); });
+  for (const c of $('planSummary').querySelectorAll('[data-cut]')) c.addEventListener('click', () => { select({ cut: +c.dataset.cut }); $('cutEditor').setAttribute('tabindex','-1');$('cutEditor').focus(); });
   for (const c of $('planSummary').querySelectorAll('[data-fbpatch]')) c.addEventListener('click', () => { const x = S.plan.patches[+c.dataset.fbpatch]; select({ cut: x.node, patch: x.id }); FLOW?.picked('patch'); });
   const ac = $('autoComplete');
   if (ac) ac.addEventListener('click', () => runPlan('tree', { autoSplit: true }));
@@ -674,7 +694,15 @@ function leafName(id) { const l = S.plan.leaves.find((x) => x.id === id); return
 function contactName(p) { return `${leafName(p.negLeaf)}↔${leafName(p.posLeaf)}`; }
 function fbText(fb) { return `${fb.want} → ${fb.got}: ${fb.reason}`; }
 function singleNote(p) { return ((p.notes || []).find((n) => n.startsWith('only one')) || 'only one joint fits').split(':')[0]; }
-function cutName(id) { const n = S.plan && S.plan.tree.nodes[id]; return (n && n.label) || `Cut ${id}`; }
+function cutName(id) { const n = S.plan && S.plan.tree.nodes[id],i=S.plan?.tree.nodes.filter(n=>n.cut).findIndex(n=>n.id===id)??0; return document.body.dataset.expert==='true'?((n&&n.label)||`Cut ${id}`):`Cut ${i+1}`; }
+function jointName(j){return document.body.dataset.expert==='true'?`Joint J${j.id}`:`${cutName(S.plan.patches[j.patch].node)} · Pin ${S.plan.joints.filter(x=>x.patch===j.patch).findIndex(x=>x.id===j.id)+1}`;}
+function restorePlan(direction){
+  if(!$('busy').classList.contains('hidden')||S.settingsDirty)return;
+  const plan=history.take(direction);if(!plan)return;
+  const camera=viewer.camera.position.clone(),target=viewer.controls.target.clone(),up=viewer.camera.up.clone(),faceFocus=viewer.faceFocus;
+  S.sel={};onPlan(plan,false,true);viewer.camera.position.copy(camera);viewer.controls.target.copy(target);viewer.camera.up.copy(up);viewer.faceFocus=faceFocus;viewer.controls.update();DIRECT?.sync();viewer.dirty();
+  DIRECT.feedback(`${direction==='undo'?'Undid':'Redid'} edit. Built parts must be regenerated.`);FLOW?.sync();
+}
 
 function axisName(n) {
   const a = n.map(Math.abs);
@@ -684,7 +712,7 @@ function axisName(n) {
 
 function select(sel) {
   S.sel = sel;
-  if((sel.patch!=null||sel.joint!=null)&&!jed.open&&FLOW?.step==='join')$('mapWrap').querySelector('details').open=true;
+
   viewer.select(sel);
   if (S.plan) renderPlan();
   renderCutEditor();
@@ -694,7 +722,7 @@ function select(sel) {
     const node = j ? S.plan.patches[j.patch].node : sel.cut;
     if (node != null) selectFace(node, false);
   }
-  renderJointPanel();
+  renderJointPanel();DIRECT?.sync();
 }
 
 function onPick(h) {
@@ -733,12 +761,13 @@ function renderCutEditor() {
   el.innerHTML = `<h2>${cutName(n.id)} ${n.locked ? '<span class="badge">manual</span>' : '<span class="badge">auto</span>'}</h2>
     <div class="reason">${esc(n.reason || 'placed by you')}</div>
     <div class="small">Normal ${axisName(n.cut.n)} · section ${fmt(f ? f.area : 0, 0)} mm² · ${patches.length} contact patch(es)</div>
+    <details class="precise-values" ${document.body.dataset.expert==='true'?'open':''}><summary>Precise values <span>Offset &amp; tilt</span></summary>
     <label>Offset along normal (mm)<input type="range" id="cutOffset" min="${lo}" max="${hi}" step="0.1" value="${n.cut.d}"></label>
     <div class="row three"><label>Offset<input id="cutOffsetNum" type="number" step="0.1" value="${fmt(n.cut.d, 2)}"></label>
       <label>Tilt A (°)<input id="tiltA" type="number" step="1" value="0"></label><label>Tilt B (°)<input id="tiltB" type="number" step="1" value="0"></label></div>
     <div class="btns"><button class="small" data-ax="x">⟂ X</button><button class="small" data-ax="y">⟂ Y</button><button class="small" data-ax="z">⟂ Z</button>
       <button class="small primary" id="cutApply">Apply</button><button class="small danger" id="cutDelete">Delete cut</button></div>
-    <div class="small mute">Drag the arrow in the 3D view to slide the cut. Tilt rotates the plane about its in-plane axes. Deleting merges everything below this cut back into one part.</div>`;
+    </details><p class="small mute">Drag the blue arrow in 3D to slide. Choose Tilt cut for rotation arcs. Release to apply; Esc cancels. Precise values provides the keyboard alternative.</p>`;
   el.classList.remove('hidden');
   $('cutOffset').addEventListener('input', (e) => { $('cutOffsetNum').value = fmt(+e.target.value, 2); previewCut(n.id, +e.target.value); });
   $('cutOffset').addEventListener('change', (e) => setCut(n.id, null, +e.target.value));
@@ -835,7 +864,7 @@ function renderFaces() {
     const js = S.plan.joints.filter((j) => f.patches.includes(j.patch)).length;
     const sm = S.plan.patches.filter((p) => p.node === f.node && p.seam && p.seam.kind !== 'none').length;
     const warn = S.plan.patches.some((p) => p.node === f.node && (p.fallback || p.single));
-    return `<button data-face="${f.node}" class="${S.face === f.node ? 'sel' : ''} ${warn ? 'warn' : ''}">${warn ? '⚠ ' : ''}${cutName(f.node)} · ${js ? js + ' joints' : ''}${js && sm ? ' + ' : ''}${sm ? sm + ' seam' : ''}${!js && !sm ? 'butt' : ''}</button>`;
+    return `<button data-face="${f.node}" class="${S.face === f.node ? 'sel' : ''} ${warn ? 'warn' : ''}">${warn ? '⚠ ' : ''}${cutName(f.node)} · ${js ? js + ' pins' : ''}${js && sm ? ' + ' : ''}${sm ? sm + ' seam' : ''}${!js && !sm ? 'butt' : ''}</button>`;
   }).join('');
   for (const b of fl.querySelectorAll('[data-face]')) b.addEventListener('click', () => { selectFace(+b.dataset.face, true); });
   if (S.face == null || !faces.find((f) => f.node === S.face)) selectFace(faces[0].node, false);
@@ -844,14 +873,15 @@ function renderFaces() {
 
 function selectFace(node, alsoCut) {
   S.face = node;
+  if(viewer.faceFocus)viewer.faceView(node);
   for (const b of $('faceList').querySelectorAll('[data-face]')) { b.classList.toggle('sel', +b.dataset.face === node); b.setAttribute('aria-pressed', String(+b.dataset.face === node)); }
   const f = S.plan.faces.find((x) => x.node === node);
   $('mapWrap').classList.remove('hidden');
   if (S.sel.patch == null || !f.patches.includes(S.sel.patch)) S.sel.patch = f.patches[0];
-  $('contactList').innerHTML=f.patches.map(id=>`<button data-contact="${id}" aria-pressed="${S.sel.patch===id}">Contact C${id}</button>`).join('');
+  $('contactList').innerHTML=f.patches.map((id,i)=>`<button data-contact="${id}" aria-pressed="${S.sel.patch===id}">${document.body.dataset.expert==='true'?`Contact C${id}`:`Contact ${i+1}`}</button>`).join('');
   for(const b of $('contactList').querySelectorAll('button'))b.addEventListener('click',()=>{
     select({cut:node,patch:+b.dataset.contact});
-    $('mapWrap').querySelector('details').open=true;
+    $('mapWrap').querySelector('details.advanced').open=true;
     document.querySelector(`[data-contact="${b.dataset.contact}"]`)?.focus();
   });
   jmap.set(S.plan, f, mapOpts());
@@ -873,6 +903,7 @@ function setAddMode(on) {
   $('jointDlg').classList.toggle('adding', on);
   if (S.plan && S.face != null) jmap.set(S.plan, S.plan.faces.find((x) => x.node === S.face), mapOpts());
   if (jed.open) jed.render();
+  DIRECT?.sync();
 }
 
 // client-side estimate of the footprint radius (server recomputes exactly)
@@ -900,6 +931,12 @@ function selectJoint(id) {
 }
 
 function renderJointPanel() {
+  const face=S.plan?.faces.find(f=>f.node===S.face);
+  $('joinWarnings').innerHTML=(face?.patches||[]).map((id,i)=>{const p=S.plan.patches[id],f=p.fallback,notes=[f?`${f.want} could not fit: ${f.reason}. Using ${f.got}.`:'',p.single?'Only one pin fits here; the pieces may rotate before glue cures.':''];return notes.filter(Boolean).map(text=>`<p class="warnc">${esc(text)} <button data-review-contact="${id}">Review contact ${i+1}</button></p>`).join('');}).join('');
+  for(const b of $('joinWarnings').querySelectorAll('button'))b.onclick=()=>{S.sel.patch=+b.dataset.reviewContact;S.sel.joint=null;$('mapWrap details.advanced').open=true;renderJointPanel();$('seamEditor').scrollIntoView({block:'nearest'});};
+  const js=S.plan?.joints.filter(j=>S.plan.patches[j.patch].node===S.face)||[];
+  $('pinList').innerHTML=js.map(j=>`<button data-pin="${j.id}" aria-pressed="${j.id===S.sel.joint}">${esc(jointName(j))}</button>`).join('');
+  for(const b of $('pinList').querySelectorAll('[data-pin]'))b.onclick=()=>{selectJoint(+b.dataset.pin);$('pinDiameter')?.focus();};
   renderJointPanelInner();
   renderJointPanelHook();
 }
@@ -916,7 +953,7 @@ function renderJointPanelInner() {
     const ln = (id) => S.plan.leaves.find((l) => l.id === id).label;
     const sm = p.seam || { kind: 'none' };
     const opts = ['none', ...S.kinds.seam.map((k) => k.kind)].map((k) => `<option value="${k}" ${sm.kind === k ? 'selected' : ''}>${k === 'none' ? 'No seam joint' : S.kinds.seam.find((x) => x.kind === k).label}</option>`).join('');
-    se.innerHTML = `<h2>Contact C${pid} · ${ln(p.negLeaf)} ↔ ${ln(p.posLeaf)}</h2>
+    se.innerHTML = `<h2>${document.body.dataset.expert==='true'?`Contact C${pid}`:`Contact ${f.patches.indexOf(pid)+1}`} · ${ln(p.negLeaf)} ↔ ${ln(p.posLeaf)}</h2>
       <div class="small mute">${fmt(p.area, 0)} mm² · wall ≈ ${fmt(p.thickness)} mm · largest inscribed Ø${fmt(2 * p.rmax)} mm${p.ring ? ' · shell section' : ''}</div>
       ${fallbackBlock(p)}
       ${(p.notes || []).filter((n) => !(p.single && n.startsWith('only one'))).map((n) => `<div class="small warnc">${esc(n)}</div>`).join('')}
@@ -940,7 +977,7 @@ function renderJointPanelInner() {
   const sizeField = (j.kind === 'insert' || j.kind === 'bolt')
     ? `<label>Size<select id="jSize">${['M2.5', 'M3', 'M4', 'M5'].map((s) => `<option ${j.size === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Screw length<input id="jScrew" type="number" step="1" min="4" max="80" value="${j.screwLen}"></label>`
     : `<label>Ø (mm)<input id="jD" type="number" step="0.5" min="1" max="30" value="${fmt(j.d, 2)}"></label><label>${j.kind === 'magnet' ? 'Thickness' : j.kind === 'snap' ? 'Beam length' : 'Depth'}<input id="jDepth" type="number" step="0.5" min="1" max="60" value="${fmt(j.depth, 1)}"></label>`;
-  je.innerHTML = `<h2>Joint J${j.id} ${j.locked ? '<span class="badge">manual</span>' : '<span class="badge">auto</span>'}</h2>
+  je.innerHTML = `<h2>${jointName(j)} ${j.locked ? '<span class="badge">manual</span>' : '<span class="badge">auto</span>'}</h2>
     <div class="small mute">${esc(desc)}</div>
     <div class="row two"><label>Type<select id="jKind">${kindOpts}</select></label><label>Fit<select id="jFit">${['glue', 'press', 'slip', 'snap'].map((x) => `<option ${j.fit === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label></div>
     <div class="row two">${sizeField}</div>
@@ -950,8 +987,9 @@ function renderJointPanelInner() {
     <div class="btns"><button class="small primary" id="jApply">Apply</button><button class="small danger" id="jDel">Delete joint</button></div>
     <div class="small mute">Drag the joint on the map to move it.</div>`;
   je.classList.remove('hidden');
-  $('jKind').addEventListener('change', () => { j.kind = $('jKind').value; j.d = 0; j.depth = 0; j.size = ''; j.screwLen = 0; j.shape = ''; j.fit = protoJoint(j.kind).fit; updateJoint(j); });
+  $('jKind').addEventListener('change', () => { j.kind = $('jKind').value; delete j.clearOverride; j.d = 0; j.depth = 0; j.size = ''; j.screwLen = 0; j.shape = ''; j.fit = protoJoint(j.kind).fit; updateJoint(j); });
   $('jApply').addEventListener('click', () => {
+    if(j.fit!==$('jFit').value)delete j.clearOverride;
     j.fit = $('jFit').value;
     if ($('jD')) j.d = +$('jD').value;
     if ($('jDepth')) j.depth = +$('jDepth').value;
@@ -963,7 +1001,7 @@ function renderJointPanelInner() {
   });
   $('jDel').addEventListener('click', () => deleteJoint(j.id));
 }
-function renderJointPanelHook() { if (jed.open) jed.render(); }
+function renderJointPanelHook() { if (jed.open) jed.render(); DIRECT?.sync(); }
 
 function minWall() { return Math.max(1.2, 2 * +$('nozzle').value * 1.05); }
 // badge + actions for a contact that did not get the chosen style
@@ -1020,7 +1058,7 @@ function addJoint(pid, q) {
   const j = { id: 100000 + Math.floor(Math.random() * 1e6), patch: pid, kind, p: q, angle: S.plan.patches[pid].axis, male: 'neg', fit: pr.fit, d: 0, depth: 0, auto: false, locked: true };
   j.origin = jointOrigin(j, q);
   S.plan.joints.push(j);
-  S.sel = { patch: pid, cut: S.plan.patches[pid].node };
+  S.sel = { joint:j.id, patch: pid, cut: S.plan.patches[pid].node };
   runPlan('joints');
 }
 function deleteJoint(id) {
@@ -1051,7 +1089,7 @@ function applySeam(p) {
 
 // ---------------- build & export ----------------
 async function build() {
-  if (!S.plan) return;
+  if (!readiness(S).ok) {toast(readiness(S).text,true);return;}
   $('buildBtn').disabled = true;
   busy('Building parts in your browser (Manifold WASM)', 0.05);
   const t0 = performance.now();
@@ -1112,7 +1150,7 @@ function linkList(res) {
 }
 
 async function exportPkg() {
-  if (!S.built) return;
+  if (!S.built||!readiness(S).ok||!S.built.parts.every(p=>p.status==='NoError')) {toast('Resolve geometry warnings and build before exporting.',true);return;}
   $('exportBtn').disabled = true;
   busy('Packaging: orienting parts, packing plates, writing 3MF/STL and the assembly sheet', null);
   try {

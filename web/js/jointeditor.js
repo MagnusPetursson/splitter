@@ -16,6 +16,7 @@ export class JointEditor {
     this.open = false;
     this.map = new JointMap($('jdMap'), {
       onSelectJoint: (id) => app.selectJoint(id),
+      onHover: id=>app.hoverJoint?.(id),
       onSelectPatch: (pid) => { if (pid != null) app.selectPatch(pid); },
       onMove: (j, q, pid) => app.moveJoint(j, q, pid),
       onAdd: (pid, q) => app.addJoint(pid, q),

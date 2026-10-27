@@ -58,21 +58,22 @@ func (f FitTable) Get(name string) float64 {
 
 // Joint is a point joint on a patch.
 type Joint struct {
-	ID       int       `json:"id"`
-	Patch    int       `json:"patch"`
-	Kind     string    `json:"kind"`
-	P        geom.Vec2 `json:"p"`
-	Angle    float64   `json:"angle"`
-	Male     string    `json:"male"` // neg | pos | none
-	Fit      string    `json:"fit"`
-	Clear    float64   `json:"clear"` // resolved radial clearance
-	D        float64   `json:"d"`     // pin/peg/magnet diameter
-	Depth    float64   `json:"depth"` // requested depth per side (pins) / peg length / magnet thickness
-	Size     string    `json:"size,omitempty"`
-	ScrewLen float64   `json:"screwLen,omitempty"`
-	Shape    string    `json:"shape,omitempty"`
-	Auto     bool      `json:"auto"`
-	Locked   bool      `json:"locked,omitempty"`
+	ID            int       `json:"id"`
+	Patch         int       `json:"patch"`
+	Kind          string    `json:"kind"`
+	P             geom.Vec2 `json:"p"`
+	Angle         float64   `json:"angle"`
+	Male          string    `json:"male"` // neg | pos | none
+	Fit           string    `json:"fit"`
+	Clear         float64   `json:"clear"`                   // resolved radial clearance
+	ClearOverride *float64  `json:"clearOverride,omitempty"` // optional per-joint radial fit (mm)
+	D             float64   `json:"d"`                       // pin/peg/magnet diameter
+	Depth         float64   `json:"depth"`                   // requested depth per side (pins) / peg length / magnet thickness
+	Size          string    `json:"size,omitempty"`
+	ScrewLen      float64   `json:"screwLen,omitempty"`
+	Shape         string    `json:"shape,omitempty"`
+	Auto          bool      `json:"auto"`
+	Locked        bool      `json:"locked,omitempty"`
 
 	// derived
 	Origin   geom.Vec3  `json:"origin"`
@@ -167,6 +168,9 @@ func Screw(size string) (clear, head, insertD, insertL, nutAF, nutH float64) {
 // parameters. It does not measure the geometry.
 func (j *Joint) resolve(s *Settings) {
 	j.Clear = s.Fits.Get(j.Fit)
+	if j.ClearOverride != nil && *j.ClearOverride >= 0 && *j.ClearOverride <= 1 && !math.IsNaN(*j.ClearOverride) {
+		j.Clear = *j.ClearOverride
+	}
 	w := j.wall(s)
 	c := j.Clear
 	switch j.Kind {

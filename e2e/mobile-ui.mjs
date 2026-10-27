@@ -39,7 +39,7 @@ try {
    if(visible&&hit) {await page.mouse.click(rect.x+rect.width/2,rect.y+rect.height/2);check(await b.evaluate(e=>e.classList.contains('on')),`${width}: ${name} click`);}
    results.tabs.push({width,name,rect,hit,visible});
   }
-  await page.click('[data-step="join"]');results.actualMaps ||= [];
+  await page.click('[data-step="join"]');if(!await page.locator('#precisionMap').evaluate(e=>e.open))await page.click('#precisionMap summary');results.actualMaps ||= [];
   for(const node of await page.locator('[data-face]').evaluateAll(es=>es.map(e=>e.dataset.face))) {
    await page.locator(`[data-face="${node}"]`).click();
    await page.locator('#jointMap').scrollIntoViewIfNeeded();

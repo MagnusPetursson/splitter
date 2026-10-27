@@ -101,12 +101,13 @@ export class Viewer {
     this.tc = new TransformControls(this.camera, this.renderer.domElement);
     this.tc.setSpace('local');
     this.tc.showX = false; this.tc.showY = false;
-    this.tc.setSize(0.8);
+    this.tc.setSize(1.05);
     this.tcHelper = this.tc.getHelper();
     this.scene.add(this.tcHelper);
     this.tc.addEventListener('dragging-changed', (e) => {
       this.controls.enabled = !e.value;
-      if (!e.value && this.dragNode != null) this.cb.onCutDragEnd && this.cb.onCutDragEnd(this.dragNode, this.dragD);
+      if(e.value){this.cutChanged=false;this.cutCancelled=false;this._cutWasDrag=true;}
+      else if(this.dragNode!=null&&this.cutChanged&&!this.cutCancelled)this.cb.onCutDragEnd?.(this.dragNode,this.dragD,this.dragNormal);
     });
     this.tc.addEventListener('objectChange', () => this.onTCChange());
     this.tc.addEventListener('change', () => this.dirty());
@@ -122,8 +123,8 @@ export class Viewer {
     dom.addEventListener('keydown', e => this.cameraKey(e));
     dom.addEventListener('pointerdown', (e) => { this._down = [e.clientX, e.clientY]; });
     dom.addEventListener('pointerup', (e) => {
-      if (!this._down || Math.hypot(e.clientX - this._down[0], e.clientY - this._down[1]) > 4) return;
-      if (this.tc.dragging) return;
+      const wasCutDrag=this.tc.dragging||this._cutWasDrag;this._cutWasDrag=false;
+      if (wasCutDrag||!this._down || Math.hypot(e.clientX - this._down[0], e.clientY - this._down[1]) > 4) return;
       this.pick(e);
     });
     new ResizeObserver(() => this.resize()).observe(el);
@@ -131,12 +132,35 @@ export class Viewer {
     const loop = () => {
       requestAnimationFrame(loop);
       this.controls.update();
-      if (this._dirty) { this._dirty = false; this.renderer.render(this.scene, this.camera); }
+      if (this._dirty) {
+        this.groups.cuts.traverse(o=>{if(o.isSprite){const pos=o.getWorldPosition(new THREE.Vector3()),size=this.camera.position.distanceTo(pos)*2*Math.tan(THREE.MathUtils.degToRad(this.camera.fov/2))*24/this.renderer.domElement.clientHeight;o.scale.set(size*2,size,1);}});
+        this._dirty = false; this.renderer.render(this.scene, this.camera);
+      }
     };
     loop();
   }
 
   dirty() { this._dirty = true; }
+
+  clearAll(){for(const k of Object.keys(this.groups))this.clear(k);this.tc.detach();this.box=null;this.modelMesh=null;this.modelGeom=null;this.modelIndexed=null;this.plan=null;this.cutMeshes={};this.jointMeshes={};this.partMeshes=[];this.dirty();}
+
+  cutMode(mode){this.tc.setMode(mode);this.tc.showX=mode==='rotate';this.tc.showY=mode==='rotate';this.tc.showZ=mode!=='rotate';this.highlight();}
+
+  cancelCut(){
+    if(!this.tc.dragging)return false;
+    this.cutCancelled=true;this.tc.reset();this.tc.dragging=false;
+    const g=this.cutMeshes[this.dragNode];if(g&&this.tcStart){g.position.copy(this.tcStart.grpPos);g.quaternion.copy(this.tcStart.quat);}
+    this.controls.enabled=true;this.highlight();return true;
+  }
+
+  faceView(node){
+    const f=this.plan?.faces.find(f=>f.node===node);if(!f)return;
+    const points=f.loops.flat(),u0=Math.min(...points.map(p=>p[0])),u1=Math.max(...points.map(p=>p[0])),v0=Math.min(...points.map(p=>p[1])),v1=Math.max(...points.map(p=>p[1]));
+    const fr=f.frame,c=new THREE.Vector3(...fr.o).addScaledVector(new THREE.Vector3(...fr.u),(u0+u1)/2).addScaledVector(new THREE.Vector3(...fr.v),(v0+v1)/2);
+    const distance=Math.max((v1-v0)*1.5,(u1-u0)/this.camera.aspect)*1.65;
+    this.faceFocus=true;this.modelMesh.visible=false;
+    this.camera.up.set(...fr.v);this.controls._quat.setFromUnitVectors(this.camera.up,new THREE.Vector3(0,1,0));this.controls._quatInverse.copy(this.controls._quat).invert();this.camera.position.copy(c).addScaledVector(new THREE.Vector3(...fr.n),Math.max(20,distance));this.controls.target.copy(c);this.controls.update();this.dirty();
+  }
 
   frameCurrent() { this.frame(this.view === 'plates' ? this.platesBox : this.view === 'parts' ? this.explodedBox() : this.box); }
 
@@ -204,8 +228,10 @@ export class Viewer {
 
   frame(box = this.box) {
     if (!box) return;
+    this.faceFocus=false;if(this.modelMesh)this.modelMesh.visible=true;
     const c = box.getCenter(new THREE.Vector3());
     const r = box.getSize(new THREE.Vector3()).length() * 0.5 || 100;
+    this.camera.up.set(0,0,1);this.controls._quat.setFromUnitVectors(this.camera.up,new THREE.Vector3(0,1,0));this.controls._quatInverse.copy(this.controls._quat).invert();
     const dir = new THREE.Vector3(0.75, -1.05, 0.8).normalize();
     // 2.9 r fits the vertical 40° field; a tall, narrow view (the 3D view
     // beside the joint editor, phones) must back off by the aspect ratio
@@ -318,7 +344,12 @@ export class Viewer {
       lg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
       const outline = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: '#fff3e6' }));
       grp.add(outline);
-      const label = makeLabel(plan.tree.nodes[f.node].label || `C${f.node}`, Math.max(8, 0.06 * Math.max(u1 - u0, v1 - v0)));
+      // Fill actual material, not its bounding rectangle; nested loops retain holes.
+      const inside=(p,loop)=>{let yes=false;for(let i=0,j=loop.length-1;i<loop.length;j=i++){const a=loop[i],b=loop[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])yes=!yes;}return yes;};
+      const loops=f.loops.map(l=>l.map(p=>new THREE.Vector2(...p))),depth=f.loops.map(l=>f.loops.filter(other=>other!==l&&inside(l[0],other)).length);
+      loops.forEach((l,i)=>{if(depth[i]%2)return;const shape=new THREE.Shape(l);loops.forEach((hole,j)=>{if(depth[j]===depth[i]+1&&inside(f.loops[j][0],f.loops[i]))shape.holes.push(new THREE.Path(hole));});const cap=new THREE.Mesh(new THREE.ShapeGeometry(shape),new THREE.MeshBasicMaterial({color:'#496f66',side:THREE.DoubleSide,transparent:true,opacity:.72,depthWrite:false}));cap.userData={pick:'cut',node:f.node,tag:'material'};cap.renderOrder=3;grp.add(cap);});
+
+      const label = makeLabel(document.body.dataset.expert==='true'?(plan.tree.nodes[f.node].label || `C${f.node}`):`Cut ${plan.faces.indexOf(f)+1}`, Math.max(8, 0.06 * Math.max(u1 - u0, v1 - v0)));
       label.position.set(u1, v1, 0);
       grp.add(label);
       grp.userData = { node: f.node, n: N.clone(), d: plan.tree.nodes[f.node].cut.d, quad, rim, center: new THREE.Vector3((u0 + u1) / 2, (v0 + v1) / 2, 0) };
@@ -475,6 +506,7 @@ export class Viewer {
 
   // ---------- views & selection ----------
   setView(v) {
+    this.faceFocus=false;if(this.modelMesh)this.modelMesh.visible=true;
     this.view = v;
     this.applyView();
     if (v === 'plates' && this.platesBox) this.frame(this.platesBox);
@@ -519,13 +551,14 @@ export class Viewer {
     // transform gizmo on the selected cut
     this.tc.detach();
     this.dragNode = null;
-    if (this.sel.cut != null && this.cutMeshes && this.cutMeshes[this.sel.cut] && this.view === 'cuts') {
+    if (this.editStep!=='join' && this.sel.cut != null && this.cutMeshes && this.cutMeshes[this.sel.cut] && this.view === 'cuts') {
       const grp = this.cutMeshes[this.sel.cut];
       if (!this.tcObj) { this.tcObj = new THREE.Object3D(); this.scene.add(this.tcObj); }
       const world = grp.userData.center.clone().applyQuaternion(grp.quaternion).add(grp.position);
       this.tcObj.position.copy(world);
       this.tcObj.quaternion.copy(grp.quaternion);
-      this.tcStart = { pos: world.clone(), grpPos: grp.position.clone(), d: grp.userData.d };
+      this.tcStart = { pos: world.clone(), grpPos: grp.position.clone(), d: grp.userData.d, quat:grp.quaternion.clone() };
+      this.dragNormal=null;
       this.tc.attach(this.tcObj);
       this.dragNode = this.sel.cut;
       this.dragD = grp.userData.d;
@@ -536,12 +569,22 @@ export class Viewer {
   onTCChange() {
     if (this.dragNode == null) return;
     const grp = this.cutMeshes[this.dragNode];
+    if(this.tc.mode==='rotate'){
+      const normal=new THREE.Vector3(0,0,1).applyQuaternion(this.tcObj.quaternion).normalize();
+      const rotation=this.tcObj.quaternion.clone().multiply(this.tcStart.quat.clone().invert());
+      grp.quaternion.copy(this.tcObj.quaternion);
+      grp.position.copy(this.tcStart.grpPos).sub(this.tcStart.pos).applyQuaternion(rotation).add(this.tcStart.pos);
+      this.dragNormal=normal.toArray();this.dragD=normal.dot(this.tcStart.pos);
+      const degrees=THREE.MathUtils.radToDeg(this.tcStart.quat.angleTo(this.tcObj.quaternion));
+      this.cutChanged=degrees>.001;this.cb.onCutPreview?.(`Tilt ${degrees.toFixed(1)}° · release to apply · Esc cancels`);return;
+    }
     const n = grp.userData.n;
     const delta = this.tcObj.position.clone().sub(this.tcStart.pos).dot(n);
     // constrain the helper to the normal
     this.tcObj.position.copy(this.tcStart.pos).addScaledVector(n, delta);
     grp.position.copy(this.tcStart.grpPos).addScaledVector(n, delta);
-    this.dragD = this.tcStart.d + delta;
+    this.dragD = this.tcStart.d + delta;this.cutChanged=Math.abs(delta)>.001;
+    this.cb.onCutPreview?.(`Offset ${this.dragD.toFixed(1)} mm · ${delta>=0?'+':''}${delta.toFixed(1)} mm · release to apply · Esc cancels`);
     this.cb.onCutDrag && this.cb.onCutDrag(this.dragNode, this.dragD);
   }
 
@@ -552,10 +595,13 @@ export class Viewer {
     const targets = [];
     if (this.view === 'cuts') { targets.push(this.groups.joints, this.groups.cuts); }
     if (this.view === 'parts') targets.push(this.groups.parts);
-    const hits = this.raycaster.intersectObjects(targets, true).filter((h) => h.object.userData && h.object.userData.pick);
+    const hits = this.raycaster.intersectObjects(targets, true).filter(h=>h.object.userData?.pick&&h.object.visible&&h.object.parent?.visible);
     // prefer joints over cut quads when both are hit
     hits.sort((a, b) => (a.object.userData.pick === 'joint' ? -1 : 0) - (b.object.userData.pick === 'joint' ? -1 : 0) || a.distance - b.distance);
     const h = hits[0];
+    if(!h&&this.view==='cuts'&&this.modelMesh){
+      const hit=this.raycaster.intersectObject(this.modelMesh)[0];if(hit){let leaf=this.plan.tree.root;for(let k=0;k<64;k++){const n=this.plan.tree.nodes[leaf];if(!n.cut)break;leaf=new THREE.Vector3(...n.cut.n).dot(hit.point)<n.cut.d?n.neg:n.pos;}this.cb.onPick?.({pick:'part',leaf,point:hit.point.toArray()});return;}
+    }
     this.cb.onPick && this.cb.onPick(h ? { ...h.object.userData, point: h.point.toArray() } : null, e);
   }
 

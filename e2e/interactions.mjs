@@ -12,7 +12,7 @@ try{
  await p.goto(url,{waitUntil:'networkidle'});await p.waitForFunction(()=>document.querySelector('#printer').options.length>5);
  await p.click('[data-sample="bracket_320mm.stl"]');await p.waitForFunction(()=>window.__ps.workerReady);await idle();
  await p.click('[data-step="split"]');await p.click('#autoSplit');await p.waitForFunction(()=>window.__ps.plan);await idle();
- await p.locator('[data-cut]').first().click();await p.waitForTimeout(200);
+ await p.locator('[data-cut]').first().click();await p.click('#cutEditor .precise-values summary');await p.waitForTimeout(200);
  const handle=await p.evaluate(()=>{
    const v=window.__viewer,canvas=v.renderer.domElement,r=canvas.getBoundingClientRect(),pts=[];
    v.scene.updateMatrixWorld(true);
@@ -26,7 +26,7 @@ try{
  report.drag.new=await p.evaluate(()=>window.__ps.plan.tree.nodes.find(n=>n.id===window.__ps.sel.cut).cut.d);assert.ok(Math.abs(report.drag.new-handle.old)>5);
  await p.screenshot({path:path.join(out,'desktop-dragged-cut.png')});
  await p.focus('#viewport canvas');const before=await p.evaluate(()=>window.__viewer.camera.position.toArray());await p.keyboard.press('ArrowRight');await p.waitForTimeout(150);assert.notDeepEqual(await p.evaluate(()=>window.__viewer.camera.position.toArray()),before,'keyboard orbits actual camera');await p.keyboard.press('f');
- await p.click('[data-step="join"]');await p.click('#openEditor');await p.focus('#jdMap');await p.keyboard.press('ArrowRight');
+ await p.click('[data-step="join"]');await p.click('#precisionMap summary');await p.click('#openEditor');await p.focus('#jdMap');await p.keyboard.press('ArrowRight');
  const joint=await p.evaluate(()=>({id:window.__ps.sel.joint,p:window.__ps.plan.joints.find(j=>j.id===window.__ps.sel.joint).p}));const n=await seq();await p.keyboard.press('Shift+ArrowRight');await replanned(n);const moved=await p.evaluate(()=>window.__ps.plan.joints.find(j=>j.id===window.__ps.sel.joint).p);assert.ok(Math.abs(moved[0]-joint.p[0]-.5)<.01,'joint keyboard nudge is 0.5 mm');
  await p.focus('#jdMap');await p.keyboard.press('Alt+ArrowLeft');assert.notEqual(await p.evaluate(()=>window.__jed.map.pan[0]),0,'keyboard pans map');
  await p.keyboard.press('Escape');
