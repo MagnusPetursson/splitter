@@ -60,6 +60,14 @@ export class SceneContext {
   fit(step,stage,top,bottom){
     const svg=$('fitDimensions'),v=this.v,show=step==='fit'&&v.view==='model'&&v.box&&v.bed;hide(svg,!show);
     const legend=$('fitLegend');if(legend)hide(legend,!show);if(!show)return;
+    // Round 4: a bottom safe area. The viewer hint and the camera/enlarge
+    // controls own the lower band of the view; labels stay above it and
+    // also clear any other viewport chrome (legend, corner buttons).
+    const sr=this.stage.getBoundingClientRect(),chrome=[];
+    for(const el of document.querySelectorAll('#gestureHint, #viewerTools, #fitLegend, .view-corner')){if(!el.checkVisibility?.()||el.hidden)continue;
+      for(const c of el.matches('#viewerTools, .view-corner')?el.children:[el]){if(!c.checkVisibility?.())continue;const r=c.getBoundingClientRect();if(r.width&&r.height)chrome.push({l:r.left-sr.left,r:r.right-sr.left,t:r.top-sr.top,b:r.bottom-sr.top,el});}}
+    const band=chrome.filter(c=>c.el.matches('#gestureHint, #viewerTools')&&c.t>sr.height*.6);
+    if(band.length)bottom=Math.min(bottom,Math.min(...band.map(c=>c.t))-6);
     const g=v.fitGeometry(),size=v.box.getSize(new THREE.Vector3()),usable=[v.bed.x,v.bed.y,v.bed.z];
     const cen=this.project(g.all.getCenter(new THREE.Vector3())),edge=12,W=stage.width;
     // Round 3: each label gets its own slot beside its dimension line, never
@@ -86,6 +94,7 @@ export class SceneContext {
           if(segRect(sg.p.x-ux,sg.p.y-uy,sg.q.x+ux,sg.q.y+uy,r))c+=sg===segs[i]?100:40;}
         {const ox=Math.min(r.r,model.r)-Math.max(r.l,model.l),oy=Math.min(r.b,model.b)-Math.max(r.t,model.t);if(ox>0&&oy>0)c+=20+Math.min(30,ox*oy/(w*h)*30);}
         for(const o of placed)if(Math.abs(o.x-x)<(o.w+w)/2+6&&Math.abs(o.y-y)<(o.h+h)/2+6)c+=60;
+        for(const o of chrome)if(r.l<o.r+4&&r.r>o.l-4&&r.t<o.b+4&&r.b>o.t-4)c+=80;
         return c;};
       let best=null;
       for(const side of [1,-1])for(const t of [.5,.38,.62,.25,.75]){

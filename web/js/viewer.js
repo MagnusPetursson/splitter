@@ -48,7 +48,14 @@ function outOfBedMaterial(color) {
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWorldP;\nuniform vec3 boxMin;\nuniform vec3 boxMax;')
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
         bool outside = any(lessThan(vWorldP, boxMin)) || any(greaterThan(vWorldP, boxMax));
-        if (outside) { vec3 t = gl_FragColor.rgb * vec3(1.0, 0.66, 0.58) + vec3(0.045, 0.0, 0.0); float s = step(0.84, fract((vWorldP.x + vWorldP.y + vWorldP.z) * 0.07)); gl_FragColor.rgb = mix(t, t * 0.6, s); }`);
+        // Round 4: signed distance outside the usable box gives a crisp,
+        // screen-width boundary line where the surface crosses the limit;
+        // the overflow itself is a light salmon tint with a soft hatch.
+        vec3 dOut = vec3(max(boxMin.xy - vWorldP.xy, vWorldP.xy - boxMax.xy), vWorldP.z - boxMax.z); // the floor is never a limit
+        float sd = max(max(dOut.x, dOut.y), dOut.z);
+        float aa = max(fwidth(sd), 1e-4);
+        if (outside) { vec3 t = gl_FragColor.rgb * vec3(1.0, 0.8, 0.74) + vec3(0.07, 0.015, 0.0); float h = fract((vWorldP.x + vWorldP.y + vWorldP.z) * 0.07); float s = smoothstep(0.86, 0.9, h) * (1.0 - smoothstep(0.96, 1.0, h)); gl_FragColor.rgb = mix(t, t * 0.8, s); }
+        if (boxMax.x < 1e8) { float edge = 1.0 - smoothstep(1.1, 2.2, abs(sd) / aa); gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0, 0.47, 0.38), edge * 0.95); }`);
   };
   return mat;
 }
@@ -136,7 +143,7 @@ export class Viewer {
     this.el = el;
     this.cb = cb;
     this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-    this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    this.renderer.setPixelRatio(this.pixelRatio());
     el.appendChild(this.renderer.domElement);
     this.scene = new THREE.Scene();
     this.scene.background = stageBackdrop();
@@ -155,10 +162,12 @@ export class Viewer {
     // silhouette. Four analytic lights, no shadow maps: cheap on an iGPU.
     // Round 3: one stronger, higher directional key and a restrained fill, so
     // the crown and face relief read through shading rather than tint.
-    const hemi = new THREE.HemisphereLight('#dbe7e2', '#3a342c', 0.4);
+    // Round 4: a touch more key contrast (key up, sky fill down) so relief
+    // on the front reads on a small screen.
+    const hemi = new THREE.HemisphereLight('#dbe7e2', '#3a342c', 0.34);
     hemi.position.set(0, 0, 1);
     this.scene.add(hemi);
-    this.sun = new THREE.DirectionalLight('#fff1dc', 2.15);
+    this.sun = new THREE.DirectionalLight('#fff1dc', 2.45);
     this.sun.position.set(-0.55, -0.8, 0.95);
     this.scene.add(this.sun);
     this.fillLight = new THREE.DirectionalLight('#cfe3ff', 0.42);
@@ -313,8 +322,16 @@ export class Viewer {
     this.controls.update();this.dirty();
   }
 
+  // Round 4: phones (DPR 3) render at their real density when the canvas is
+  // small; large canvases stay capped at 2 and a ~4.5 MP budget.
+  pixelRatio(w = this.el?.clientWidth || 800, h = this.el?.clientHeight || 600) {
+    const d = window.devicePixelRatio || 1;
+    return Math.max(1, Math.min(d, 3, d > 2 ? Math.sqrt(4.5e6 / Math.max(1, w * h)) : 2));
+  }
+
   resize() {
     const w = this.el.clientWidth || 800, h = this.el.clientHeight || 600;
+    { const pr = this.pixelRatio(w, h); if (Math.abs(this.renderer.getPixelRatio() - pr) > 0.01) this.renderer.setPixelRatio(pr); }
     this.renderer.setSize(w, h, false);
     this.renderer.domElement.style.width = w + 'px';
     this.renderer.domElement.style.height = h + 'px';

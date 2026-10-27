@@ -26,6 +26,9 @@ export class MergeLayer {
     const hint = $('gestureHint');
     hint.hidden = store('ps.gestureHint') === '0';
     $('dismissGesture').addEventListener('click', () => { hint.hidden = true; store('ps.gestureHint', '0'); this.v.renderer.domElement.focus(); });
+    // Round 4: the hint has done its job once the user has orbited; it then
+    // leaves for good instead of covering the lower edge of the view.
+    this.v.controls.addEventListener('start', () => { if (hint.hidden) return; clearTimeout(this.hintT); this.hintT = setTimeout(() => { hint.hidden = true; store('ps.gestureHint', '0'); }, 600); });
     // Cut drags snap to 1 mm / 5°; hold Shift for 0.1 mm / 1° (lane A).
     const snap = fine => { this.v.tc.setTranslationSnap(fine ? 0.1 : 1); this.v.tc.setRotationSnap((fine ? 1 : 5) * Math.PI / 180); };
     snap(false);
@@ -50,14 +53,18 @@ export class MergeLayer {
     const q = this.v.camera.quaternion.clone().invert(), key = q.toArray().map(x => x.toFixed(3)).join() + '|' + this.triadW;
     if (key === this.triadKey) return; this.triadKey = key;
     // Letters render at ≥ 12.5 CSS px whatever size the triad is drawn at.
-    const tw = this.triadW || 64, fs = Math.max(19, Math.min(22, 12.5 * 74 / tw));
+    const tw = this.triadW || 64, fs = Math.max(19, Math.min(22, 12.5 * 74 / tw)), phone = innerWidth <= 760;
     const axes = [[1,0,0,'X','#ffa69c'],[0,1,0,'Y','#b6ed88'],[0,0,1,'Z','#a8d8ee']];
-    $('triadLines').innerHTML = axes.map(([x,y,z,name,color]) => {
+    // Round 4 (phone): no disc, longer and heavier arms from a dot origin and
+    // letters well past each tip, so the three letters never cluster.
+    const arm = phone ? 19 : 15, off = phone ? 9 : 10;
+    $('triadLines').innerHTML = (phone ? '<circle cx="37" cy="37" r="2.6" fill="#dfe8e5"/>' : '') + axes.map(([x,y,z,name,color]) => {
       // Round 3: shorter arms and larger, haloed letters placed past each tip;
       // an axis pointing away from the camera is drawn dimmer and behind.
-      const n = new THREE.Vector3(x,y,z).applyQuaternion(q), px = 37 + n.x * 15, py = 37 - n.y * 15, len = Math.hypot(n.x, n.y) || 1, back = n.z < -0.2;
-      const lx = 37 + n.x / len * Math.max(15 * len + 10, 12), ly = 37 - n.y / len * Math.max(15 * len + 10, 12);
-      return {z: n.z, svg: `<g opacity="${back ? .55 : 1}"><line x1="37" y1="37" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/><text x="${lx.toFixed(1)}" y="${(ly + 5).toFixed(1)}" text-anchor="middle" fill="${color}" font-size="${fs.toFixed(1)}" font-weight="700">${name}</text></g>`};
+      const n = new THREE.Vector3(x,y,z).applyQuaternion(q), px = 37 + n.x * arm, py = 37 - n.y * arm, len = Math.hypot(n.x, n.y) || 1, back = n.z < -0.2;
+      const lx = 37 + n.x / len * Math.max(arm * len + off, 12), ly = 37 - n.y / len * Math.max(arm * len + off, 12);
+      const letter = phone && len < .35 ? '' : `<text x="${lx.toFixed(1)}" y="${(ly + 5).toFixed(1)}" text-anchor="middle" fill="${color}" font-size="${fs.toFixed(1)}" font-weight="700">${name}</text>`;
+      return {z: n.z, svg: `<g opacity="${back ? .55 : 1}"><line x1="37" y1="37" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}" stroke="${color}" stroke-width="${phone ? 3.5 : 2.5}" stroke-linecap="round"/>${letter}</g>`};
     }).sort((a, b) => a.z - b.z).map(a => a.svg).join('');
   }
 

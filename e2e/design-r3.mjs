@@ -35,10 +35,11 @@ const labels = p => p.evaluate(() => {
 });
 const panel = p => p.evaluate(() => {
   const side = document.getElementById('side'), foot = document.querySelector('.flow-footer').getBoundingClientRect(), sr = side.getBoundingClientRect();
-  const cue = document.querySelector('#moreCue span'), cr = cue.checkVisibility({visibilityProperty: true}) ? cue.getBoundingClientRect() : null;
+  // Round 4 replaced the pill with a fade + scrollbar; the cue checks apply only when a pill exists.
+  const cue = document.querySelector('#moreCue span'), cr = cue && cue.checkVisibility({visibilityProperty: true}) ? cue.getBoundingClientRect() : null;
   const cards = document.querySelector('#fitReadout .metrics')?.getBoundingClientRect();
   const pill = getComputedStyle(document.querySelector('.flow-footer'), '::before').content;
-  const heads = [...side.querySelectorAll('.step:not([hidden]) :is(h1,.fit-head,.readout-head b)')].filter(e => e.checkVisibility()).map(e => ({t: e.textContent, lines: Math.round(e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight))}));
+  const heads = [...side.querySelectorAll('.step:not([hidden]) :is(h1,.fit-head,.readout-head b)')].filter(e => e.checkVisibility() && !e.classList.contains('sr-only')).map(e => ({h1: e.tagName === 'H1', t: e.textContent, lines: Math.round(e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight))}));
   return {more: side.dataset.more, foot: foot.top, side: {l: sr.left, r: sr.right, b: sr.bottom}, cue: cr && {t: cr.top, b: cr.bottom, l: cr.left, r: cr.right}, cardsBottom: cards?.bottom, pill, heads};
 });
 const lum = c => { const [r, g, bb] = c.match(/[\d.]+/g).slice(0, 3).map(Number).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * bb; };
@@ -80,8 +81,8 @@ try {
     if (dev !== 'phone') {
       const s = await panel(p);
       ok(s.pill === 'none' || s.pill === 'normal', `${dev}: no scroll pill on the footer divider`);
-      if (s.more === 'true') ok(s.cue && s.cue.b <= s.foot - 6 && s.cue.l >= s.side.l && s.cue.r <= s.side.r, `${dev}: scroll cue sits inside the panel above the footer (${s.cue && Math.round(s.foot - s.cue.b)} px)`);
-      ok(s.heads.every(h => h.lines === 1), `${dev} B: headings do not wrap (${s.heads.map(h => h.t + ':' + h.lines).join('; ')})`);
+      if (s.more === 'true' && s.cue) ok(s.cue && s.cue.b <= s.foot - 6 && s.cue.l >= s.side.l && s.cue.r <= s.side.r, `${dev}: scroll cue sits inside the panel above the footer (${s.cue && Math.round(s.foot - s.cue.b)} px)`);
+      ok(s.heads.every(h => h.lines === 1 || h.h1 && h.lines === 2), `${dev} B: headings do not wrap (verdict h1 ≤ 2 lines since round 4) (${s.heads.map(h => h.t + ':' + h.lines).join('; ')})`);
     }
     await axe(p, `${dev} B fit`);
     await shot(p, `${dev}-B-fit`);
@@ -114,7 +115,7 @@ try {
     ok(await p.locator('[data-fit-plan]').isVisible() && !(await p.locator('[data-fit-plan]').evaluate(e => e.classList.contains('primary'))), `${dev} A: "Plan cuts anyway" is offered as a secondary`);
     pr = await onePrimary(p, `${dev} A fit`); ok(pr[0] === 'flowNext', `${dev} A: the only primary is the turn`);
     if (dev === 'phone') { await closeSheet(); ok(/^Fits in one piece after a 90° turn/.test(await p.locator('#sheetSummary').innerText()), 'phone A: summary row carries the turn outcome'); await onePrimary(p, 'phone A fit (peek)'); }
-    if (dev !== 'phone') { const s = await panel(p); ok(!s.cue || s.cardsBottom <= s.cue.t, `${dev} A: model-vs-usable cards fully visible above the scroll cue`); ok(s.heads.every(h => h.lines === 1), `${dev} A: headings do not wrap (${s.heads.map(h => h.t + ':' + h.lines).join('; ')})`); }
+    if (dev !== 'phone') { const s = await panel(p); ok(!s.cue || s.cardsBottom <= s.cue.t, `${dev} A: model-vs-usable cards fully visible above the scroll cue`); ok(s.heads.every(h => h.lines === 1 || h.h1 && h.lines === 2), `${dev} A: headings do not wrap (verdict h1 ≤ 2 lines since round 4) (${s.heads.map(h => h.t + ':' + h.lines).join('; ')})`); }
     L = await labels(p);
     ok(L.lineHits.every(h => h === 0) && L.overlaps === 0 && L.edge >= 12, `${dev} A: labels in their own slots (${L.lineHits}, edge ${L.edge})`);
     await axe(p, `${dev} A fit`);

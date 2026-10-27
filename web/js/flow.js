@@ -28,7 +28,7 @@ export function fitAssess(size,u,upright=false){
   // When a quarter turn fits the whole model, the turn is the answer and the
   // current placement is the detail.
   if(p)return{over,resolve,rot,how,act:resolve==='turn'?'Turn 90° to fit':'Lay on side to fit',head:`Fits in one piece ${how}`,metric:`Current placement is ${short} (${pair})`,
-    short:`Current placement is ${short}`,next:'Same size, new footprint on the bed. Undo restores.'};
+    short:`Current placement is ${short}`,next:'The turn keeps the size and changes only the footprint on the bed. You can undo it.'};
   const any=upright?'No upright orientation':'No orientation';
   return{over,resolve,head:`Doesn’t fit: ${short}`,metric:`${metric} usable`,short:`${any} fits whole · Plan cuts proposes pieces`,
     next:`${any} fits it whole. Plan cuts proposes cuts and a print orientation for each piece; you review them before anything is built.`};
@@ -83,7 +83,7 @@ export class GuidedFlow {
     const stage=document.querySelector('.stage');stage.classList.toggle('expanded',on);
     if(on){stage.setAttribute('role','dialog');stage.setAttribute('aria-modal','true');}
     else {stage.setAttribute('role','main');stage.removeAttribute('aria-modal');}
-    $('expandView').setAttribute('aria-expanded',String(on));$('expandView').textContent=on?'Close view':'Enlarge view';
+    {const b=$('expandView');b.setAttribute('aria-expanded',String(on));b.querySelector('use').setAttribute('href',on?'#i-collapse':'#i-expand');b.querySelector('.lbl').textContent=on?'Close view':'Enlarge view';}
     this.sync();requestAnimationFrame(()=>{this.viewer.resize();this.viewer.frameCurrent();$('expandView').focus();});
   }
   printerName() {return this.S.printers.find(p=>p.id===$('printer').value)?.name||'custom printer';}
@@ -180,7 +180,7 @@ export class GuidedFlow {
     const x=+$('bedX').value,y=+$('bedY').value,z=+$('bedZ').value,m=+$('margin').value;
     const u=[Math.max(0,x-2*m),Math.max(0,y-2*m),Math.max(0,z-m)];
     const f=S.model?fitAssess(S.model.size,u,$('upright').checked):null,turnedNow=S.model?.rot&&JSON.stringify(S.model.rot.flat?S.model.rot.flat():S.model.rot)!=='[1,0,0,0,1,0,0,0,1]';this.fit=f;if(this.step==='fit')$('viewCaption').textContent=f?.rot?'Printer fit · current placement':'Printer fit';
-    $('fitReadout').innerHTML=`<div class="readout-head"><b>Model vs usable volume</b><span>W × D × H · mm</span></div><dl class="metrics">${['Width','Depth','Height'].map((n,k)=>`<div class="${f&&f.over.includes(k)?'over':''}"><dt>${n}</dt><dd>${S.model?`${S.model.size[k].toFixed(1)}<span>of ${u[k].toFixed(1)}</span>`:u[k].toFixed(1)}</dd></div>`).join('')}</dl><p>Usable = bed ${x} × ${y} × ${z} mm less ${m} mm at each side and the top.</p>`;
+    $('fitReadout').innerHTML=`<div class="readout-head"><b>Model vs usable volume</b><span>W × D × H · mm</span></div><dl class="metrics">${['Width','Depth','Height'].map((n,k)=>`<div class="${f&&f.over.includes(k)?'over':''}"><dt>${n}</dt><dd>${S.model?`${S.model.size[k].toFixed(1)}<span>of ${u[k].toFixed(1)}</span>`:u[k].toFixed(1)}</dd></div>`).join('')}</dl><p>Usable = bed ${x} × ${y} × ${z} mm less ${m} mm at each side and the top. Nothing is scaled.</p>`;
     {const pn=this.printerName(),k=JSON.stringify([pn,f,S.model?.rot]);if($('fitVerdict').dataset.k!==k){$('fitVerdict').dataset.k=k;
       $('fitVerdict').dataset.summary=f?f.head+'\n'+f.short:'';
       const turned=turnedNow;
@@ -188,11 +188,14 @@ export class GuidedFlow {
       // alternative (cut anyway) as a secondary action.
       const fix=f&&f.rot?`<p class="fit-alt"><span>Prefer pieces?</span> <button type="button" class="linkish" data-fit-plan>Plan cuts anyway</button></p>`:'';
       const undo=turned?`<p class="fit-turned">${ico('rotate')}<span>Turned 90° from the file’s orientation</span> <button type="button" class="linkish" data-fit-restore>Undo turn</button></p>`:'';
-      $('fitVerdict').innerHTML=!f?'':`${ico(f.rot?'rotate':f.over.length?'alert':'success')}<div><b class="fit-head">${f.head}</b><p class="fit-metric">${f.metric}${f.resolve==='none'?' on <span class="pn"></span>':''}</p>${undo}${f.next?`<p class="fit-next">${f.next}</p>`:''}${fix}</div>`;
+      $('fitVerdict').innerHTML=!f?'':`${ico(f.rot?'rotate':f.over.length?'alert':'success')}<div><b class="fit-head sr-only">${f.head}</b><p class="fit-metric">${f.metric}${f.resolve==='none'?' on <span class="pn"></span>':''}</p>${undo}${f.next?`<p class="fit-next">${f.next}</p>`:''}${fix}</div>`;
       $('fitVerdict').querySelector('[data-fit-plan]')?.addEventListener('click',()=>this.planAnyway());
       $('fitVerdict').querySelector('[data-fit-restore]')?.addEventListener('click',()=>dispatchEvent(new CustomEvent('ps-rotate',{detail:'restore'})));$('fitVerdict').querySelectorAll('.pn').forEach(e=>e.textContent=pn);}}
     $('fitVerdict').classList.toggle('over',!!f&&f.over.length>0&&!f.rot);$('fitVerdict').classList.toggle('turnable',!!f?.rot);$('fitVerdict').classList.toggle('fits',!!f&&!f.over.length);
     $('fitVerdict').dataset.resolve=f?f.resolve:'';
+    // Round 4: the verdict is the step's headline; the printer is a compact
+    // subordinate row and the "nothing is scaled" note joins the usable note.
+    {const h=$('fitHeading'),t=f?f.head:'What are you printing on?';if(h.textContent!==t)h.textContent=t;h.dataset.tone=!f?'':f.rot?'turn':f.over.length?'over':'fits';$('fitIntro').hidden=!!f;const pv=$('printerValue'),pn=$('printer').value==='custom'?`Custom ${['bedX','bedY','bedZ'].map(i=>+$(i).value||0).join(' × ')} mm`:this.printerName().replace(/\s+—\s+[\d.×]+$/,'');if(pv.textContent!==pn)pv.textContent=pn;}
     const simp=S.model?.simplified;$('fitMeshNote').hidden=!simp;
     $('fitMeshNote').textContent=simp?`Simplified for planning: ${simp.inputTris.toLocaleString()} → ${simp.outputTris.toLocaleString()} triangles. Maximum sampled deviation ${simp.maxDev.toFixed(3)} mm. ${S.model.originalKept?'Full-detail original retained for export.':'Export will use this simplified mesh.'} See Load for the complete repair and simplification report.`:'';
     document.querySelectorAll('[data-weight]').forEach(b=>b.setAttribute('aria-pressed',String(+$('supportWeight').value===+b.dataset.weight)));
