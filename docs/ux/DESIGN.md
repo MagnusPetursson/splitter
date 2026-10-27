@@ -336,3 +336,117 @@ Reproduce with `e2e/design-r3-shots.mjs URL OUTDIR MODEL.stl` (any build; `R3_BE
 - `go test ./...`, `go vet ./...` and `GOOS=js GOARCH=wasm go vet ./cmd/splitter-wasm`: PASS.
 - `scripts/e2e-all.sh` against a fresh static build of e28b747: **19/19 PASS** (guided-flow, merge-expert, design-system, design-r2, design-r3, round2-editing, round2-touch, round3-context, round3-depth, ux-audit, interactions, expert-controls, joints, mobile-ui, large-mesh, smoke, support, wasm-plan, and the private 226k-triangle helmet: plan, build NoError 226,172 triangles, ZIP).
 - `design-r3.mjs` also passes against the deployed preview (123 checks).
+
+## 9. Round 4 (final): verdict headline, safe areas, phone 3D crispness
+
+Control re-screenshotted e28b747 with the friend's helmet and scored it **8 / 8 / 7** (1440×900, 1280×720, phone). Rotate-to-fit as the single primary stays. This round finishes five things: the verdict becomes the headline, the "More below" pill goes, the viewport gets a bottom safe area, the phone 3D view gets sharper, and the after-turn state is verified with evidence.
+
+### 9.1 The verdict is the headline
+
+Before, the largest text on a loaded Fit step was the question "What are you printing on?" (24 px). The answer sat one level down, as the bold first line of a card.
+
+- **The step h1 is now the verdict:** "Fits in one piece after a 90° turn", "Doesn't fit: 76.0 mm too wide" or "Fits in one piece". Before a model loads, it is still the question. The warning case is tinted amber. The card keeps the evidence ("Current placement is 9.8 mm too deep (223.8 / 214.0 mm)"), and its own bold line is now visually hidden, so the verdict is not read twice. Screen readers still get it from the card's status region.
+- **The printer is a subordinate row:** "Printer: Prusa CORE One / One+ · Change", in 13–14 px. The real `<select>` is stretched transparently over the whole row, so the row is one 46 px target. Mouse, touch, keyboard and screen readers all reach the native control, labelled "Printer". The bed size moved out of the row because the usable-volume note already states it. A custom bed reads "Custom 70 × 330 × 230 mm".
+- **The intro line is dropped once a verdict exists.** "Nothing is scaled" moved to the end of the usable-volume note.
+- **Laptop heights (≤ 820 px):** the headline is 20 px, so "Fits in one piece after a 90° turn" stays on one line in the 370 px panel. At 1440×900 it is 22 px and also stays on one line (the 24 px version wrapped).
+- **The "fits after a turn" card is now neutral** (surface-2, neutral border, accent turn icon) instead of green. This closes round-3 gap 1: green is reserved for "fits now", and the recommendation no longer reads as already done. The copy changed from "Same size, new footprint on the bed. Undo restores." to "The turn keeps the size and changes only the footprint on the bed. You can undo it."
+- **Phone:** the sheet's summary row already carries the verdict, so the open sheet no longer repeats it as an h1. The h1 remains in the accessibility tree.
+
+### 9.2 Panel end: fade and scrollbar instead of the pill
+
+The "More below" pill is gone. A 56 px fade to the panel colour at the lower edge and a thin, always-laid-out scrollbar (`scrollbar-gutter: stable`) now show that the panel scrolls. With the shorter header, everything required fits above the footer: the verdict, the three model-vs-usable cards and the margin note.
+
+| Gap from the end of the margin note to the footer | Before (e28b747) | After |
+|---|---|---|
+| Helmet, 1440×900 | 168 px | **253 px** |
+| Helmet, 1280×720 | 13 px, and the pill sat over the note | **101 px** |
+| Helmet turned, 1280×720 | 63 px | **133 px** |
+| Bracket on a 70 × 330 bed, 1280×720 | 13 px | **101 px** |
+
+`design-r4.mjs` asserts ≥ 24 px at both desktop sizes, in both branches and after the turn.
+
+### 9.3 Viewport bottom safe area
+
+At 1280×720, "D 223.8 mm · limit 214 mm" touched the orbit/zoom hint (DOM overlap 1 of 3 labels).
+
+- **Safe band:** the label slotter reads the live rectangles of the viewer hint and the bottom tools (Perspective, Enlarge). If any of them sit in the lower 40 % of the view, the usable label area ends 6 px above the highest of them.
+- **Other chrome:** every label candidate is also scored against the legend, the corner buttons and the triad, with a cost of 80, above a line crossing (40). A label therefore never sits on chrome and will cross a line only when nothing else is free.
+- **Hint auto-dismiss:** the hint goes 600 ms after the first orbit starts. It stays dismissed, the same as pressing its ×.
+- **Phone, sheet open:** the 3D view shrinks to about 320 px tall, so the legend is hidden there. The sheet already explains the overflow, and the labels need the space.
+
+Measured label-to-chrome overlaps per W/D/H (2 px padding, helmet):
+
+| State | Before | After |
+|---|---|---|
+| 1440×900 fit / turned | 0,0,0 / 0,0,0 | 0,0,0 / 0,0,0 |
+| 1280×720 fit / turned | **0,1,0** / 0,0,0 | 0,0,0 / 0,0,0 |
+| Phone sheet open, fit / turned | **0,0,2** / **0,0,2** | 0,0,0 / 0,0,0 |
+
+Label-to-dimension-line hits remain 0,0,0 in every state.
+
+### 9.4 Phone 3D crispness
+
+- **Real device density.** The renderer was capped at a pixel ratio of 2. On a 3× phone, the view was rendered at two-thirds resolution and upscaled, which is most of the "muddy" look. The ratio now follows the device up to 3, within a 4.5 MP drawing-buffer budget, so large canvases on 3× desktops are scaled back. Desktop at 1× and 2× is unchanged.
+- **A sharp in-volume/overflow boundary.** The fragment shader now computes the signed distance to the usable box (sides and top only, never the floor). It draws a coral line about 2 screen pixels wide, using `fwidth`, wherever the surface crosses the limit. The overflow tint is lighter (× 1.0 / 0.80 / 0.74, instead of × 1.0 / 0.66 / 0.58), and the hatch is a soft-edged stripe that darkens by 20 % instead of 40 %. In a vision comparison of 3× crops, the edge line was the clear win: "the coral outline locates the boundary, the lighter hatch identifies the area without dominating it".
+- **Key contrast:** the key light went from 2.15 to 2.45 and the sky fill from 0.40 to 0.34. The difference is small (see gaps).
+- **Distinct viewport icons with names.** Fit view had a corner frame around a cube, which read like Enlarge's arrows at 20 px. It now has four centre ticks around an isometric cube. Enlarge keeps diagonal outward arrows and, when enlarged, switches to inward arrows ("Close view"). Before, toggling replaced the button's text and silently deleted its icon. The accessible names are the visible-on-desktop labels "Enlarge view" / "Close view" and "Fit view". A longer `aria-label` failed axe's label-content-name-mismatch check on desktop.
+- **Triad on phone:** no disc or border, a 52 px box (was 44), longer and heavier arms (19 / 3.5 instead of 15 / 2.5) from a dot origin, and letters past the tips at ≥ 12 px. All three letters stay readable and no longer cluster.
+
+### 9.5 After the turn (verified)
+
+After "Turn 90° to fit", in every size:
+- The headline reads **"Fits in one piece"**.
+- The card reads "Within usable: W 223.8 · D 197.2 · H 241.8 mm" and "Turned 90° from the file's orientation", with **Undo turn**.
+- The primary is **Export as one piece**.
+- The dimension labels read W 223.8 / D 197.2 / H 241.8 mm with no limit flag.
+- The hint stays clear of all labels.
+
+`design-r4.mjs` asserts all of this. `design-r3.mjs` still covers Undo restoring the turn and Export as one piece building a single NoError part.
+
+### 9.6 Before / after (round 4)
+
+Before is round 3 (e28b747, the deployed preview), on the left. After is round 4, on the right. Phone captures are at device scale 3. The committed pairs use the public bracket on a custom 70 × 330 × 230 bed, which is the same quarter-turn situation as the helmet on a CORE One. Helmet pairs at every size, including the 3D close-up, are in the private review gallery only.
+
+| Item | Pair |
+|---|---|
+| Fit · 1440×900 | ![](screenshots/design-r4/desktop-fit.webp) |
+| Fit · 1280×720 | ![](screenshots/design-r4/laptop-fit.webp) |
+| Fit · 390×844 | ![](screenshots/design-r4/phone-fit.webp) |
+| Fit · phone sheet open | ![](screenshots/design-r4/phone-fit-sheet.webp) |
+| Phone 3D close-up (canvas 2× → 3×, edge line) | ![](screenshots/design-r4/phone-fit-closeup.webp) |
+| After the turn · 1440×900 | ![](screenshots/design-r4/desktop-turned.webp) |
+| After the turn · 1280×720 | ![](screenshots/design-r4/laptop-turned.webp) |
+| After the turn · 390×844 | ![](screenshots/design-r4/phone-turned.webp) |
+| After the turn · phone sheet open | ![](screenshots/design-r4/phone-turned-sheet.webp) |
+
+Reproduce with `e2e/design-r4-shots.mjs URL OUTDIR MODEL.stl` (`R3_BED=70,330,230` for the custom bed), then `python3 tools/pairs-r4.py BEFORE AFTER OUT`.
+
+### 9.7 Verification
+
+- **New `e2e/design-r4.mjs`, 111 checks** at 1440×900, 1280×720 and 390×844 (phone at device scale 3, first visit with the hint showing), in both branches and after the turn. It checks:
+  - the h1 is the verdict, and is the largest panel text on desktop;
+  - on phone, the sheet summary is the headline, shown once;
+  - the compact "Printer: … Change" row is the labelled native select, ≤ 48 px tall, and follows a custom bed;
+  - there is no pill, and the margin note ends ≥ 24 px above the footer;
+  - no label touches the hint, the tools, the legend or the corner buttons;
+  - the hint dismisses after the first orbit and stays dismissed;
+  - the phone canvas renders at 3×;
+  - the two viewport icon buttons have distinct glyphs and names, and Enlarge ↔ Close keeps an icon;
+  - the phone triad has no disc and its letters are ≥ 12 px;
+  - the after-turn headline, primary and Undo, with no flagged axis;
+  - **axe 0** in every captured state, including the enlarged phone view.
+- **`design-r3.mjs`, now 121 checks:** its two pill-position checks run only when a pill exists, and the verdict h1 may take two lines. All other round-3 assertions still hold.
+- `go test ./...`, `go vet ./...` and the wasm vet: PASS.
+- **`scripts/e2e-all.sh` against a fresh static build of fdc8813: 20/20 PASS.** This covers the 19 earlier suites plus design-r4, including the private 226k-triangle helmet (plan, NoError build, ZIP).
+
+### 9.8 Honest gaps after round 4
+
+1. **The headline is 22 px rather than 24 px at 1440×900.** The 24 px version balanced the verdict into two lines in the 351 px panel. A final DOM check caught this; at 22 px it fits on one line and remains the largest text in the panel. At 1280×720 it is 20 px.
+2. **The fade is a quieter cue than the pill.** The scrollbar is always laid out in Chromium on Linux and Windows. On macOS with overlay scrollbars it appears only while scrolling, so the fade is the only cue there. The required content now fits above the footer at both desktop sizes; what lies below is Advanced and the spec link.
+3. **Phone with the sheet open:** the 3D view is a thumbnail of about 320 px, and the H and D labels sit over the model because nowhere else is free. They no longer cover the legend or buttons, and they stay readable. Collapsing the sheet gives the full view.
+4. **The key-light change is small.** The vision comparison credited the crispness gain to the edge line and the 3× canvas, not to the light. The helmet's face slots still render near-black (real geometry, no AO).
+5. **The 3× phone canvas costs about 2.25× the fragment work of 2×.** It was measured only in SwiftShader, not on a real phone GPU. The 4.5 MP budget bounds the worst case.
+6. **"Change" is a visual cue on a single target (the native select), not a separate control.** That is deliberate, because a second control would duplicate the select for screen readers.
+7. Still open from earlier rounds: phone Expert density, Join transparency, axis-aligned orientation search only, and Export as one piece honouring a Split preference. Evidence remains Chromium/SwiftShader screenshots, DOM measurements and axe, with no real device or screen-reader pass.
+
+- Preview readback: the deployed build is byte-identical to the tested static build; `design-r4.mjs` is also rerun at the deployed URL.
