@@ -406,3 +406,7 @@ button:disabled, button.primary:disabled { background:transparent; border-color:
 
 /* Active tool must read at a glance (pressed = accent border + stronger tint). */
 .tool-row [aria-pressed=true], .tool-row [aria-pressed=true]:hover:not(:disabled) { background:color-mix(in srgb, var(--accent) 22%, var(--surface-1)); border-color:var(--accent); color:var(--accent-hover); }
+
+.chip .x { display:inline-flex; align-items:center; gap:4px; font-variant-numeric:tabular-nums; font-size:var(--fs-12); }
+.chip .x .i { width:14px; height:14px; }
+#outlinerTree .warn .i { width:14px; height:14px; color:var(--warn); margin-right:4px; }

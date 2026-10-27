@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import {readiness} from './readiness.js';
 
 const $ = id => document.getElementById(id);
-import {plural} from './icons.js';
+import {plural,ico} from './icons.js';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toLocaleString('en-US', {maximumFractionDigits: d});
 const phone = () => matchMedia('(max-width:760px)').matches;
@@ -176,7 +176,7 @@ export class MergeLayer {
     if (key === this.outlineKey) return; this.outlineKey = key;
     const focused = document.activeElement?.closest?.('#outlinerTree button')?.dataset.obj;
     const groups = [...new Set(items.map(i => i.group))];
-    tree.innerHTML = groups.map(g => `<section><h3>${esc(g)}</h3><ul>${items.filter(i => i.group === g).map(i => `<li${i.depth ? ' class="nested"' : ''}><button data-obj='${esc(JSON.stringify(i.obj))}' ${i.on ? 'aria-current="true"' : ''} class="${i.bad ? 'warn' : ''}"><span>${i.bad ? '⚠ ' : ''}${esc(i.label)}</span><small>${esc(i.meta)}</small></button></li>`).join('')}</ul></section>`).join('');
+    tree.innerHTML = groups.map(g => `<section><h3>${esc(g)}</h3><ul>${items.filter(i => i.group === g).map(i => `<li${i.depth ? ' class="nested"' : ''}><button data-obj='${esc(JSON.stringify(i.obj))}' ${i.on ? 'aria-current="true"' : ''} class="${i.bad ? 'warn' : ''}"><span>${i.bad ? ico('alert') : ''}${esc(i.label)}</span><small>${esc(i.meta)}</small></button></li>`).join('')}</ul></section>`).join('');
     if (focused) [...tree.querySelectorAll('button[data-obj]')].find(b => b.dataset.obj === focused)?.focus({preventScroll: true});
   }
   choose(o, {focusEditor = true} = {}) {

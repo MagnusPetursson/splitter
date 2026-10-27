@@ -7,7 +7,7 @@ fail=0
 run() { name=$1; shift; start=$(date +%s)
   if timeout 1500 node "$@" >"$out/$name.log" 2>&1; then r=PASS; else r=FAIL; fail=1; fi
   echo "$r $name $(( $(date +%s) - start ))s"; }
-for t in guided-flow merge-expert round2-editing round2-touch round3-context round3-depth ux-audit interactions expert-controls joints mobile-ui large-mesh; do
+for t in guided-flow merge-expert design-system round2-editing round2-touch round3-context round3-depth ux-audit interactions expert-controls joints mobile-ui large-mesh; do
   run "$t" "e2e/$t.mjs" "$url" "$out/$t"
 done
 run smoke e2e/smoke.mjs "$url" bracket_320mm.stl prusa-mini "$out/smoke"

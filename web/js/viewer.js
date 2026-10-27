@@ -345,7 +345,8 @@ export class Viewer {
     if (!box) return;
     // In the Fit step on wider screens, the printer volume is the subject too:
     // frame model ∪ build volume so neither is cropped (phones keep the model).
-    if (box === this.box && this.view === 'model' && this.bed && document.body.dataset.step === 'fit' && (this.el.clientWidth || 0) > 760) {
+    const fitBed = box === this.box && this.view === 'model' && this.bed && document.body.dataset.step === 'fit' && (this.el.clientWidth || 0) > 760;
+    if (fitBed) {
       const c0 = this.center, z0 = this.box.min.z, b = this.bed;
       box = this.box.clone().union(new THREE.Box3(new THREE.Vector3(c0.x - b.x / 2, c0.y - b.y / 2, z0), new THREE.Vector3(c0.x + b.x / 2, c0.y + b.y / 2, z0 + b.z)));
     }
@@ -361,7 +362,7 @@ export class Viewer {
     // fill ~82 % of the limiting screen dimension (exact for the box, unlike a
     // bounding sphere), so the model dominates phones and desktops alike.
     const up = new THREE.Vector3(0, 0, 1), right = new THREE.Vector3().crossVectors(up, dir).normalize(), camUp = new THREE.Vector3().crossVectors(dir, right);
-    const fill = aspect < 1 ? 0.9 : 0.82;
+    const fill = aspect < 1 ? 0.9 : fitBed ? 0.92 : 0.82;
     const tv = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * fill, th = tv * aspect;
     let dist = 0;
     const pts = [];

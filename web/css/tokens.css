@@ -1,6 +1,6 @@
-/* Splitter design tokens. Every colour, size, radius, shadow and duration in
-   the app's stylesheets resolves to one of these. Contrast ratios are against
-   --surface-1 (#141c1d) unless noted; all text roles meet WCAG AA (4.5:1). */
+/* Splitter design tokens: shared colour roles, type, spacing, radii,
+   elevation and motion. Contrast ratios are against --surface-1 (#141c1d)
+   unless noted. Enabled-text roles meet WCAG AA (4.5:1); inactive UI is exempt. */
 :root {
   /* ---- neutrals (teal-tinted, dark) ---- */
   --bg:            #0d1314;   /* app background, 3D canvas base */

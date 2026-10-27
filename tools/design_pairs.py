@@ -11,7 +11,7 @@ for n in names:
     ims = [Image.open(pathlib.Path(d) / f'{n}.png').convert('RGB') for d in (b, a)]
     phone = ims[0].width < 600
     scale = 1.0 if phone else 0.5
-    ims = [im.resize((int(im.width * scale), int(im.height * scale)), Image.LANCZOS) for im in ims]
+    ims = [im.resize((int(im.width * scale), int(im.height * scale)), Image.Resampling.LANCZOS) for im in ims]
     w, h, gap, top = ims[0].width, ims[0].height, 16, 40
     can = Image.new('RGB', (2 * w + gap, h + top), (13, 19, 20))
     d = ImageDraw.Draw(can)
