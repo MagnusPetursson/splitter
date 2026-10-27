@@ -1,0 +1,23 @@
+// Reachability and wiring of advanced capabilities, through their real controls.
+import fs from 'node:fs';import path from 'node:path';import assert from 'node:assert/strict';import {createRequire} from 'node:module';
+const {chromium}=createRequire(import.meta.url)(process.env.SPLITTER_PLAYWRIGHT||'playwright');const [url='http://127.0.0.1:8792/',out='evidence/expert-controls']=process.argv.slice(2);fs.mkdirSync(out,{recursive:true});
+const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await b.newPage({viewport:{width:1440,height:900}});const report={styles:[],errors:[]};p.on('pageerror',e=>report.errors.push(e.message));
+const idle=()=>p.waitForFunction(()=>document.querySelector('#busy').classList.contains('hidden'),null,{timeout:300000});const seq=()=>p.evaluate(()=>window.__ps.planSeq);const changed=async n=>{await p.waitForFunction(n=>window.__ps.planSeq>n&&document.querySelector('#busy').classList.contains('hidden'),n,{timeout:300000});};
+try{
+ await p.goto(url,{waitUntil:'networkidle'});await p.waitForFunction(()=>document.querySelector('#printer').options.length>5);await p.click('#expertMode');await p.click('[data-sample="bracket_320mm.stl"]');await p.waitForFunction(()=>window.__ps.workerReady);await idle();
+ assert.ok(await p.locator('#scalePct').isVisible());await p.fill('#scalePct','200');await p.click('#applyScale');await p.waitForFunction(()=>window.__ps.model.scale===2);await idle();assert.equal(await p.evaluate(()=>Math.round(window.__ps.model.size[0])),640);await p.fill('#scalePct','100');await p.click('#applyScale');await p.waitForFunction(()=>window.__ps.model.scale===1);await idle();
+ await p.click('[data-step="fit"]');await p.selectOption('#printer','custom');await p.fill('#bedX','180');await p.fill('#bedY','180');await p.fill('#bedZ','180');await p.selectOption('#nozzle','0.6');await p.click('.fits summary');assert.equal(await p.locator('[data-fit]').count(),5);for(const input of await p.locator('[data-fit]').all())assert.ok(await input.isVisible());
+ await p.click('[data-step="split"]');await p.click('#autoSplit');await p.waitForFunction(()=>window.__ps.plan);await idle();assert.equal(await p.evaluate(()=>window.__ps.plan.settings.nozzle),.6);
+ const cuts=await p.evaluate(()=>window.__ps.plan.tree.nodes.filter(n=>n.cut).map(n=>n.cut));
+ await p.click('[data-step="join"]');const styles=await p.locator('#jointStyle option').evaluateAll(es=>es.map(e=>e.value));assert.equal(styles.length,13);
+ for(const style of styles){const n=await seq();await p.selectOption('#jointStyle',style);await changed(n);assert.equal(await p.evaluate(()=>window.__ps.plan.settings.jointStyle),style);assert.deepEqual(await p.evaluate(()=>window.__ps.plan.tree.nodes.filter(n=>n.cut).map(n=>n.cut)),cuts);report.styles.push(style);}
+ // Return to glued pins to exercise editable point-joint controls.
+ {const n=await seq();await p.selectOption('#jointStyle','glued');await changed(n);}
+ await p.click('#openEditor');await p.locator('[data-jdj]').first().click();assert.ok(await p.locator('#jKind').isVisible());
+ const count=await p.evaluate(()=>window.__ps.plan.joints.length);const n=await seq();await p.click('#jDel');await changed(n);assert.equal(await p.evaluate(()=>window.__ps.plan.joints.length),count-1);await p.keyboard.press('Escape');
+ await p.click('[data-step="split"]');await p.locator('[data-cut]').first().click();let before=await p.evaluate(()=>window.__ps.plan.tree.nodes.filter(n=>n.cut).length);let s=await seq();await p.click('#cutDelete');await changed(s);assert.ok(await p.evaluate(()=>window.__ps.plan.tree.nodes.filter(n=>n.cut).length)<before);
+ await p.locator('[data-leaf]').first().click();assert.equal(await p.locator('[data-add]').count(),3);s=await seq();await p.locator('[data-add="z"]').click();await changed(s);assert.ok(await p.evaluate(()=>window.__ps.plan.tree.nodes.some(n=>n.reason==='added by you')));
+ if(await p.locator('#autoComplete').count()){s=await seq();await p.click('#autoComplete');await changed(s);}
+ await p.click('[data-step="export"]');await p.click('#buildBtn');await p.waitForFunction(()=>window.__ps.built);await idle();await p.click('#spreadParts');assert.equal(await p.evaluate(()=>window.__viewer.explode),0);await p.click('#spreadParts');assert.ok(await p.evaluate(()=>window.__viewer.explode)>0);
+ assert.deepEqual(report.errors,[]);console.log('PASS scale/custom volume/clearances, all 13 joint styles, delete joint/cut, manual cut, auto-complete and explosion');
+}catch(e){report.failure=e.message;await p.screenshot({path:path.join(out,'failure.png')});throw e;}finally{fs.writeFileSync(path.join(out,'result.json'),JSON.stringify(report,null,2));await b.close();}

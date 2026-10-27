@@ -3,6 +3,7 @@ import { Viewer, partColor, KIND_COLORS } from './viewer.js';
 import { JointMap } from './jointmap.js';
 import { JointEditor } from './jointeditor.js';
 import { createBackend } from './backend.js';
+import { GuidedFlow } from './flow.js';
 import { LIMITS, estimateTris, estimateMemMB, estimateLoadSec, estimatePlanSec, fmtTris, fmtDur, fmtMem, msgText, Progress, LOAD_STAGES, PLAN_STAGES, crumbSet, crumbClear, crumbTake } from './progress.js';
 
 const $ = (id) => document.getElementById(id);
@@ -41,6 +42,7 @@ function busy(text, frac = null) {
 let BE = null; // planner backend (local WASM or server)
 let PROG = null; // staged progress panel
 let DEFAULTS = null; // form values before any saved settings are applied
+let FLOW = null;
 function save() {
   const s = {
     printer: $('printer').value, bedX: $('bedX').value, bedY: $('bedY').value, bedZ: $('bedZ').value,
@@ -49,6 +51,11 @@ function save() {
     fits: Object.fromEntries([...document.querySelectorAll('[data-fit]')].map((i) => [i.dataset.fit, i.value])),
   };
   localStorage.setItem('ps.settings', JSON.stringify(s));
+  if (S.plan) {
+    const next=settings(), old=S.plan.settings;
+    S.settingsDirty=['bed','margin','nozzle','minPiece','upright','tilted','fits'].some(k=>JSON.stringify(next[k])!==JSON.stringify(old[k]));
+    FLOW?.sync();
+  }
 }
 function load() {
   try { return JSON.parse(localStorage.getItem('ps.settings') || 'null'); } catch (_) { return null; }
@@ -154,6 +161,7 @@ async function init() {
   updateBed();
   updateSupportPreference();
   bind();
+  FLOW = new GuidedFlow({ S, viewer, setView });
 }
 
 function styleLabel(v) { const o = [...$('jointStyle').options].find((x) => x.value === v); return o ? o.textContent : v; }
@@ -246,7 +254,8 @@ function bind() {
   $('licLink').addEventListener('click', (e) => { e.preventDefault(); $('licDlg').showModal(); });
   document.addEventListener('keydown', (e) => {
     if (jed.open) { if (e.key === 'Escape') jed.close(); return; }
-    if (e.target.matches('input, select, textarea')) return;
+    if (e.target.matches('input, select, textarea') || e.target.closest('dialog')) return;
+    if (!e.target.closest('#viewport, #planSummary, #cutEditor, #partEditor')) return;
     if (['1', '2', '3', '4'].includes(e.key)) setView(['model', 'cuts', 'parts', 'plates'][+e.key - 1]);
     if (e.key === 'Escape') { setAddMode(false); select({}); }
     if ((e.key === 'Delete' || e.key === 'Backspace') && S.sel.joint != null) deleteJoint(S.sel.joint);
@@ -256,10 +265,12 @@ function bind() {
 }
 
 function setView(v) {
-  for (const b of document.querySelectorAll('#views button')) b.classList.toggle('on', b.dataset.view === v);
+  if ((v==='cuts'&&!S.plan)||(['parts','plates'].includes(v)&&!S.built)) return;
+  for (const b of document.querySelectorAll('#views button')) { b.classList.toggle('on', b.dataset.view === v); b.setAttribute('aria-pressed', String(b.dataset.view === v)); }
   viewer.setView(v);
   if (v === 'cuts') viewer.highlight();
   hud();
+  FLOW?.sync();
 }
 
 // ---------------- model ----------------
@@ -344,6 +355,7 @@ function resetModel() {
   if (viewer.clearAll) viewer.clearAll();
   $('empty').classList.remove('hidden');
   hud();
+  FLOW?.sync();
 }
 
 function showLoadNote(title, html, actions = []) {
@@ -373,6 +385,7 @@ async function loadSample(name) {
 
 async function onModel(info, o = {}) {
   S.model = info;
+  S.settingsDirty = false;
   S.kernelFull = false;
   S.plan = null; S.built = null; S.export = null; S.sel = {}; S.comparison = null; S.planWasAuto = false;
   busy(info.simplified && !info.simplified.failed ? 'Loading the simplified mesh into the 3D view' : 'Loading repaired mesh', null);
@@ -400,6 +413,8 @@ async function onModel(info, o = {}) {
   $('faceList').innerHTML = ''; $('mapWrap').classList.add('hidden');
   $('buildInfo').classList.add('hidden'); $('exportInfo').classList.add('hidden');
   hud();
+  if(o.restore) { FLOW?.sync(); FLOW?.say('Model restored after cancellation. You can try the split again.'); }
+  else FLOW?.loaded();
 }
 
 // What the planner is working on, how far it is from the file, and how to
@@ -545,6 +560,10 @@ function setPatchStyle(p, style, force) {
 
 async function runPlan(mode, opts = {}) {
   if (!S.model) return;
+  const focusAfter=document.activeElement?.id;
+  const invalid=[...document.querySelectorAll('#stepPrinter input')].find(i=>!i.checkValidity());
+  if(invalid) { FLOW?.go('fit'); $('printerAdvanced').open=true; invalid.closest('details').open=true; invalid.reportValidity(); return; }
+  if(usable().x<=0||usable().y<=0||usable().z<=0) { FLOW?.go('fit'); $('printerAdvanced').open=true; toast('The margin leaves no usable build space. Reduce it or increase the volume.',true); return; }
   S.selJointAt = null;
   if (S.sel.joint != null && S.plan) { const j = S.plan.joints.find((x) => x.id === S.sel.joint); if (j) S.selJointAt = j.origin; }
   const seq = ++S.planSeq;
@@ -573,6 +592,7 @@ async function runPlan(mode, opts = {}) {
     if (seq !== S.planSeq) return;
     PROG.end();
     onPlan(plan, mode === 'auto');
+    if(focusAfter)requestAnimationFrame(()=>{const e=$(focusAfter);if(e?.checkVisibility()&&!e.closest('[inert]'))e.focus({preventScroll:true});});
   } catch (err) {
     crumbClear();
     PROG.end();
@@ -598,6 +618,7 @@ function onPlan(plan, fresh) {
     ? { parts: S.plan.leaves.filter((l) => !l.empty).length, volume: S.plan.leaves.reduce((s, l) => s + (l.supportVolume || 0), 0), weight: S.plan.settings.supportWeight ?? 0.5 } : null;
   S.planWasAuto = fresh;
   S.plan = plan;
+  S.settingsDirty = false;
   updateSupportPreference();
   S.built = null; S.export = null;
   if (fresh) { S.sel = {}; $('styleNote').classList.add('hidden'); }
@@ -621,6 +642,7 @@ function onPlan(plan, fresh) {
   hud();
   const w = plan.warnings || [];
   if (w.length) toast(w[0], true, 7000);
+  FLOW?.planned();
 }
 
 function renderPlan() {
@@ -631,9 +653,9 @@ function renderPlan() {
   const previous = S.comparison ? `<div class="small mute" style="margin-top:6px">Previous auto plan (${esc(supportPreference(S.comparison.weight))}): ${S.comparison.parts} part${S.comparison.parts === 1 ? '' : 's'} · proxy ≈ ${fmt(S.comparison.volume / 1000, 0)} cm³</div>` : '';
   const chips = leaves.map((l) => {
     const i = p.leaves.indexOf(l);
-    return `<div class="chip ${l.fits ? 'ok' : 'bad'} ${S.sel.leaf === l.id ? 'sel' : ''}" data-leaf="${l.id}" title="${esc(l.printFace)} down · support proxy ≈ ${fmt((l.supportVolume || 0) / 1000)} cm³ · ${fmt(l.extent[0])}×${fmt(l.extent[1])}×${fmt(l.extent[2])} mm${l.warnings ? ' · ' + esc(l.warnings.join('; ')) : ''}"><span class="sw" style="background:${partColor(i)}"></span>${l.label}<span class="x">${l.fits ? '✓' : '✗'} ↕${fmt(l.extent[2], 0)}</span></div>`;
+    return `<button aria-pressed="${S.sel.leaf === l.id}" class="chip ${l.fits ? 'ok' : 'bad'} ${S.sel.leaf === l.id ? 'sel' : ''}" data-leaf="${l.id}" title="${esc(l.printFace)} down · support proxy ≈ ${fmt((l.supportVolume || 0) / 1000)} cm³ · ${fmt(l.extent[0])}×${fmt(l.extent[1])}×${fmt(l.extent[2])} mm${l.warnings ? ' · ' + esc(l.warnings.join('; ')) : ''}"><span class="sw" style="background:${partColor(i)}"></span>${l.label}<span class="x">${l.fits ? '✓' : '✗'} ↕${fmt(l.extent[2], 0)}</span></button>`;
   }).join('');
-  const cutChips = cuts.map((n) => `<div class="chip ${S.sel.cut === n.id ? 'sel' : ''}" data-cut="${n.id}" title="${esc(n.reason || 'manual cut')}"><span class="sw" style="background:#e07a3f"></span>${cutName(n.id)}<span class="x">${axisName(n.cut.n)} ${fmt(n.cut.d, 0)}</span></div>`).join('');
+  const cutChips = cuts.map((n) => `<button aria-pressed="${S.sel.cut === n.id}" class="chip ${S.sel.cut === n.id ? 'sel' : ''}" data-cut="${n.id}" title="${esc(n.reason || 'manual cut')}"><span class="sw" style="background:#e07a3f"></span>${cutName(n.id)}<span class="x">${axisName(n.cut.n)} ${fmt(n.cut.d, 0)}</span></button>`).join('');
   const fbs = p.patches.filter((x) => x.fallback || x.single);
   const fallbackNote = fbs.length ? `<div class="fblist">${fbs.map((x) => `<button class="fbitem ${x.fallback ? '' : 'single'}" data-fbpatch="${x.id}" title="${esc(x.fallback ? x.fallback.why : (x.notes || []).join('; '))}">⚠ ${cutName(x.node)} ${contactName(x)}: ${x.fallback ? `${esc(fbText(x.fallback))}` : esc(singleNote(x))}</button>`).join('')}</div>` : '';
   $('planSummary').innerHTML = `${fallbackNote}<div><span class="big">${leaves.length}</span> part${leaves.length === 1 ? '' : 's'} · ${bad.length ? `<span class="badc">${bad.length} do not fit</span> <button class="small" id="autoComplete">Auto-complete</button>` : '<span class="okc">all fit</span>'} · calculated in ${fmt(p.timing.total, 1)} s</div>
@@ -641,9 +663,9 @@ function renderPlan() {
     <div class="small mute" style="margin-top:6px">Parts (click to select, then add a cut through it)</div><div class="partlist">${chips}</div>
     <div class="small mute" style="margin-top:6px">Cuts (click, then drag the arrow in the 3D view or edit below)</div><div class="partlist">${cutChips || '<span class="mute small">none — the model fits as one part</span>'}</div>`;
   $('planSummary').classList.remove('hidden');
-  for (const c of $('planSummary').querySelectorAll('[data-leaf]')) c.addEventListener('click', () => select({ leaf: +c.dataset.leaf }));
-  for (const c of $('planSummary').querySelectorAll('[data-cut]')) c.addEventListener('click', () => select({ cut: +c.dataset.cut }));
-  for (const c of $('planSummary').querySelectorAll('[data-fbpatch]')) c.addEventListener('click', () => { const x = S.plan.patches[+c.dataset.fbpatch]; select({ cut: x.node, patch: x.id }); });
+  for (const c of $('planSummary').querySelectorAll('[data-leaf]')) c.addEventListener('click', () => { select({ leaf: +c.dataset.leaf }); $('partEditor').querySelector('button')?.focus(); });
+  for (const c of $('planSummary').querySelectorAll('[data-cut]')) c.addEventListener('click', () => { select({ cut: +c.dataset.cut }); $('cutOffsetNum')?.focus(); });
+  for (const c of $('planSummary').querySelectorAll('[data-fbpatch]')) c.addEventListener('click', () => { const x = S.plan.patches[+c.dataset.fbpatch]; select({ cut: x.node, patch: x.id }); FLOW?.picked('patch'); });
   const ac = $('autoComplete');
   if (ac) ac.addEventListener('click', () => runPlan('tree', { autoSplit: true }));
 }
@@ -662,6 +684,7 @@ function axisName(n) {
 
 function select(sel) {
   S.sel = sel;
+  if((sel.patch!=null||sel.joint!=null)&&!jed.open&&FLOW?.step==='join')$('mapWrap').querySelector('details').open=true;
   viewer.select(sel);
   if (S.plan) renderPlan();
   renderCutEditor();
@@ -676,6 +699,7 @@ function select(sel) {
 
 function onPick(h) {
   if (!h) { select({}); return; }
+  FLOW?.picked(h.pick);
   if (h.pick === 'cut') {
     if (S.addMode) {
       const f = S.plan.faces.find((x) => x.node === h.node);
@@ -706,7 +730,7 @@ function renderCutEditor() {
   for (const x of [b[0][0], b[1][0]]) for (const y of [b[0][1], b[1][1]]) for (const z of [b[0][2], b[1][2]]) cs.push(n.cut.n[0] * x + n.cut.n[1] * y + n.cut.n[2] * z);
   const lo = Math.min(...cs), hi = Math.max(...cs);
   const patches = S.plan.patches.filter((p) => p.node === n.id);
-  el.innerHTML = `<h3>${cutName(n.id)} ${n.locked ? '<span class="badge">manual</span>' : '<span class="badge">auto</span>'}</h3>
+  el.innerHTML = `<h2>${cutName(n.id)} ${n.locked ? '<span class="badge">manual</span>' : '<span class="badge">auto</span>'}</h2>
     <div class="reason">${esc(n.reason || 'placed by you')}</div>
     <div class="small">Normal ${axisName(n.cut.n)} · section ${fmt(f ? f.area : 0, 0)} mm² · ${patches.length} contact patch(es)</div>
     <label>Offset along normal (mm)<input type="range" id="cutOffset" min="${lo}" max="${hi}" step="0.1" value="${n.cut.d}"></label>
@@ -780,7 +804,7 @@ function renderPartEditor() {
   const l = S.plan.leaves.find((x) => x.id === S.sel.leaf);
   if (!l) { el.classList.add('hidden'); return; }
   const bm = l.bounds;
-  el.innerHTML = `<h3>Part ${l.label}</h3>
+  el.innerHTML = `<h2>Part ${l.label}</h2>
     <div class="kv small"><b>Print size</b><span>${fmt(l.extent[0])} × ${fmt(l.extent[1])} × ${fmt(l.extent[2])} mm ${l.fits ? '<span class="okc">fits</span>' : '<span class="badc">does not fit</span>'}</span>
     <b>Bed face</b><span>${esc(l.printFace)}</span><b>Overhang</b><span>${fmt(l.overhang * 100, 0)} % of surface</span></div>
     ${(l.warnings || []).map((w) => `<div class="small warnc">${esc(w)}</div>`).join('')}
@@ -820,10 +844,16 @@ function renderFaces() {
 
 function selectFace(node, alsoCut) {
   S.face = node;
-  for (const b of $('faceList').querySelectorAll('[data-face]')) b.classList.toggle('sel', +b.dataset.face === node);
+  for (const b of $('faceList').querySelectorAll('[data-face]')) { b.classList.toggle('sel', +b.dataset.face === node); b.setAttribute('aria-pressed', String(+b.dataset.face === node)); }
   const f = S.plan.faces.find((x) => x.node === node);
   $('mapWrap').classList.remove('hidden');
   if (S.sel.patch == null || !f.patches.includes(S.sel.patch)) S.sel.patch = f.patches[0];
+  $('contactList').innerHTML=f.patches.map(id=>`<button data-contact="${id}" aria-pressed="${S.sel.patch===id}">Contact C${id}</button>`).join('');
+  for(const b of $('contactList').querySelectorAll('button'))b.addEventListener('click',()=>{
+    select({cut:node,patch:+b.dataset.contact});
+    $('mapWrap').querySelector('details').open=true;
+    document.querySelector(`[data-contact="${b.dataset.contact}"]`)?.focus();
+  });
   jmap.set(S.plan, f, mapOpts());
   if (alsoCut) select({ cut: node });
   else renderJointPanel();
@@ -886,7 +916,7 @@ function renderJointPanelInner() {
     const ln = (id) => S.plan.leaves.find((l) => l.id === id).label;
     const sm = p.seam || { kind: 'none' };
     const opts = ['none', ...S.kinds.seam.map((k) => k.kind)].map((k) => `<option value="${k}" ${sm.kind === k ? 'selected' : ''}>${k === 'none' ? 'No seam joint' : S.kinds.seam.find((x) => x.kind === k).label}</option>`).join('');
-    se.innerHTML = `<h3>Contact C${pid} · ${ln(p.negLeaf)} ↔ ${ln(p.posLeaf)}</h3>
+    se.innerHTML = `<h2>Contact C${pid} · ${ln(p.negLeaf)} ↔ ${ln(p.posLeaf)}</h2>
       <div class="small mute">${fmt(p.area, 0)} mm² · wall ≈ ${fmt(p.thickness)} mm · largest inscribed Ø${fmt(2 * p.rmax)} mm${p.ring ? ' · shell section' : ''}</div>
       ${fallbackBlock(p)}
       ${(p.notes || []).filter((n) => !(p.single && n.startsWith('only one'))).map((n) => `<div class="small warnc">${esc(n)}</div>`).join('')}
@@ -910,7 +940,7 @@ function renderJointPanelInner() {
   const sizeField = (j.kind === 'insert' || j.kind === 'bolt')
     ? `<label>Size<select id="jSize">${['M2.5', 'M3', 'M4', 'M5'].map((s) => `<option ${j.size === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Screw length<input id="jScrew" type="number" step="1" min="4" max="80" value="${j.screwLen}"></label>`
     : `<label>Ø (mm)<input id="jD" type="number" step="0.5" min="1" max="30" value="${fmt(j.d, 2)}"></label><label>${j.kind === 'magnet' ? 'Thickness' : j.kind === 'snap' ? 'Beam length' : 'Depth'}<input id="jDepth" type="number" step="0.5" min="1" max="60" value="${fmt(j.depth, 1)}"></label>`;
-  je.innerHTML = `<h3>Joint J${j.id} ${j.locked ? '<span class="badge">manual</span>' : '<span class="badge">auto</span>'}</h3>
+  je.innerHTML = `<h2>Joint J${j.id} ${j.locked ? '<span class="badge">manual</span>' : '<span class="badge">auto</span>'}</h2>
     <div class="small mute">${esc(desc)}</div>
     <div class="row two"><label>Type<select id="jKind">${kindOpts}</select></label><label>Fit<select id="jFit">${['glue', 'press', 'slip', 'snap'].map((x) => `<option ${j.fit === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label></div>
     <div class="row two">${sizeField}</div>
@@ -1039,6 +1069,8 @@ async function build() {
   } catch (err) { toast('Build failed: ' + err.message, true, 10000); }
   busy(false);
   $('buildBtn').disabled = false;
+  FLOW?.sync();
+  if (S.built) FLOW?.say('Parts built. Review the geometry checks, then prepare downloads.');
 }
 
 function renderBuild(res, ms) {
@@ -1101,6 +1133,8 @@ async function exportPkg() {
   } catch (err) { toast('Export failed: ' + err.message, true, 10000); }
   busy(false);
   $('exportBtn').disabled = false;
+  FLOW?.sync();
+  if (S.export) FLOW?.say('Downloads ready. The package contains parts, plates and an assembly sheet.');
 }
 
 async function coupon() {

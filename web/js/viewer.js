@@ -76,12 +76,13 @@ export class Viewer {
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     el.appendChild(this.renderer.domElement);
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#0f1318');
+    this.scene.background = new THREE.Color('#101819');
     this.camera = new THREE.PerspectiveCamera(40, 1, 1, 20000);
     this.camera.up.set(0, 0, 1);
     this.camera.position.set(400, -500, 380);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
+    this.controls.enableDamping = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{this.controls.enableDamping=!e.matches;});
     this.controls.addEventListener('change', () => this.dirty());
     const hemi = new THREE.HemisphereLight('#dfe8f2', '#30261f', 1.4);
     hemi.position.set(0, 0, 1);
@@ -115,6 +116,10 @@ export class Viewer {
     this.sel = {};
     this._down = null;
     const dom = this.renderer.domElement;
+    dom.tabIndex = 0;
+    dom.setAttribute('role', 'img');
+    dom.setAttribute('aria-label', 'Interactive 3D model. Arrow keys orbit, Shift and arrows pan, plus and minus zoom, F fits. Cut and part buttons in Split provide an accessible selection alternative.');
+    dom.addEventListener('keydown', e => this.cameraKey(e));
     dom.addEventListener('pointerdown', (e) => { this._down = [e.clientX, e.clientY]; });
     dom.addEventListener('pointerup', (e) => {
       if (!this._down || Math.hypot(e.clientX - this._down[0], e.clientY - this._down[1]) > 4) return;
@@ -132,6 +137,37 @@ export class Viewer {
   }
 
   dirty() { this._dirty = true; }
+
+  frameCurrent() { this.frame(this.view === 'plates' ? this.platesBox : this.view === 'parts' ? this.explodedBox() : this.box); }
+
+  cameraView(view) {
+    if (!this.box) return;
+    this.frameCurrent();
+    const c = this.controls.target, d = this.camera.position.distanceTo(c);
+    const dirs = {top:[0,-.001,1],front:[0,-1,0],right:[1,0,0]};
+    if (dirs[view]) this.camera.position.copy(c).addScaledVector(new THREE.Vector3(...dirs[view]).normalize(),d);
+    this.controls.update(); this.dirty();
+  }
+
+  cameraKey(e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const delta = this.camera.position.clone().sub(this.controls.target), r = delta.length();
+    if (e.key === 'f' || e.key === 'F') {e.preventDefault();this.frameCurrent();return;}
+    if (['+','=','-','_'].includes(e.key)) {
+      e.preventDefault();this.camera.position.copy(this.controls.target).addScaledVector(delta, e.key==='-'||e.key==='_'?1.15:1/1.15);
+    } else if(e.key.startsWith('Arrow')) {
+      e.preventDefault();
+      const dx=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0,dy=e.key==='ArrowUp'?1:e.key==='ArrowDown'?-1:0;
+      if(e.shiftKey) {
+        const v=new THREE.Vector3().setFromMatrixColumn(this.camera.matrix,0).multiplyScalar(dx*r*.025).addScaledVector(new THREE.Vector3().setFromMatrixColumn(this.camera.matrix,1),dy*r*.025);
+        this.camera.position.add(v);this.controls.target.add(v);
+      } else {
+        const theta=Math.atan2(delta.y,delta.x)+dx*.12,phi=THREE.MathUtils.clamp(Math.acos(delta.z/r)-dy*.12,.05,Math.PI-.05);
+        this.camera.position.copy(this.controls.target).add(new THREE.Vector3(r*Math.sin(phi)*Math.cos(theta),r*Math.sin(phi)*Math.sin(theta),r*Math.cos(phi)));
+      }
+    } else return;
+    this.controls.update();this.dirty();
+  }
 
   resize() {
     const w = this.el.clientWidth || 800, h = this.el.clientHeight || 600;

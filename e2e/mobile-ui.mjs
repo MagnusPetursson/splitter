@@ -2,7 +2,8 @@
 // node e2e/mobile-ui.mjs http://127.0.0.1:8765/ evidence/mobile-ui-repair/green
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
-import {chromium} from 'playwright';
+import {createRequire} from 'node:module';
+const {chromium}=createRequire(import.meta.url)(process.env.SPLITTER_PLAYWRIGHT || 'playwright');
 const [url='http://127.0.0.1:8765/',out='evidence/mobile-ui-repair/green']=process.argv.slice(2);
 fs.mkdirSync(out,{recursive:true});
 const browser=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
@@ -19,11 +20,13 @@ try {
  });
  await page.goto(url,{waitUntil:'networkidle'});
  await page.waitForFunction(()=>document.querySelector('#printer').options.length>5);
- await page.selectOption('#printer','prusa-mini');
+ await page.click('#expertMode');await page.click('.samples summary');
  await page.click('[data-sample="bowl_shell_300mm.stl"]');
  await page.waitForFunction(()=>window.__ps.model&&document.querySelector('#busy').classList.contains('hidden'),null,{timeout:300000});
+ await page.click('[data-step="fit"]');await page.selectOption('#printer','prusa-mini');await page.click('[data-step="split"]');
  await page.click('#autoSplit');
  await page.waitForFunction(()=>window.__ps.plan&&document.querySelector('#busy').classList.contains('hidden'),null,{timeout:300000});
+ await page.click('[data-step="export"]');await page.click('#buildBtn');await page.waitForFunction(()=>window.__ps.built&&document.querySelector('#busy').classList.contains('hidden'),null,{timeout:600000});
  for(const width of [360,390,412,1440]) {
   await page.setViewportSize({width,height:915});
   for(const name of ['model','cuts','parts','plates']) {
@@ -36,7 +39,7 @@ try {
    if(visible&&hit) {await page.mouse.click(rect.x+rect.width/2,rect.y+rect.height/2);check(await b.evaluate(e=>e.classList.contains('on')),`${width}: ${name} click`);}
    results.tabs.push({width,name,rect,hit,visible});
   }
-  results.actualMaps ||= [];
+  await page.click('[data-step="join"]');results.actualMaps ||= [];
   for(const node of await page.locator('[data-face]').evaluateAll(es=>es.map(e=>e.dataset.face))) {
    await page.locator(`[data-face="${node}"]`).click();
    await page.locator('#jointMap').scrollIntoViewIfNeeded();
@@ -48,7 +51,7 @@ try {
     await page.locator('#jointMap').scrollIntoViewIfNeeded();
     const r=await page.locator('#jointMap').boundingBox();
     await page.mouse.click(r.x+label.x*r.width/measured.canvas.backingWidth,r.y+(label.top+label.bottom)/2*r.height/measured.canvas.backingHeight);
-    const selection=await page.evaluate(()=>({pid:window.__ps.sel.patch,heading:document.querySelector('#seamEditor h3')?.textContent,detail:document.querySelector('#seamEditor')?.textContent,p:window.__ps.plan.patches[window.__ps.sel.patch]}));
+    const selection=await page.evaluate(()=>({pid:window.__ps.sel.patch,heading:document.querySelector('#seamEditor h2')?.textContent,detail:document.querySelector('#seamEditor')?.textContent,p:window.__ps.plan.patches[window.__ps.sel.patch]}));
     (measured.selections ||= []).push({label:label.text,pid:selection.pid,heading:selection.heading,detail:selection.detail});
     check(selection.pid===Number(label.text.slice(1)),`${width}/${node}: ${label.text} selection`);
     check(selection.heading?.includes(`Contact ${label.text} ·`),`${width}/${node}: contact panel ID`);
@@ -59,9 +62,13 @@ try {
    await page.locator('#jointMap').scrollIntoViewIfNeeded();
    await page.screenshot({path:`${out}/map-${width}-face-${node}.png`});
   }
+  for(const id of await page.locator('[data-contact]').evaluateAll(es=>es.map(e=>e.dataset.contact))) {
+   await page.locator(`[data-contact="${id}"]`).focus();await page.keyboard.press('Enter');
+   check(await page.evaluate(id=>window.__ps.sel.patch===+id,id),`${width}: keyboard contact C${id}`);
+  }
   await page.locator('#jointMap').scrollIntoViewIfNeeded();
   await page.screenshot({path:`${out}/map-${width}.png`});
-  await page.locator('#supportWeight').scrollIntoViewIfNeeded();
+  await page.click('[data-step="split"]');await page.locator('#supportWeight').scrollIntoViewIfNeeded();
   const slider=page.locator('#supportWeight'),r=await slider.boundingBox(),before=await slider.inputValue();
   const seq=await page.evaluate(()=>window.__ps.planSeq);
   check(await slider.evaluate(e=>{const r=e.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===e;}),`${width}: slider hit`);
@@ -75,7 +82,7 @@ try {
   await page.screenshot({path:`${out}/phone-${width}.png`});
   await slider.fill('0.5');await slider.dispatchEvent('input');
  }
- const plan=JSON.parse(fs.readFileSync('evidence/support-cost/bowl-mini-new.json'));
+ const plan=await page.evaluate(()=>window.__ps.plan);
  results.maps=await page.evaluate(async plan=>{
   const {JointMap}=await import('./js/jointmap.js');
   const c=document.createElement('canvas');c.style.cssText='display:block;width:250px';document.querySelector('#side').prepend(c);

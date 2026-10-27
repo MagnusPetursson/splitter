@@ -13,7 +13,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const pw = require('playwright');
+const pw = require(process.env.SPLITTER_PLAYWRIGHT || 'playwright');
 const url = process.argv[2];
 const out = process.argv[3] || 'large-out';
 fs.mkdirSync(out, { recursive: true });
@@ -67,8 +67,7 @@ try {
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForFunction(() => document.querySelectorAll('#printer option').length > 5, null, { timeout: 60000 });
-  await page.selectOption('#printer', 'bambu-a1-mini');
-  await page.selectOption('#jointStyle', 'filament');
+
 
   // 1. watertight refusal
   await page.setInputFiles('#fileInput', broken);
@@ -99,6 +98,7 @@ try {
   await page.locator('#meshNote').scrollIntoViewIfNeeded();
   await shot('03-simplified-banner');
 
+  await page.click('[data-step="fit"]');await page.selectOption('#printer','bambu-a1-mini');await page.click('[data-step="split"]');
   // staged planning progress, then cancel
   await page.click('#autoSplit');
   await page.waitForFunction(() => /^Cut \d+/.test(document.getElementById('busyText').textContent), null, { timeout: 60000 });
@@ -134,6 +134,7 @@ try {
   await p2.screenshot({ path: path.join(out, '05-crash-note.png') });
   await p2.close();
 
+  await page.click('[data-step="join"]');await page.selectOption('#jointStyle','filament');await idle();
   // 4. joint editor
   await page.locator('#mapWrap').scrollIntoViewIfNeeded();
   await shot('06-inline-preview');
@@ -161,9 +162,9 @@ try {
   // keyboard: next joint
   if (dlg.chips) {
     await page.focus('#jdMap');
-    await page.keyboard.press('Tab');
+    await page.keyboard.press('ArrowRight');
     const sel = await page.evaluate(() => window.__ps.sel.joint);
-    check(sel != null, `Tab selects a joint (J${sel})`);
+    check(sel != null, `Arrow selects a joint (J${sel})`);
     check(await page.evaluate((id) => document.querySelector(`#jdJoints [data-jdj="${id}"]`).classList.contains('sel'), sel), 'joint chip shows the selection');
   }
   // add a joint where there is room: find the deepest point of the face
@@ -205,7 +206,7 @@ try {
   check(await page.evaluate(() => !!document.querySelector('#mapWrap ~ * #seamEditor, #stepJoints #seamEditor') || !!document.querySelector('.side #seamEditor')), 'contact editor returns to the side panel');
 
   // 5. build from the full-detail original
-  await page.click('#buildBtn');
+  await page.click('[data-step="export"]');await page.click('#buildBtn');
   await page.waitForFunction(() => window.__ps.built, null, { timeout: 900000 });
   await idle();
   const bi = await page.locator('#buildInfo').textContent();
@@ -218,12 +219,12 @@ try {
   pp.on('pageerror', (e) => errors.push('phone pageerror: ' + e.message));
   await pp.goto(url, { waitUntil: 'networkidle' });
   await pp.waitForFunction(() => document.querySelectorAll('#printer option').length > 5, null, { timeout: 60000 });
-  await pp.selectOption('#printer', 'bambu-a1-mini');
   await pp.click('[data-sample]');
   await pp.waitForFunction(() => window.__ps.model && window.__ps.workerReady && document.getElementById('busy').classList.contains('hidden'), null, { timeout: 300000 });
+  await pp.click('[data-step="fit"]');await pp.selectOption('#printer','bambu-a1-mini');await pp.click('[data-step="split"]');
   await pp.click('#autoSplit');
   await pp.waitForFunction(() => window.__ps.plan && document.getElementById('busy').classList.contains('hidden'), null, { timeout: 600000 });
-  await pp.locator('#jointMap').scrollIntoViewIfNeeded();
+  await pp.click('[data-step="join"]');await pp.locator('#jointMap').scrollIntoViewIfNeeded();
   await pp.screenshot({ path: path.join(out, '11-phone-inline.png') });
   await pp.locator('#jointMap').tap();
   await pp.waitForFunction(() => !document.getElementById('jointDlg').classList.contains('hidden'), null, { timeout: 10000 });

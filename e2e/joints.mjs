@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const pw = require('playwright');
+const pw = require(process.env.SPLITTER_PLAYWRIGHT || 'playwright');
 const url = process.argv[2];
 const out = process.argv[3] || 'jsmoke';
 fs.mkdirSync(out, { recursive: true });
@@ -31,9 +31,11 @@ const summary = () => page.evaluate(() => {
     singles: P.patches.filter((p) => p.single).length, badgeEls: document.querySelectorAll('.fbitem').length };
 });
 async function loadSample(name) {
+  await idle();await page.click('[data-step="load"]');
+  if(name!=='bracket_320mm.stl'&&!(await page.locator('.samples details').evaluate(e=>e.open)))await page.click('.samples summary');
   await page.click(`[data-sample="${name}"]`);
   await page.waitForFunction((n) => window.__ps.model && window.__ps.model.name === n && window.__ps.workerReady, name, { timeout: 600000 });
-  await idle();
+  await idle();await page.click('[data-step="fit"]');await page.selectOption('#printer','prusa-mini');await page.click('[data-step="split"]');
 }
 try {
   await page.goto(url, { waitUntil: 'networkidle' });
@@ -45,19 +47,19 @@ try {
   lap(JSON.stringify(st));
   check(st.style === 'glued' && st.label === 'Dowel pins (glue)', 'default style is Dowel pins after clearing storage');
   check(!st.restored, 'no restored note on a clean load');
-  await page.selectOption('#printer', 'prusa-mini');
+  await page.click('#expertMode');
   // This fixture protects joint selection on the original cut topology.
   // Support-aware defaults intentionally choose different bowl contacts.
-  await page.locator('#supportWeight').fill('0');
-  await page.locator('#supportWeight').dispatchEvent('input');
+
 
   // bracket: solid part → dowels; selector → Magnets re-places without re-split
   await loadSample('bracket_320mm.stl');
+  await page.locator('#supportWeight').fill('0');await page.locator('#supportWeight').dispatchEvent('input');
   await page.click('#autoSplit'); await page.waitForFunction(() => window.__ps.plan, null, { timeout: 600000 }); await idle();
   const b1 = await summary(); lap('bracket dowels ' + JSON.stringify(b1));
   check((b1.kinds.dowel || 0) >= 2 && !b1.seams.length && !b1.fallbacks.length, 'bracket gets dowels, no seams, no fallbacks');
   let seq = await page.evaluate(() => window.__ps.planSeq);
-  await page.selectOption('#jointStyle', 'magnets');
+  await page.click('[data-step="join"]');await page.selectOption('#jointStyle', 'magnets');
   await page.waitForFunction((s) => window.__ps.planSeq > s && window.__ps.plan.settings.jointStyle === 'magnets', seq, { timeout: 60000 }); await idle();
   const b2 = await summary(); lap('bracket magnets ' + JSON.stringify(b2));
   check(JSON.stringify(b2.cuts) === JSON.stringify(b1.cuts), 'cuts unchanged after changing the selector');
@@ -89,7 +91,7 @@ try {
     await page.evaluate(() => document.getElementById('seamEditor').scrollIntoView({ block: 'end' }));
     await page.waitForTimeout(300);
     await page.screenshot({ path: path.join(out, '3_bowl_forced_contact.png') });
-    const other = await page.$('.fbitem');
+    await page.click('[data-step="split"]');const other = await page.$('.fbitem');
     if (other) { await other.click(); await page.waitForTimeout(300); }
   }
   await page.evaluate(() => document.getElementById('planSummary').scrollIntoView({ block: 'start' }));
@@ -98,14 +100,14 @@ try {
   await page.evaluate(() => document.getElementById('seamEditor').scrollIntoView({ block: 'end' }));
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(out, '2b_bowl_fallback_contact.png') });
-  await page.selectOption('#jointStyle', 'magnets');
+  await page.click('[data-step="join"]');await page.selectOption('#jointStyle', 'magnets');
   await page.waitForTimeout(200); await idle();
 
   // reload: restored note; reset → Dowels
   await page.reload({ waitUntil: 'networkidle' }); await ready();
   const r = await page.evaluate(() => ({ style: document.getElementById('jointStyle').value, restored: !document.getElementById('restoredNote').classList.contains('hidden') }));
   check(r.style === 'magnets' && r.restored, 'reload restores Magnets and says so');
-  await page.click('#resetDefaults');
+  await loadSample('bracket_320mm.stl');await page.click('[data-step="fit"]');await page.click('#resetDefaults');
   const r2 = await page.evaluate(() => ({ style: document.getElementById('jointStyle').value, printer: document.getElementById('printer').value, saved: localStorage.getItem('ps.settings') }));
   check(r2.style === 'glued' && r2.printer === 'prusa-core-one' && !r2.saved, 'Reset to defaults → Dowel pins, Core One, storage cleared');
 } catch (e) { errors.push('exception: ' + e.message); }

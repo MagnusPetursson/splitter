@@ -3,237 +3,108 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>print-splitter — split models to fit your printer</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='9' width='12' height='18' rx='2' fill='%23e07a3f'/%3E%3Crect x='17' y='5' width='12' height='22' rx='2' fill='%233fa7e0'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#151c1c">
+<title>Splitter — a model, made printable</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 7h10v21H4zM18 3h10v21H18z' fill='%239de0c6'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/app.css?v=__BUILD__">
+<link rel="stylesheet" href="css/flow.css?v=__BUILD__">
 <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.js" } }</script>
 </head>
-<body>
+<body data-step="load" data-expert="false">
+<a class="skip" href="#stepModel">Skip to current step</a>
 <header class="top">
-  <div class="brand"><svg viewBox="0 0 32 32" width="26" height="26"><rect x="3" y="9" width="12" height="18" rx="2" fill="#e07a3f"/><rect x="17" y="5" width="12" height="22" rx="2" fill="#3fa7e0"/><circle cx="15.9" cy="16" r="1.6" fill="#fff"/><circle cx="15.9" cy="22" r="1.6" fill="#fff"/></svg>
-    <span>print<b>splitter</b></span></div>
-  <div id="modelTitle" class="model-title">No model loaded</div>
-  <nav class="views" id="views">
-    <button data-view="model" class="on" title="Model and build volume (1)">Model</button>
-    <button data-view="cuts" title="Cut planes and joints (2)">Cuts</button>
-    <button data-view="parts" title="Built parts, exploded (3)">Parts</button>
-    <button data-view="plates" title="Print plates (4)">Plates</button>
-  </nav>
+  <div class="brand"><svg aria-hidden="true" viewBox="0 0 32 32" width="28" height="28"><path d="M4 7h10v21H4zM18 3h10v21H18z" fill="currentColor"/></svg><span>splitter<span class="brand-note">MAKE IT FIT</span></span></div>
+  <div id="modelTitle" class="model-title">A model, made printable.</div>
   <div class="spacer"></div>
-  <button class="ghost" id="helpBtn" title="How it works">?</button>
+  <a class="guide-link" href="guide.html" target="_blank" rel="noopener">Guide <span aria-hidden="true">↗</span><span class="sr-only"> (new tab)</span></a>
+  <button id="expertMode" aria-pressed="false" title="Reveal detailed controls without leaving this step"><span class="mode-dot" aria-hidden="true"></span>Expert mode</button>
+  <button id="helpBtn" class="ghost" aria-label="Quick help">?</button>
 </header>
-
-<aside class="side" id="side">
-  <!-- 1 model -->
-  <section class="step" id="stepModel">
-    <h2><span class="n">1</span> Model</h2>
-    <label class="drop" id="drop">
-      <input type="file" id="fileInput" accept=".stl,.obj,.3mf">
-      <div><b>Drop an STL, OBJ or 3MF</b><br><span class="mute">or click to choose · binary/ASCII STL, OBJ, 3MF · up to 300 MB</span></div>
-    </label>
-    <div class="samples">Samples:
-      <button class="link" data-sample="bracket_320mm.stl">320 mm bracket</button>
-      <button class="link" data-sample="bowl_shell_300mm.stl">300 mm bowl shell</button>
-      <button class="link" data-sample="cube300.stl">300 mm cube</button>
-      <button class="link" data-sample="bunny_damaged.stl">damaged bunny</button>
-    </div>
-    <div id="privacy" class="small okc">Runs entirely in your browser: your model is never uploaded.</div>
+<nav id="flowNav" class="flow-nav" aria-label="Split a model in five steps">
+  <button data-step="load" aria-current="step" aria-controls="stepModel"><span class="step-number">1</span><span>Load<small>Your model</small></span></button>
+  <button data-step="fit" aria-controls="stepPrinter" disabled><span class="step-number">2</span><span>Fit<small>Your printer</small></span></button>
+  <button data-step="split" aria-controls="stepSplit" disabled><span class="step-number">3</span><span>Split<small>Find the cuts</small></span></button>
+  <button data-step="join" aria-controls="stepJoints" disabled><span class="step-number">4</span><span>Join<small>Make it whole</small></span></button>
+  <button data-step="export" aria-controls="stepExport" disabled><span class="step-number">5</span><span>Export<small>Ready to print</small></span></button>
+</nav>
+<aside class="side" id="side" aria-label="Workflow controls">
+  <p id="planStale" class="info warnc" role="status" hidden>Printer settings changed. Return to Split and find cuts again before exporting.</p>
+  <section class="step" id="stepModel" tabindex="-1" aria-labelledby="loadHeading">
+    <p class="eyebrow">01 / MODEL</p><h1 id="loadHeading">Start with your model.</h1>
+    <p class="step-intro">Keep its size. We’ll make the pieces fit your printer.</p>
+    <label class="drop" id="drop" for="fileInput"><span class="upload-mark" aria-hidden="true">↑</span><b>Choose a model</b><span>or drop it anywhere</span><span class="small mute">STL · OBJ · 3MF / up to 300 MB</span><input type="file" id="fileInput" accept=".stl,.obj,.3mf" aria-label="Choose an STL, OBJ or 3MF model"></label>
+    <div id="privacy" class="privacy small">Runs entirely in your browser: your model is never uploaded.</div>
+    <div class="samples"><p class="eyebrow">OR TRY A SAMPLE</p><button data-sample="bracket_320mm.stl" class="sample-primary"><span>320 mm bracket<small>A simple first split</small></span><span aria-hidden="true">↗</span></button><details><summary>More sample models</summary><button data-sample="bowl_shell_300mm.stl">300 mm bowl shell</button><button data-sample="cube300.stl">300 mm cube</button><button data-sample="bunny_damaged.stl">Damaged bunny</button></details></div>
     <div id="loadNote" class="info hidden" role="alert"></div>
     <div id="meshNote" class="meshnote hidden"></div>
-    <div id="modelInfo" class="info hidden"></div>
-    <div id="unitRow" class="row hidden">
-      <label>Units <select id="units"><option value="1">mm</option><option value="10">cm</option><option value="1000">m</option><option value="25.4">inch</option></select></label>
-      <label>Scale <input id="scalePct" type="number" min="1" max="100000" step="1" value="100"> %</label>
-      <button id="applyScale" class="small">Apply</button>
-    </div>
-  </section>
-
-  <!-- 2 printer -->
-  <section class="step" id="stepPrinter">
-    <h2><span class="n">2</span> Printer</h2>
-    <select id="printer"></select>
-    <div class="row three">
-      <label>X <input id="bedX" type="number" min="20" max="2000" step="1"></label>
-      <label>Y <input id="bedY" type="number" min="20" max="2000" step="1"></label>
-      <label>Z <input id="bedZ" type="number" min="20" max="2000" step="1"></label>
-    </div>
-    <div class="row three">
-      <label title="Safety margin kept free on every side of the bed and at the top">Margin <input id="margin" type="number" min="0" max="30" step="0.5" value="3"></label>
-      <label>Nozzle <select id="nozzle"><option value="0.4">0.4</option><option value="0.6">0.6</option><option value="0.8">0.8</option><option value="0.25">0.25</option></select></label>
-      <label title="Smallest piece the planner may create">Min piece <input id="minPiece" type="number" min="3" max="200" step="1" value="15"></label>
-    </div>
-    <details class="fits"><summary>Fit clearances <span class="mute">(radial, per side, mm)</span></summary>
-      <div class="row five" id="fitRow">
-        <label>Press <input data-fit="press" type="number" step="0.01" min="0" max="1"></label>
-        <label>Glue <input data-fit="glue" type="number" step="0.01" min="0" max="1"></label>
-        <label>Slip <input data-fit="slip" type="number" step="0.01" min="0" max="1"></label>
-        <label>Snap <input data-fit="snap" type="number" step="0.01" min="0" max="1"></label>
-        <label>Seam <input data-fit="seam" type="number" step="0.01" min="0" max="1"></label>
-      </div>
-      <p class="mute small">Starting values for a calibrated printer. Print the joint coupon (step 5) and put your measured values here.</p>
+    <div id="modelInfo" class="info hidden" aria-label="Model measurements and repair report"></div>
+    <details class="advanced"><summary>Advanced <span>Units &amp; scale</span></summary>
+      <p class="small mute">STL has no unit metadata. Check the dimensions before splitting; scaling replaces the current plan.</p>
+      <div id="unitRow" class="row hidden"><label>Source units<select id="units"><option value="1">mm</option><option value="10">cm</option><option value="1000">m</option><option value="25.4">inch → mm</option></select></label><label>Scale (%)<input id="scalePct" type="number" min="1" max="100000" step="1" value="100"></label><button id="applyScale">Apply</button></div>
     </details>
-    <div id="printerSource" class="mute small"></div>
+    <a class="context-help" href="guide.html#getting-started" target="_blank" rel="noopener">First time? Start here ↗</a>
   </section>
-
-  <!-- 3 split -->
-  <section class="step" id="stepSplit">
-    <h2><span class="n">3</span> Split</h2>
-    <div class="row two">
-      <label>Joints <select id="jointStyle">
-        <optgroup label="Glued">
-          <option value="glued">Dowel pins (glue)</option>
-          <option value="filament">1.75 mm filament pins</option>
-          <option value="pegs">Integrated pegs</option>
-          <option value="keyed">Keyed hex pegs</option>
-          <option value="finger">Finger / box joints</option>
-          <option value="tongue">Tongue and groove</option>
-          <option value="lap">Half lap (shells)</option>
-        </optgroup>
-        <optgroup label="Unglued">
-          <option value="press">Press-fit pins</option>
-          <option value="snap">Snap-fit clips</option>
-          <option value="magnets">Magnets</option>
-          <option value="dovetail">Sliding dovetail</option>
-          <option value="screws">Heat-set inserts + screws</option>
-          <option value="bolts">Bolts + nut traps</option>
-        </optgroup>
-      </select></label>
-      <button id="autoSplit" class="primary" disabled>Auto split</button>
-    </div>
-    <div class="support-control">
-      <label for="supportWeight" class="support-label"><span>Fewer parts ↔ Less support</span><output id="supportValue" for="supportWeight">Balanced</output></label>
-      <input id="supportWeight" type="range" min="0" max="1" step="0.05" value="0.5" aria-describedby="supportHelp">
-      <div class="support-ends small"><span>Keep it together</span><span>Allow extra cuts</span></div>
-      <p id="supportHelp" class="small mute">Use Auto split to trade extra parts for a lower support estimate. Not filament volume or print time.</p>
-      <div id="supportPending" class="small warnc hidden" role="status">Preference changed. Press Auto split to replace the cuts; the current plan is unchanged.</div>
-    </div>
-    <div class="row two small">
-      <label class="row" title="Every part prints the way the model is oriented (only rotated about Z). Good for cosmetic parts and anything with a natural base."><input type="checkbox" id="upright"> Keep upright</label>
-      <label class="row" title="Also try tilted (principal-axis) orientations: can mean fewer parts, but usually more supports."><input type="checkbox" id="tilted"> Allow tilted</label>
-    </div>
-    <div class="settings-note small"><span id="restoredNote" class="mute hidden">Restored your last settings.</span>
-      <button id="resetDefaults" class="link small" title="Prusa Core One, 3 mm margin, 0.4 nozzle, Dowel pins (glue), default clearances">Reset to defaults</button></div>
-    <div id="styleNote" class="small mute hidden"></div>
-    <div id="planSummary" class="info hidden"></div>
-    <div id="cutEditor" class="editor hidden"></div>
-    <div id="partEditor" class="editor hidden"></div>
-  </section>
-
-  <!-- 4 joints -->
-  <section class="step" id="stepJoints">
-    <h2><span class="n">4</span> Joints</h2>
-    <div id="jointHelp" class="mute small">Select a cut face in the 3D view (Cuts) or below to see its joint map.</div>
-    <div id="faceList" class="facelist"></div>
-    <div id="mapWrap" class="mapwrap hidden">
-      <div class="mapframe">
-        <canvas id="jointMap" width="600" height="420" title="Click to open the zoomable joint editor"></canvas>
-        <button id="openEditor" class="small mapopen" title="Open the zoomable joint editor">⤢ Zoom &amp; edit</button>
-      </div>
-      <div class="maptools">
-        <button id="addJointMode" class="small" title="Open the joint editor and click on the face to add a joint">+ Add joint</button>
-        <select id="addKind"></select>
-        <label class="small"><input type="checkbox" id="showField" checked> distance field</label>
-      </div>
-      <div id="seamEditor" class="editor"></div>
-      <div id="jointEditor" class="editor hidden"></div>
-    </div>
-    <details class="explain"><summary>How joints are placed</summary>
-      <ol class="small">
-        <li>Each cut face is sliced exactly and split into <b>contact patches</b>, one per pair of touching parts.</li>
-        <li>A <b>distance field</b> (Euclidean distance transform) of each patch gives, for every point, the largest circle that fits there: its ridge is the medial axis, its maximum the largest inscribed circle, and its typical ridge value the wall thickness.</li>
-        <li>A point joint is only allowed where the field is ≥ joint radius + clearance + minimum wall, so it can never break through a visible surface or reach into a third part.</li>
-        <li>Depth is checked by ray casting into both parts (centre and 8 rim rays, also against the parts' other cut faces); pins get shorter or move if the material is too shallow.</li>
-        <li>Joints are spread by farthest-point sampling (≥ 2 per patch for anti-rotation, more on large faces).</li>
-        <li>Thin shells (walls too thin for pins) get a <b>seam joint</b> along the wall instead: finger joints follow the wall around ring-shaped sections; half laps and tongues are also available.</li>
-        <li>Integrated pegs and seams go on the part that does <b>not</b> print on that face, so the face stays flat on the bed. Horizontal holes get teardrop roofs, horizontal pegs a flat underside.</li>
-      </ol>
+  <section class="step" id="stepPrinter" tabindex="-1" aria-labelledby="fitHeading" hidden>
+    <p class="eyebrow">02 / PRINTER</p><h1 id="fitHeading">What are you printing on?</h1><p class="step-intro">The blue box is your usable build space. Stripes show what doesn’t fit as placed.</p>
+    <label for="printer">Printer</label><select id="printer"></select>
+    <div id="fitReadout" class="fit-readout"></div><div id="printerSource" class="mute small"></div>
+    <details class="advanced" id="printerAdvanced"><summary>Advanced <span>Volume &amp; clearances</span></summary>
+      <div class="row three"><label>X (mm)<input id="bedX" type="number" min="20" max="2000" step="1"></label><label>Y (mm)<input id="bedY" type="number" min="20" max="2000" step="1"></label><label>Z (mm)<input id="bedZ" type="number" min="20" max="2000" step="1"></label></div>
+      <div class="row three"><label>Margin (mm)<input id="margin" type="number" min="0" max="30" step="0.5" value="3"></label><label>Nozzle (mm)<select id="nozzle"><option value="0.4">0.4</option><option value="0.6">0.6</option><option value="0.8">0.8</option><option value="0.25">0.25</option></select></label><label>Min piece (mm)<input id="minPiece" type="number" min="3" max="200" step="1" value="15"></label></div>
+      <p class="small mute">Margin stays clear at both bed edges and the top. Minimum piece size prevents tiny fragments.</p>
+      <details class="fits"><summary>Fit clearances <span class="mute">mm per side</span></summary><div class="row five" id="fitRow"><label>Press<input data-fit="press" type="number" step="0.01" min="0" max="1"></label><label>Glue<input data-fit="glue" type="number" step="0.01" min="0" max="1"></label><label>Slip<input data-fit="slip" type="number" step="0.01" min="0" max="1"></label><label>Snap<input data-fit="snap" type="number" step="0.01" min="0" max="1"></label><label>Seam<input data-fit="seam" type="number" step="0.01" min="0" max="1"></label></div><p class="small mute">Starting values, not a fit guarantee. Print a coupon from Export to calibrate your printer and material.</p></details>
     </details>
+    <div class="settings-note"><span id="restoredNote" class="mute small hidden">Restored your last settings.</span><button id="resetDefaults" class="link">Reset defaults</button></div>
+    <a class="context-help" href="guide.html#fit" target="_blank" rel="noopener">How margins and clearances work ↗</a>
   </section>
-
-  <!-- 5 build/export -->
-  <section class="step" id="stepExport">
-    <h2><span class="n">5</span> Build &amp; export</h2>
-    <div class="row two">
-      <button id="buildBtn" class="primary" disabled>Build parts</button>
-      <button id="exportBtn" disabled>Export package</button>
+  <section class="step" id="stepSplit" tabindex="-1" aria-labelledby="splitHeading" hidden>
+    <p class="eyebrow">03 / CUTS</p><h1 id="splitHeading">Find a good split.</h1><p class="step-intro">Start automatically. Then select a cut in the view and drag its arrow to move it.</p>
+    <div class="intent" role="group" aria-label="Split preference"><button data-weight="0" aria-pressed="false">Fewer parts</button><button data-weight="0.5" aria-pressed="true">Balanced</button><button data-weight="1" aria-pressed="false">Less support</button></div>
+    <p class="small mute">Extra cuts can reduce supports, but mean more assembly. Always check in your slicer.</p>
+    <button id="autoSplit" class="primary wide" disabled>Find cuts automatically <span aria-hidden="true">→</span></button>
+    <div id="supportPending" class="small warnc hidden" role="status">Preference changed. Find cuts again to apply it; the current plan is unchanged.</div>
+    <details class="advanced"><summary>Advanced <span>Orientation &amp; preference</span></summary>
+      <div class="support-control"><label for="supportWeight" class="support-label"><span>Fewer parts ↔ Less support</span><output id="supportValue" for="supportWeight">Balanced</output></label><input id="supportWeight" type="range" min="0" max="1" step="0.05" value="0.5" aria-describedby="supportHelp"><div class="support-ends small"><span>Keep it together</span><span>Allow extra cuts</span></div><p id="supportHelp" class="small mute">A geometric support estimate, not filament volume or print time. Find cuts again after changing it.</p></div>
+      <label class="row"><input type="checkbox" id="upright">Keep all parts upright</label><label class="row"><input type="checkbox" id="tilted">Try tilted orientations</label>
+    </details>
+    <div id="planSummary" class="info hidden"></div><div id="cutEditor" class="editor hidden"></div><div id="partEditor" class="editor hidden"></div>
+    <a class="context-help" href="guide.html#splitting" target="_blank" rel="noopener">Why these cuts? ↗</a>
+  </section>
+  <section class="step" id="stepJoints" tabindex="-1" aria-labelledby="joinHeading" hidden>
+    <p class="eyebrow">04 / ASSEMBLY</p><h1 id="joinHeading">Make it whole again.</h1><p class="step-intro">Joints align the pieces. Review each cut face before building.</p>
+    <label for="jointStyle">Join the pieces with</label><select id="jointStyle"><optgroup label="Glued"><option value="glued">Dowel pins (glue)</option><option value="filament">1.75 mm filament pins</option><option value="pegs">Integrated pegs</option><option value="keyed">Keyed hex pegs</option><option value="finger">Finger / box joints</option><option value="tongue">Tongue and groove</option><option value="lap">Half lap (shells)</option></optgroup><optgroup label="Unglued"><option value="press">Press-fit pins</option><option value="snap">Snap-fit clips</option><option value="magnets">Magnets</option><option value="dovetail">Sliding dovetail</option><option value="screws">Heat-set inserts + screws</option><option value="bolts">Bolts + nut traps</option></optgroup></select>
+    <div id="styleNote" class="small mute hidden" role="status"></div><p id="jointHelp" class="small mute">Select a cut face here or in 3D. Open the map for precise placement.</p><div id="faceList" class="facelist" role="group" aria-label="Cut faces"></div>
+    <div id="mapWrap" class="mapwrap hidden"><div class="mapframe"><canvas id="jointMap" width="600" height="420" aria-label="Preview of the selected cut face; use Zoom and edit for keyboard controls"></canvas><button id="openEditor" class="mapopen">Zoom &amp; edit ↗</button></div><div id="contactList" class="facelist" role="group" aria-label="Contacts on selected cut face"></div>
+      <details class="advanced"><summary>Advanced <span>Contact &amp; joint settings</span></summary><div class="maptools"><button id="addJointMode">+ Add joint</button><select id="addKind" aria-label="Joint type to add"></select><label><input type="checkbox" id="showField" checked>Distance field</label></div><div id="seamEditor" class="editor"></div><div id="jointEditor" class="editor hidden"></div></details>
     </div>
+    <details class="explain"><summary>How joints are placed</summary><p class="small">Each cut face is divided into contacts between two pieces. Splitter measures room around and behind a joint so holes stay inside the material. Thin walls may need a seam instead of pins; substitutions are explained, not silently accepted.</p><p class="small">Pegs go on the piece that doesn’t print on that face. Horizontal holes get teardrop roofs. These geometric checks do not guarantee strength or a physical fit.</p></details>
+    <a class="context-help" href="guide.html#joints" target="_blank" rel="noopener">Choose a joint and calibrate its fit ↗</a>
+  </section>
+  <section class="step" id="stepExport" tabindex="-1" aria-labelledby="exportHeading" hidden>
+    <p class="eyebrow">05 / PRINT</p><h1 id="exportHeading">From model to parts.</h1><p class="step-intro">Build the actual solids, check the result, then download your print package.</p>
     <div id="detailRow" class="detailrow small hidden"></div>
-    <label class="row small" id="explodeRow">Explode <input type="range" id="explode" min="0" max="1" step="0.01" value="0.35"></label>
-    <div id="buildInfo" class="info hidden"></div>
-    <div id="exportInfo" class="info hidden"></div>
-    <details class="coupon"><summary>Joint test coupon <span class="mute">(&lt; 30 min)</span></summary>
-      <p class="small mute">Two bars: pegs of the chosen diameter, sockets with six clearance steps (dimple count = step). Print with the same printer, nozzle and filament, find the loosest step that still holds, and enter it as your fit.</p>
-      <div class="row three">
-        <label>Peg Ø <input id="couponD" type="number" value="5" min="2" max="12" step="0.5"></label>
-        <label>Start <input id="couponStart" type="number" value="0.05" min="0" max="0.5" step="0.01"></label>
-        <label>Step <input id="couponStep" type="number" value="0.05" min="0.01" max="0.2" step="0.01"></label>
-      </div>
-      <button id="couponBtn">Generate coupon</button>
-      <div id="couponInfo" class="info hidden"></div>
-    </details>
+    <button id="buildBtn" class="primary wide" disabled>Build parts <span aria-hidden="true">→</span></button>
+    <div id="buildInfo" class="info hidden" aria-label="Build verification"></div>
+    <button id="exportBtn" class="wide" disabled>Prepare downloads</button><div id="exportInfo" class="info hidden" aria-label="Download files"></div>
+    <details class="advanced"><summary>Advanced <span>Exploded spacing</span></summary><label id="explodeRow" for="explode">Distance between parts</label><input type="range" id="explode" min="0" max="1" step="0.01" value="0.35"></details>
+    <details class="coupon"><summary>Test the fit first <span class="mute">Joint coupon</span></summary><p class="small mute">Print the peg and sockets with the same nozzle and material. The dimple count identifies each clearance. Enter your measured fit in Fit → Advanced.</p><div class="row three"><label>Peg Ø (mm)<input id="couponD" type="number" value="5" min="2" max="12" step="0.5"></label><label>Start (mm)<input id="couponStart" type="number" value="0.05" min="0" max="0.5" step="0.01"></label><label>Step (mm)<input id="couponStep" type="number" value="0.05" min="0.01" max="0.2" step="0.01"></label></div><button id="couponBtn">Generate coupon</button><div id="couponInfo" class="info hidden"></div></details>
+    <a class="context-help" href="guide.html#printing" target="_blank" rel="noopener">Open in your slicer &amp; assemble ↗</a>
   </section>
-  <footer class="credits mute small">Go planner (WebAssembly) · Manifold (Apache-2.0) booleans · both in Web Workers · three.js (MIT) · <a href="#" id="licLink">licenses</a> · <span id="buildVer" data-v="__BUILD__">build __BUILD__</span></footer>
+  <footer class="credits small"><span id="buildVer" data-v="__BUILD__">build __BUILD__</span> · <a href="#" id="licLink">Licenses</a></footer>
 </aside>
-
-<main class="stage">
-  <div id="viewport"></div>
-  <div id="hud" class="hud"></div>
-  <div id="legend" class="legend hidden"></div>
-  <div id="toast" class="toast hidden"></div>
-  <div id="busy" class="busy hidden" role="status" aria-live="polite">
-    <div class="busy-head"><b id="busyTitle"></b><span id="busyTime" class="mute"></span><button id="busyCancel" class="small hidden">Cancel</button></div>
-    <ol id="busyStages" class="stages"></ol>
-    <div class="bar"><div id="busyFill"></div></div><div id="busyText">Working…</div>
-  </div>
-  <div id="empty" class="empty"><div><h1>Split anything to fit your printer.</h1><p>Drop a model, pick your printer, and print-splitter finds the cuts, places joints that suit the walls it cuts through, and exports print-ready plates with an assembly sheet.</p><p class="mute">Drag to orbit · right-drag to pan · scroll to zoom · click a cut or joint to edit it</p></div></div>
-</main>
-
-<div id="jointDlg" class="jdlg hidden" role="dialog" aria-modal="true" aria-labelledby="jdTitle" aria-hidden="true">
-  <div class="jd-head">
-    <h2 id="jdTitle">Joints</h2>
-    <div id="jdFaces" class="jd-faces" aria-label="Cut faces"></div>
-    <div class="spacer"></div>
-    <button id="jdDock" class="small">Beside 3D</button>
-    <button id="jdClose" class="ghost jd-x" aria-label="Close the joint editor (Esc)" title="Close (Esc)">×</button>
-  </div>
-  <div class="jd-body">
-    <div class="jd-mapcol">
-      <div class="jd-tools">
-        <button id="jdAdd" class="small" aria-pressed="false">+ Add joint</button>
-        <select id="jdKind" aria-label="Joint type to add"></select>
-        <span class="jd-sep"></span>
-        <span class="jd-zoom" role="group" aria-label="Zoom">
-          <button id="jdOut" class="small zb" aria-label="Zoom out (−)" title="Zoom out (−)">−</button>
-          <output id="jdZoom" aria-live="polite">100 %</output>
-          <button id="jdIn" class="small zb" aria-label="Zoom in (+)" title="Zoom in (+)">+</button>
-          <button id="jdFit" class="small" title="Fit the face (0)">Fit</button>
-        </span>
-        <label class="small jd-field"><input type="checkbox" id="jdField" checked> distance field</label>
-      </div>
-      <div class="jd-canvas">
-        <canvas id="jdMap" tabindex="0" aria-label="Cut face map. Arrow keys or Tab: next joint; Shift+arrows: move the selected joint 0.5 mm; plus and minus: zoom; A: add mode; Delete: remove joint."></canvas>
-        <div id="jdHint" class="jd-hint hidden"></div>
-      </div>
-      <div id="jdJoints" class="jd-joints" aria-label="Joints on this face"></div>
-      <div class="jd-keys small mute">Wheel or pinch to zoom · drag to pan · drag a joint to move it · <kbd>←</kbd><kbd>→</kbd>/<kbd>Tab</kbd> next joint · <kbd>Shift</kbd>+arrows nudge 0.5 mm · <kbd>Del</kbd> delete · <kbd>A</kbd> add · <kbd>+</kbd><kbd>−</kbd><kbd>0</kbd> zoom · <kbd>Esc</kbd> close</div>
-    </div>
-    <aside id="jdSide" class="jd-side" aria-label="Contact and joint settings"></aside>
-  </div>
+<div class="stage" role="main" aria-label="Interactive model preview">
+  <div class="stage-top"><span id="viewCaption">MODEL PREVIEW</span><nav class="views" id="views" aria-label="3D presentation" hidden><button data-view="model" class="on" aria-pressed="true">Model</button><button data-view="cuts" aria-pressed="false">Cuts</button><button data-view="parts" aria-pressed="false">Parts</button><button data-view="plates" aria-pressed="false">Plates</button></nav></div>
+  <div id="viewport"></div><div id="hud" class="hud"></div><div id="legend" class="legend hidden"></div>
+  <div id="viewerTools" class="viewer-tools" hidden><button id="expandView" aria-expanded="false">Enlarge view</button><button id="frameModel" title="Fit model in view (F)">Fit view</button><select id="cameraView" aria-label="Camera direction"><option value="iso">Perspective</option><option value="top">Top</option><option value="front">Front</option><option value="right">Right</option></select><button id="spreadParts" aria-pressed="true" hidden>Exploded</button></div>
+  <p id="viewerHint" class="viewer-hint">Drag to orbit · scroll to zoom · keyboard controls in Help</p>
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <div id="busy" class="busy hidden" role="status" aria-live="polite" aria-atomic="true"><div class="busy-head"><b id="busyTitle"></b><span id="busyTime" class="mute"></span><button id="busyCancel" class="hidden">Cancel</button></div><ol id="busyStages" class="stages"></ol><div class="bar"><div id="busyFill"></div></div><div id="busyText">Working…</div></div>
+  <div id="empty" class="empty"><div><p class="eyebrow">ONE MODEL. PRINTABLE PIECES.</p><h2>Your model belongs here.</h2><p>Load a file or try the bracket.<br>We’ll find the cuts, place the joints,<br>and keep the whole thing in view.</p><p class="empty-foot">No account. No upload. Just your browser.</p></div></div>
 </div>
-
-<dialog id="helpDlg">
-  <h2>print-splitter</h2>
-  <p>Workflow: <b>1</b> load a model → <b>2</b> choose the printer → <b>3</b> auto split (move, tilt, add or remove cuts as you like) → <b>4</b> review and edit joints on each cut face → <b>5</b> build the solids in your browser and export STL/3MF plates and an assembly sheet.</p>
-  <p>Shortcuts: <kbd>1</kbd>–<kbd>4</kbd> views · <kbd>Del</kbd> delete selected cut/joint · <kbd>Esc</kbd> deselect · <kbd>A</kbd> add-joint mode.</p>
-  <p class="mute">Geometry: the Go planner (compiled to WebAssembly, running in your browser) repairs the mesh, plans cuts, analyses each cut face and places joints. The Manifold kernel builds the parts in a second Web Worker. Your model never leaves your computer, so every part is guaranteed watertight and manifold. Physical fit is untested until printed — print the coupon first.</p>
-  <form method="dialog"><button>Close</button></form>
-</dialog>
-<dialog id="licDlg">
-  <h2>Licenses</h2>
-  <ul class="small"><li>three.js r186 — MIT (vendored)</li><li>manifold-3d 3.5.4 (Manifold geometry kernel, WASM) — Apache-2.0 (vendored)</li><li>Go runtime support (wasm_exec.js) — BSD-3-Clause</li><li>Stanford Bunny — Stanford Computer Graphics Laboratory, free for research/demo use</li><li>splitter — MIT · <a href="https://github.com/MagnusPetursson/splitter" target="_blank" rel="noopener">source</a></li></ul>
-  <form method="dialog"><button>Close</button></form>
-</dialog>
-
+<footer class="flow-footer"><button id="flowBack" aria-label="Back to previous step" disabled>← Back</button><button id="flowNext" class="primary" disabled>Choose a model first</button><span id="flowStatus" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></span></footer>
+<div id="jointDlg" class="jdlg hidden" role="dialog" aria-modal="true" aria-labelledby="jdTitle" aria-hidden="true"><div class="jd-head"><h2 id="jdTitle">Joints</h2><div id="jdFaces" class="jd-faces" role="group" aria-label="Cut faces"></div><div class="spacer"></div><button id="jdDock">Beside 3D</button><button id="jdClose" class="ghost jd-x" aria-label="Close joint editor">×</button></div><div class="jd-body"><div class="jd-mapcol"><div class="jd-tools"><button id="jdAdd" aria-pressed="false">+ Add joint</button><select id="jdKind" aria-label="Joint type to add"></select><span class="jd-sep"></span><span class="jd-zoom" role="group" aria-label="Zoom"><button id="jdOut" class="zb" aria-label="Zoom out">−</button><output id="jdZoom" aria-live="polite">100 %</output><button id="jdIn" class="zb" aria-label="Zoom in">+</button><button id="jdFit">Fit</button></span><label class="jd-field"><input type="checkbox" id="jdField" checked>Distance field</label></div><div class="jd-canvas"><canvas id="jdMap" tabindex="0" aria-label="Cut face map. Arrow keys select joints. Shift and arrows move a joint. Alt and arrows pan. Plus and minus zoom. Enter places a joint in add mode. Tab leaves the map."></canvas><div id="jdHint" class="jd-hint hidden"></div></div><div id="jdJoints" class="jd-joints" role="group" aria-label="Joints on this face"></div><div class="jd-keys small mute">Drag a joint to move it · arrows select · Shift+arrows nudge 0.5 mm · Alt+arrows pan · Delete removes · A adds · +/− zoom · 0 fits · Tab leaves map · Esc closes</div></div><aside id="jdSide" class="jd-side" aria-label="Contact and joint settings"></aside></div></div>
+<dialog id="helpDlg" aria-labelledby="helpTitle"><h2 id="helpTitle">A short path to printable parts.</h2><p><b>Load → Fit → Split → Join → Export.</b> Use Continue at the bottom. You can revisit earlier steps at any time; Expert mode opens the detailed settings without starting over.</p><p>In the 3D view: drag to orbit, right-drag to pan, scroll to zoom. Focus the view for arrow-key orbit, Shift+arrows pan, +/− zoom, F to fit and 1–4 to change presentation. Select cuts and parts with the labelled buttons in Split; the numeric offset is an alternative to dragging a cut.</p><p>In the joint editor: arrows select, Shift+arrows move, Alt+arrows pan, A toggles adding, Enter adds at the view centre, Delete removes. Tab always moves to the next control.</p><p>Geometric checks are not a physical fit guarantee. Print a test coupon and inspect every plate in your slicer.</p><a href="guide.html" target="_blank" rel="noopener">Read the complete guide ↗</a><form method="dialog"><button>Close</button></form></dialog>
+<dialog id="licDlg" aria-labelledby="licensesTitle"><h2 id="licensesTitle">Licenses</h2><ul><li>three.js r186 — MIT</li><li>Manifold 3.5.4 — Apache-2.0</li><li>Go runtime — BSD-3-Clause</li><li>Stanford Bunny — Stanford Computer Graphics Laboratory, research/demo use</li><li>Splitter — MIT · <a href="https://github.com/MagnusPetursson/splitter" target="_blank" rel="noopener">Source ↗</a></li></ul><form method="dialog"><button>Close</button></form></dialog>
+<noscript><p class="no-js">Splitter needs JavaScript and WebAssembly to process your model locally. <a href="guide.html">Read the guide</a>.</p></noscript>
 <script type="module" src="js/app.js?v=__BUILD__"></script>
-</body>
-</html>
+</body></html>

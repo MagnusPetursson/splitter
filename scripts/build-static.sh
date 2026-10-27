@@ -11,7 +11,7 @@ mkdir -p web/wasm
 GOOS=js GOARCH=wasm go build -trimpath -ldflags="-s -w" -o web/wasm/splitter.wasm ./cmd/splitter-wasm
 rm -rf "$OUT"
 mkdir -p "$OUT"
-cp -r web/index.html web/css web/js web/vendor web/samples web/wasm "$OUT"/
+cp -r web/index.html web/guide.html web/guide web/css web/js web/vendor web/samples web/wasm "$OUT"/
 touch "$OUT/.nojekyll"
 # stamp the build id into the page (cache-busts app.js/app.css and shows in the footer)
 BUILD=${SPLITTER_BUILD:-$(git rev-parse --short HEAD 2>/dev/null || echo dev)}
