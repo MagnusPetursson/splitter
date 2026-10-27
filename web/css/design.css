@@ -410,3 +410,11 @@ button:disabled, button.primary:disabled { background:transparent; border-color:
 .chip .x { display:inline-flex; align-items:center; gap:4px; font-variant-numeric:tabular-nums; font-size:var(--fs-12); }
 .chip .x .i { width:14px; height:14px; }
 #outlinerTree .warn .i { width:14px; height:14px; color:var(--warn); margin-right:4px; }
+
+/* The dismissal action stays reachable even when help/license content scrolls. */
+.dialog-head { display:flex; align-items:flex-start; gap:var(--s-3); position:sticky; top:-32px; margin:-16px 0 var(--s-4); padding:var(--s-4) 0 var(--s-2); background:var(--surface-2); z-index:2; border-bottom:1px solid var(--border); }
+.dialog-head h2 { flex:1; margin:0; padding-top:8px; }
+.dialog-head form { flex:none; margin:0; }
+#helpDlg h3 { font-size:var(--fs-14); margin:var(--s-5) 0 var(--s-2); font-weight:var(--fw-semibold); }
+#helpDlg p { font-size:var(--fs-14); line-height:var(--lh-body); }
+@media(max-width:760px) { .dialog-head { top:-22px; } }

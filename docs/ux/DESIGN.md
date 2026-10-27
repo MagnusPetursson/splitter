@@ -4,7 +4,7 @@ This pass works on the merged app (`ux/merge`) and covers readability, aesthetic
 
 ## 1. Audit (before any code changes)
 
-Method. I captured 43 contract states with `e2e/merge-expert.mjs`, which covers both modes, every step, dialogs, the palette, editing and the phone layout. I captured 24 more with the new `e2e/design-shots.mjs`: the empty state, load errors, loading and planning progress on the 226k-triangle private helmet, tilt mode, toasts, the precision map, the joint editor and the guide. Viewports were 1440×900 and 390×844. I critiqued each state against a written rubric covering type, spacing, colour, icons, chrome, scene and state design, then confirmed the findings against the CSS. Severity: **H** means it hurts comprehension or trust, **M** means it is visibly unprofessional, **L** means polish.
+Method. I captured 43 contract states with `e2e/merge-expert.mjs`, which covers both modes, every step, dialogs, the palette, editing and the phone layout. I captured 24 more viewport states (plus two full-page guide captures) with the new `e2e/design-shots.mjs`: the empty state, load errors, loading and planning progress on the 226k-triangle private helmet, tilt mode, toasts, the precision map, the joint editor and the guide. Viewports were 1440×900 and 390×844. The initial full-size visual critiques covered representative states against a rubric of type, spacing, colour, icons, chrome, scene and state design; I confirmed those findings against the CSS. I subsequently cross-checked all 43 contract captures on labelled contact sheets. That exhaustive contact-sheet critique happened after the first implementation iteration, not before it; the screenshot baseline and the initial audit below were recorded before changing the app. Severity: **H** means it hurts comprehension or trust, **M** means it is visibly unprofessional, **L** means polish.
 
 ### 1.1 Visual system
 
@@ -54,4 +54,121 @@ Method. I captured 43 contract states with `e2e/merge-expert.mjs`, which covers 
 
 ## 2. Decisions
 
-The token system is recorded in `web/css/tokens.css`, and each fix above is tagged in the commit history. Behavioural changes are listed in §4.
+The token system is in `web/css/tokens.css`; `design.css` applies it to the merged layout. I kept the existing app/flow/merge structure rather than rewriting layout logic during a design pass. The old fixed-pixel type sizes and non-neutral hard-coded colours in those three files were rewritten to tokens with `tools/tokenize_css.py`. The guide now uses the same tokens. Layout-specific dimensions and some old spacing declarations remain; this is a consolidated visual system, not a full stylesheet architecture rewrite.
+
+| Role | Decision |
+|---|---|
+| Surfaces | Teal-tinted dark neutrals, four levels; one hairline border and one stronger control boundary. The stage is darker than the panel. |
+| Accent | Mint means the next primary action, current step or passed validation. Pressed tools use a tinted surface + mint outline, not the primary fill. Replanning an existing plan is secondary. |
+| Information / caution / error | Blue, amber and coral; always paired with words and an icon or pattern. |
+| Type | App: 12 / 14 / 16 / 20 / 24 / 32 px. The guide uses 16 px body, an 18 px lead and 40 px display (32 on phones). System font fallbacks; no network font request. Numbers are tabular. |
+| Spacing / shape | 4 px grid for new components; controls 6 px, cards 10 px, dialogs 14 px; 44 px minimum targets. |
+| Icons | One inline 24-grid, 1.75-stroke SVG set. Every icon-only control retains text for assistive technology or an explicit accessible name. Phone Guide/Objects/Fit/Expand/Undo/Redo trade visible labels for familiar icons; desktop keeps labels except history. |
+| Elevation / motion | Two shared elevations; glass only for overlays over the stage. 120 / 200 ms interaction transitions; reduced-motion disables transitions/damping/spinner rotation. |
+| 3D | Warm-neutral model, warm key/cool rim/soft fill, ACES tone mapping, soft footprint shadow and a faint studio floor. Desaturated identification palette (first two colours retain stronger orange/blue separation). The box recedes with depth; minor/major grid is 10/50 mm. |
+
+### 2.1 Measured contrast
+
+Ratios are computed from the actual token hex values, not inferred from screenshots. Enabled normal text exceeds 4.5:1 even on the raised surface. Inactive controls are exempt under WCAG 1.4.3; their state is intentionally subdued. Metadata and blocked-step explanations are not treated as disabled controls.
+
+| Text role | Surface 1 | Surface 2 | Surface 3 |
+|---|---:|---:|---:|
+| Main | 15.42 | 14.15 | 12.19 |
+| Muted | 8.86 | 8.13 | 7.01 |
+| Subtle / placeholder | 6.45 | 5.92 | 5.10 |
+| Mint | 10.82 | 9.93 | 8.55 |
+| Information | 9.69 | 8.89 | 7.66 |
+| Warning | 11.52 | 10.56 | 9.10 |
+| Error | 8.82 | 8.09 | 6.97 |
+
+Primary-button text against the mint fill is **9.63:1**. Strong control borders against surfaces 1/2 are **3.54/3.25:1**. See `design-measurements.json` for numeric evidence.
+
+
+## 3. Before / after gallery
+
+Every pair is **before left, after right**, taken from the actual running app at the same viewport and workflow state. Calculation times vary between runs. Full-size captures were used for critiques; pairs use half-size desktops so the document remains manageable.
+
+| Major change | Before / after |
+|---|---|
+| Empty state, type, icons, frame | ![](screenshots/design/desktop-simple-load.webp) |
+| Fit: structured warning, metric grid, full volume on desktop, calmer scene | ![](screenshots/design/desktop-simple-fit.webp) |
+| Cut: tool state, fields, part palette | ![](screenshots/design/desktop-simple-cut.webp) |
+| Expert workspace | ![](screenshots/design/desktop-expert-cut.webp) |
+| Pin: readable card, depth figure and joint scene | ![](screenshots/design/desktop-simple-pin.webp) |
+| Export: success banner, labelled verification, file rows | ![](screenshots/design/desktop-simple-export.webp) |
+| Command palette | ![](screenshots/design/desktop-expert-palette.webp) |
+| Phone Fit: clean CTA, icon controls, dimension backings | ![](screenshots/design/phone-simple-fit-peek.webp) |
+| Phone Expert cut: same capabilities, less text chrome | ![](screenshots/design/phone-expert-cut.webp) |
+| Phone Join | ![](screenshots/design/phone-simple-join.webp) |
+| Loading: centred, subject, non-interactive stage indicators | ![](screenshots/design/desktop-loading.webp) |
+| Error: persistent file-specific recovery card | ![](screenshots/design/desktop-error-garbage.webp) |
+| Error from an open surface | ![](screenshots/design/desktop-error-open.webp) |
+| Phone empty state: shorter unused viewport, actual upload above fold | ![](screenshots/design/phone-empty.webp) |
+| Phone loading | ![](screenshots/design/phone-loading.webp) |
+| Joint-editor labels | ![](screenshots/design/desktop-joint-editor.webp) |
+| Guide: smaller hero, shorter measure, numbered instruction cards | ![](screenshots/design/desktop-guide-top.webp) |
+| Toast | ![](screenshots/design/desktop-toast-error.webp) |
+| Tilt mode | ![](screenshots/design/desktop-tilt.webp) |
+| Help: scannable sections and always-visible close | ![](screenshots/design/phone-simple-helpDlg.webp) |
+| Licenses: consistent dialog and close affordance | ![](screenshots/design/phone-simple-licDlg.webp) |
+
+## 4. Behavioural changes (no planner/API changes)
+
+1. **No empty camera tools.** Frame, orientation and gesture help appear after a model loads. The dismissed gesture hint remains dismissed across reloads. The empty phone viewport is reduced from about 29% to 22% of screen height.
+2. **Load failures persist.** Generic parse/repair failures now produce an alert card naming the file, retaining the actual reported cause and offering a file chooser and repair-guide link. Invalid-format guidance says re-export; confirmed non-closed solids get watertight-repair guidance. This is not a new repair algorithm.
+3. **Progress distinguishes the work from the file.** The headline names the operation; the filename is secondary and truncates with its full value in the title. The load footer says “Preparing model…” rather than implying no file was selected. Estimates and stage ids are unchanged.
+4. **The next action is “Plan cuts”.** The full printer-specific action remains in its tooltip, and the selected printer is explicit in the Fit panel. This prevents wrapped/orphaned printer names on phones. There is still no empty Continue confirmation.
+5. **Desktop simple Fit frames model ∪ build volume.** At stage widths over 760 px, the whole box is visible; at phone and narrow Expert widths, the model-first framing remains. The whole box therefore still extends past the phone edges. This is a deliberate trade-off, not claimed fixed on all viewports.
+6. **Cut hover is distinct.** Desktop pointer hover brightens the rim; selection adds fill/pivot/arrow. No geometry or drag semantics changed.
+7. **Guide scroll-spy** marks the chapter in view; ordinary anchors still work without JavaScript. Screenshots are regenerated from the app.
+8. **Help and licenses have a persistent top close action** as well as the existing footer Close. Help has subheadings for 3D navigation, joints and Expert mode; no shortcut was removed.
+9. **Build caches are coherent.** The static build stamps relative module imports and worker URLs, not just app.js; the guide styles are also stamped. Returning users no longer mix a new entry module with cached old dependencies.
+10. **Scene dressing cleans up with the model.** Removing/replacing a model removes the floor and shadow and disposes their materials/geometries. Textures are shared, not recreated per render.
+
+The five-step flow, one model/plan/build state, Simple/Expert mode, all **96 baseline control IDs**, precision map, joint types, numeric cut/pin editing, keyboard alternatives, samples, full-detail mesh export, coupon, assembly sheet and every file export remain reachable. See the capability checklist in `MERGE.md`; this pass adds no second navigation.
+
+### Test changes are explicit
+
+Three tests were adjusted for intended presentation changes, not removed: the CTA now asserts **Plan cuts**, with the printer in the tooltip and verdict; open disclosures assert their rotated chevron and actual open state, not the “−” glyph; the gesture-persistence test loads a model before expecting the hint. `design-system.mjs` adds axe, a 12 px type floor, icon names, guide images/scroll-spy, real recovery-file-chooser interaction, coherent module imports and scene removal checks.
+
+## 5. Measurements and verification
+
+Viewport ratios use the existing measurement harness, which projects actual mesh vertices (up to 60k sampled). “Model share” is its visible bounding rectangle as a fraction of the screen, not a subjective claim about clarity. Controls counts include visible native controls even below the panel fold, but exclude inert content. The phone gained one Help button; the visible controls did not silently disappear behind an untested menu.
+
+| State | Merge canvas / model share | Design canvas / model share | Controls: merge → design |
+|---|---|---|---|
+| Desktop simple Fit | 0.615 / 0.294 | 0.626 / 0.202 | 19 → 19 |
+| Desktop simple selected cut | 0.615 / 0.294 | 0.626 / 0.305 | 30 → 30 |
+| Desktop simple Export | 0.615 / 0.281 | 0.626 / 0.292 | 25 → 25 |
+| Desktop Expert selected cut | 0.44 / 0.354 | 0.451 / 0.360 | 58 → 58 |
+| Phone simple Fit | 0.71 / 0.392 | 0.724 / 0.392 | 12 → 13 |
+| Phone simple selected cut | 0.71 / 0.392 | 0.724 / 0.392 | 15 → 16 |
+| Phone Expert selected cut | 0.71 / 0.392 | 0.724 / 0.392 | 23 → 24 |
+| Phone 226k-triangle helmet Fit | 0.71 / 0.530 | 0.724 / 0.530 | 12 → 13 |
+
+The desktop Fit model is intentionally smaller to show the entire printer box; normal editing and Export did not shrink. The phone keeps the 53% helmet and 39.2% bracket model share.
+
+Verification on Chromium / SwiftShader:
+
+- **17/17 browser suites PASS**, including the private 226k-triangle model (fit words, margins, planning, full-detail manifold build and real ZIP download), large-mesh simplification/cancel/restore, all joint families, support preference, WASM, touch and keyboard flows. Run: `SPLITTER_PRIVATE_MODEL=… scripts/e2e-all.sh URL OUTDIR`.
+- **4 activations**, keyboard only: sample → Plan cuts → Build & prepare downloads → downloaded ZIP.
+- Merge contract: **43 states, 0 axe violations, 0 sub-44 px targets, 0 overlapping/off-screen tested controls, 0 horizontal overflow, 0 JS text leaks**. All 96 baseline IDs remain.
+- New design-system suite: **10 states**, axe 0, no rendered text under 12 px in those states; recovery chooser opens; every guide image loads; model removal clears the ground.
+- The contract and new design suite also pass on the deployed preview. (The test’s initial Node fetch could not use Chromium’s host resolver; it now checks imports inside the browser, on the same origin as the app.)
+- `go test ./...` and `go vet ./...` PASS. No Go source changed.
+- No push or public publication. Only the requested preview build and local commits.
+
+## 6. Re-critique and honest gaps
+
+The repeated visual reviews judged the final Fit/Export/Expert-cut screens around **8/10**, and phone Fit/Join around **7–7.5/10**. Those are qualitative model critiques, not an objective benchmark or a human acceptance. The largest improvements are the information hierarchy, error recovery, type consistency and the quieter, better-framed desktop scene. I would not claim Figma/Onshape parity.
+
+Remaining gaps, in order:
+
+1. **Phone Expert chrome remains dense.** Four presentation tabs, Objects, Frame, triad, editing tools and history remain available with 44 px targets. I did not hide capabilities to make screenshots look cleaner. Some visible labels became named icons; a human touch-usability review is still worthwhile.
+2. **Phone Fit keeps the model large, not the whole box.** Dimension labels have backings; their lines and the box can still leave the phone viewport. The numeric comparison remains available through Why?/Details. Desktop simple Fit now frames both fully.
+3. **Join rendering is still an inspection compromise.** Opacity rose from 0.20 to 0.42, but transparent parts and small pins can be muddy in perspective. Face-on and Explode expose the mechanics; no new local clipping/section renderer was invented for this pass.
+4. **Grounding is AO-like, not physical AO.** A shared radial footprint shadow and faint floor are inexpensive and preserve browser performance, but exploded parts can still appear suspended. This is not a ray-traced shadow claim.
+5. **The palette remains a flat launcher.** It has clearer selection, type and keyboard hints but no new recency/ranking engine or collapsible command groups.
+6. **Dense engineering details remain in Expert mode and the pin inspector.** The table and main fit decision are clearer; not every planner-generated sentence was rewritten. Per-side hole depth still uses the solver’s signed-side convention, with the accepted depth figure and end-allowance caption.
+7. **Stylesheet layering remains.** Tokens replace most colour/type one-offs, but the historical layout sheets still carry some spacing/radius overrides. A wholesale CSS rewrite would be a separate riskier change, not a claim made here.
+8. **Scope of evidence.** Axe and screenshots are not a screen-reader session or a real phone hardware test. Screenshots with panel content at a scroll boundary are not proof of overlapping controls: DOM bounds and scroll reachability were checked separately. No physical print was produced in this UI pass.

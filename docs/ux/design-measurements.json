@@ -1,0 +1,169 @@
+{
+  "viewports": {
+    "desktop": [
+      1440,
+      900
+    ],
+    "phone": [
+      390,
+      844
+    ]
+  },
+  "contrast": {
+    "text": {
+      "surface-1": 15.42,
+      "surface-2": 14.15,
+      "surface-3": 12.19
+    },
+    "text-muted": {
+      "surface-1": 8.86,
+      "surface-2": 8.13,
+      "surface-3": 7.01
+    },
+    "text-subtle": {
+      "surface-1": 6.45,
+      "surface-2": 5.92,
+      "surface-3": 5.1
+    },
+    "accent": {
+      "surface-1": 10.82,
+      "surface-2": 9.93,
+      "surface-3": 8.55
+    },
+    "info": {
+      "surface-1": 9.69,
+      "surface-2": 8.89,
+      "surface-3": 7.66
+    },
+    "warn": {
+      "surface-1": 11.52,
+      "surface-2": 10.56,
+      "surface-3": 9.1
+    },
+    "danger": {
+      "surface-1": 8.82,
+      "surface-2": 8.09,
+      "surface-3": 6.97
+    },
+    "focus": {
+      "surface-1": 14.54,
+      "surface-2": 13.34,
+      "surface-3": 11.5
+    },
+    "accent-ink": {
+      "on-accent": 9.63
+    }
+  },
+  "measurements": {
+    "desktop-simple-fit": {
+      "controls": 19,
+      "inViewport": 16,
+      "canvasFraction": 0.626,
+      "model": {
+        "w": 499.3,
+        "h": 524,
+        "fraction": 0.202,
+        "clipped": false
+      },
+      "overflow": false
+    },
+    "desktop-simple-cut": {
+      "controls": 30,
+      "inViewport": 29,
+      "canvasFraction": 0.626,
+      "model": {
+        "w": 614.4,
+        "h": 642.9,
+        "fraction": 0.305,
+        "clipped": false
+      },
+      "overflow": false
+    },
+    "desktop-simple-export": {
+      "controls": 25,
+      "inViewport": 20,
+      "canvasFraction": 0.626,
+      "model": {
+        "w": 600.8,
+        "h": 628.9,
+        "fraction": 0.292,
+        "clipped": false
+      },
+      "overflow": false
+    },
+    "desktop-expert-cut": {
+      "controls": 58,
+      "inViewport": 49,
+      "canvasFraction": 0.451,
+      "model": {
+        "w": 667.5,
+        "h": 698.1,
+        "fraction": 0.36,
+        "clipped": false
+      },
+      "overflow": false
+    },
+    "phone-simple-empty": {
+      "controls": 15,
+      "inViewport": 14,
+      "canvasFraction": 0.219,
+      "model": null,
+      "overflow": false
+    },
+    "phone-simple-fit": {
+      "controls": 13,
+      "inViewport": 13,
+      "canvasFraction": 0.724,
+      "model": {
+        "w": 351,
+        "h": 367.7,
+        "fraction": 0.392,
+        "clipped": false
+      },
+      "overflow": false
+    },
+    "phone-simple-cut": {
+      "controls": 16,
+      "inViewport": 16,
+      "canvasFraction": 0.724,
+      "model": {
+        "w": 351,
+        "h": 367.7,
+        "fraction": 0.392,
+        "clipped": false
+      },
+      "overflow": false
+    },
+    "phone-simple-export": {
+      "controls": 16,
+      "inViewport": 16,
+      "canvasFraction": 0.724,
+      "model": {
+        "w": 309.1,
+        "h": 324.1,
+        "fraction": 0.304,
+        "clipped": false
+      },
+      "overflow": false
+    },
+    "phone-expert-cut": {
+      "controls": 24,
+      "inViewport": 24,
+      "canvasFraction": 0.724,
+      "model": {
+        "w": 351,
+        "h": 367.7,
+        "fraction": 0.392,
+        "clipped": false
+      },
+      "overflow": false
+    }
+  },
+  "private_phone_fit_model_fraction": 0.53,
+  "baselineControlIDs": 96,
+  "contractStates": 43,
+  "contractAxeViolations": 0,
+  "smallTargets": 0,
+  "overlappingControls": 0,
+  "keyboardPathActivations": 4
+}
