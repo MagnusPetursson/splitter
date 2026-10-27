@@ -249,3 +249,90 @@ Before is left, after is right. "Before" is the first design build, fb606e0. The
 5. **Fit is model-smaller by design** (phone bracket 0.392 → 0.123). On Fit there is no one-tap model-only framing; zoom gets there. A two-state Fit camera (volume ⇄ model) would be the natural follow-up.
 6. **Toasts** on phone can briefly cover the expanded sheet. This is pre-existing and transient.
 7. Evidence remains screenshots, DOM measurements and axe on Chromium/SwiftShader. No real-device, screen-reader or physical-print test was done.
+
+## 8. Round 3: rotate-to-fit as the main path, and finishing
+
+Control re-screenshotted round 2 with the friend's helmet at 1440×900, 1280×720 and 390×844 and scored it **7 / 7 / 7**. The round-2 code review had passed. What remained was the decision hierarchy and finishing, in five items: make the quarter turn the main path when it fits the whole model; fix the sidebar overflow; give phone dimension labels their own slots and make them self-explaining; restore the helmet's form; and sharpen the small cues. Round 2's honest gap 1 (Rotate vs Plan cuts) is resolved here in favour of Rotate, as both visual reviews and control asked.
+
+### 8.1 A quarter turn that fits is the decision
+
+**Branch A: a quarter turn fits the whole model** (the helmet on the CORE One, or the public bracket on a custom 70 × 330 × 230 bed):
+- **Headline:** "Fits in one piece after a 90° turn" (or "… laid on its side" for a non-vertical quarter turn). **Sub-line:** "Current placement is 9.8 mm too deep (223.8 / 214.0 mm)". The card changes from warning amber to the accent tint with a turn icon, because it now states a solution, not a failure. The viewport caption reads **"Printer fit · current placement"**, so the red overflow in the scene does not contradict the headline.
+- **Single primary:** the footer action becomes **Turn 90° to fit**, with a tooltip saying Undo restores. The in-card turn button is gone. Cutting is offered once, on its own line, as a text action: "Prefer pieces? **Plan cuts anyway**". It goes to Split and plans exactly as before.
+- **After turning:** the verdict reads **"Fits in one piece"** / "Within usable: W 223.8 · D 197.2 · H 241.8 mm", with "Turned 90° from the file's orientation · **Undo turn**". The dimension labels lose every limit and over-state, and the primary moves on to **Export as one piece**. That action plans (the planner still chooses the print orientation), and if the plan is one fitting part it goes straight to Export and builds the ZIP. If a Split preference makes the planner add a cut anyway, the user lands on the cut review with a message saying so, rather than at a silent export. The confirmation is announced through the live region and is no longer a toast, because on a phone the toast covered the verdict it was confirming.
+- **Undo turn** restores the file orientation, the turn offer returns, and the turn is the primary again.
+
+**Branch B: no quarter turn fits** (the 320 mm bracket on the CORE One). This keeps the split-first path: "Doesn't fit: 76.0 mm too wide" (shortened from "Doesn't fit as placed:", which wrapped to two lines in the 410 px panel), then "No orientation fits it whole. Plan cuts proposes cuts…", with **Plan cuts** as the only primary and no "anyway" link.
+
+A model that fits as placed takes the same one-piece path as a turned model ("Fits in one piece" → Export as one piece). That changes behaviour for every model that already fits: Continue now goes to Export instead of stopping at the Split review. Split stays one click away in the step bar.
+
+### 8.2 Sidebar overflow
+
+- The "More below" pill used to be a `::before` on the footer, and it straddled the footer divider. It is now a sticky element at the bottom edge **inside** the scrolling panel, on a short solid-to-transparent band, so content scrolls behind it and never under the divider. It is hidden at the end of the panel. Measured: the pill's bottom edge sits **10 px** above the footer at 1440×900 and 1280×720, inside the panel's horizontal bounds.
+- Compaction at laptop heights (≤ 820 px tall, desktop widths): the "Step 2 of 5" eyebrow is hidden (the step bar already says "2 Fit"), the intro is one line ("Checked against usable space. Nothing is scaled."), the verdict card padding is 12/14 px, metric values are 16 px, "of 244.0 usable" became "of 244.0" under a header that already says "Model vs usable volume", and the clearance note is one sentence. Measured from the top of the Model-vs-usable cards (105 px tall) to the footer: at 1280×720 the helmet now has **141 px** (fully visible above the cue). The bracket was **70 px** before, so its cards were clipped, and is **160 px** now.
+- Headline wraps: every Fit heading (h1, verdict headline, readout title) renders on one line at 1440×900 and 1280×720 in both branches. `design-r3.mjs` asserts this.
+
+### 8.3 Dimension labels in their own slots
+
+Round 2 placed labels away from the scene centre, but a label could still sit on its own dimension line or arrowhead, which was control's phone complaint about D. Each label now picks a slot. Candidates sit beside its line at five positions along it, on the outer side first and then the inner side, offset by the label's half-extent plus 10 px. If none is clean, the slot goes beyond either arrowhead, in line with the dimension, and only then further out. A candidate is scored against every dimension line extended 7 px past both ends (to cover the arrowheads), the model's projected bounds and the labels already placed, and the lowest score wins. Failing axes read **"D 223.8 mm · limit 214 mm"**, passing axes "W 197.2 mm".
+
+Measured label-to-line intersections (3 px padding, lines extended 6 px for arrowheads) per W/D/H label:
+
+| Case | Before | After |
+|---|---|---|
+| Bracket, CORE One, desktop / laptop / phone | 1,1,0 / 1,1,0 / 1,1,1 | 0,0,0 at all three |
+| Bracket, 70 × 330 bed (turn fits), all sizes, fit and turned | 1,1,0 … 1,1,1 | 0,0,0 |
+| Helmet, CORE One, all sizes, fit and turned | (not instrumented in r2) | 0,0,0 |
+
+Labels stay ≥ 12 px inside the view with no overlaps. Fit framing margins are unchanged (helmet 71 / 54 / 53 px).
+
+### 8.4 Helmet form
+
+- **Exceeded region:** the two-tone coral/deep-red hatch replaced the lit colour, which flattened relief. Now the lit colour is kept and only tinted (× 1.0 / 0.66 / 0.58, plus a small red lift), with a thin darker stripe on 16 % of the period. Shape reads through the overflow. The exceeded-face walls dropped from 13 % to 6 % opacity. The legend swatches match.
+- **Light:** the key (directional) rose from 1.3 to 2.15 and moved higher and more frontal-left. The hemisphere fill went from 0.60 to 0.40, the cool fill from 0.50 to 0.42, the rim from 1.1 to 0.8, the camera light from 0.22 to 0.10 and the point key from 1.7 to 1.2. The base albedo is slightly darker (#bcc3be), so the key does not clip. The result is a visible light-to-shadow gradient on the crown and shell, and rivets and face plates get highlights and contact shading. A vision comparison of before/after crops at an intermediate setting preferred the new render ("stronger light-to-shadow gradient makes the crown's curvature clearer … rivets more distinct") and called the shadowed front plates "a little dense". The cool fill was then raised from 0.30 to the final 0.42 on that advice. The cost is the same four analytic lights plus one point light, with no shadow maps.
+
+### 8.5 Small cues
+
+- **Pending steps:** upcoming and blocked step circles have solid rings in `--text-subtle` (≥ 3:1). Numerals and labels are ≥ 4.5:1 (asserted). The dashed ring for blocked steps was dropped because it read as a rendering fault at 22 px.
+- **XYZ triad:** shorter arms and letters placed past each tip with a dark halo. Axes pointing away from the camera are dimmed and drawn behind. Letters render at ≥ 12.5 CSS px at every triad size: 64 px on desktop, 44 px on phone, where a larger triad collided with Undo/Redo in Expert cut editing.
+- **Viewport icons:** Enlarge view now uses diagonal expand arrows. Fit view keeps the corner frame with a cube. Both have tooltips and accessible names (asserted distinct).
+- **Phone peek accessibility:** in the collapsed sheet, the current step's h1 stays in the accessibility tree (visually hidden). The new axe pass on the peek state found the page had no level-one heading there.
+
+### 8.6 Before / after (round 3)
+
+Before is left (round 2, 0af2ea3), after is right. The committed pairs use the public bracket. **Turn fits** is the bracket on a custom 70 × 330 × 230 bed, the same quarter-turn situation as the helmet on a CORE One. **No fit** is the bracket on the CORE One. Helmet pairs at all three sizes, fit and turned, are in the private review gallery only.
+
+| Item | Pair |
+|---|---|
+| Turn fits · Fit · 1440×900 | ![](screenshots/design-r3/desktop-turn-fit.webp) |
+| Turn fits · Fit · 1280×720 | ![](screenshots/design-r3/laptop-turn-fit.webp) |
+| Turn fits · Fit · 390×844 | ![](screenshots/design-r3/phone-turn-fit.webp) |
+| Turn fits · phone sheet open | ![](screenshots/design-r3/phone-turn-fit-sheet.webp) |
+| Turned · 1440×900 | ![](screenshots/design-r3/desktop-turn-turned.webp) |
+| Turned · 1280×720 | ![](screenshots/design-r3/laptop-turn-turned.webp) |
+| Turned · 390×844 | ![](screenshots/design-r3/phone-turn-turned.webp) |
+| No fit (split-first) · 1440×900 | ![](screenshots/design-r3/desktop-nofit.webp) |
+| No fit · 1280×720 | ![](screenshots/design-r3/laptop-nofit.webp) |
+| No fit · 390×844 | ![](screenshots/design-r3/phone-nofit.webp) |
+
+Reproduce with `e2e/design-r3-shots.mjs URL OUTDIR MODEL.stl` (any build; `R3_BED=70,330,230` for the custom bed). It also writes the metrics used above.
+
+### 8.7 Verification
+
+- New `e2e/design-r3.mjs`: **123 checks** at 1440×900, 1280×720 and 390×844 in both branches. They cover the verdict headline and sub-line, the turn as the only primary, "Plan cuts anyway" as a secondary that opens the cut review, the turn swapping W and D at the same size, the turned state ("Within usable", Export as one piece, Undo turn, no flagged axis), Undo restoring the orientation and the turn primary, and **≤ 1 visible primary** in Load, Fit (both branches, phone peek and open), turned Fit, Split pre-plan, Split after Plan cuts anyway, and Export. It also covers Export as one piece building a single fitting part with NoError, labels off every line and arrowhead, apart and ≥ 12 px inside the view, self-explaining limit labels on exceeded axes only, the in-panel cue above the footer, no wrapped headings, step-circle contrast, triad letter size, distinct viewport glyphs, and **axe 0** in A-fit, A-turned and B-fit at all three sizes.
+- Updated tests: `design-r2.mjs` (turn via the footer, "Doesn't fit:" headline) and `round3-fit-file.mjs` (helmet: Plan cuts anyway, clearance copy).
+- `scripts/e2e-all.sh` is now 19 suites with `design-r3`. Results for the final commit are in 8.9.
+
+### 8.8 Honest gaps after round 3
+
+1. **The green "fits after a turn" card before the turn.** One vision pass read it as "already succeeded". The headline says "after a 90° turn", the sub-line says the current placement is too deep, and the viewport caption says "current placement", so I kept the accent. A neutral info tint is the alternative if testers misread it.
+2. **The helmet's face** still has near-black slots and jagged vertical strips. Those are the light 226k mesh's real eye-slit and breathing-hole geometry, not shading artefacts. Without AO or shadow maps the recesses read as flat black.
+3. **The axis-aligned check** (six orientations, or two when upright) can miss a diagonal fit that the planner finds. Branch B's "No orientation fits it whole" is honest only for that set, as in round 2.
+4. **Export as one piece** trusts the planner: with a Split preference that trades a cut for less support, it can still come back with two parts. The user then lands on the cut review with an explanation, not an export. I chose not to override the preference silently.
+5. Still open from round 2: phone Expert density, Join transparency, and the absence of a two-state Fit camera. Evidence remains Chromium/SwiftShader screenshots, DOM measurements and axe, with no real device, screen reader or print.
+
+### 8.9 Results on the final application commit (e28b747)
+
+- `go test ./...`, `go vet ./...` and `GOOS=js GOARCH=wasm go vet ./cmd/splitter-wasm`: PASS.
+- `scripts/e2e-all.sh` against a fresh static build of e28b747: **19/19 PASS** (guided-flow, merge-expert, design-system, design-r2, design-r3, round2-editing, round2-touch, round3-context, round3-depth, ux-audit, interactions, expert-controls, joints, mobile-ui, large-mesh, smoke, support, wasm-plan, and the private 226k-triangle helmet: plan, build NoError 226,172 triangles, ZIP).
+- `design-r3.mjs` also passes against the deployed preview (123 checks).
