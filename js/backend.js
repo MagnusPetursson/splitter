@@ -29,6 +29,7 @@ const MIME = { stl: 'model/stl', '3mf': 'model/3mf', html: 'text/html', json: 'a
 function serverBackend(printers) {
   return {
     mode: 'server',
+    canCancel: false,
     printers: async () => printers,
     kinds: () => getJSON('api/kinds'),
     load(file, onMsg) {
@@ -37,12 +38,12 @@ function serverBackend(printers) {
         fd.append('file', file, file.name);
         const xhr = new XMLHttpRequest();
         xhr.open('POST', api('api/models'));
-        xhr.upload.onprogress = (e) => { if (e.lengthComputable) onMsg(`Uploading ${file.name}: ${(e.loaded / 1e6).toFixed(1)} / ${(e.total / 1e6).toFixed(1)} MB`, (e.loaded / e.total) * 0.5); };
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) onMsg({ stage: 'upload', done: e.loaded, total: e.total, message: `Uploading ${file.name}: ${(e.loaded / 1e6).toFixed(1)} / ${(e.total / 1e6).toFixed(1)} MB` }); };
         xhr.onload = async () => {
           try {
             const r = JSON.parse(xhr.responseText);
             if (xhr.status !== 200) throw new Error(r.error || xhr.statusText);
-            resolve(await pollJob(r.job, (m) => onMsg(m, null)));
+            resolve(await pollJob(r.job, (m) => onMsg({ message: m })));
           } catch (err) { reject(err); }
         };
         xhr.onerror = () => reject(new Error('Upload failed'));
@@ -53,8 +54,9 @@ function serverBackend(printers) {
     scale: (info, f) => getJSON(`api/models/${info.id}/scale`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scale: f }) }),
     async plan(info, body, onMsg) {
       const r = await getJSON(`api/models/${info.id}/plan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      return pollJob(r.job, onMsg);
+      return pollJob(r.job, (m) => onMsg({ message: m }));
     },
+    async fullMesh() { return null; },
     async export(info, parts, blobs, planObj, bed, snapshot) {
       const fd = new FormData();
       if (planObj) fd.append('plan', JSON.stringify(planObj));
@@ -72,37 +74,62 @@ function serverBackend(printers) {
 }
 
 function localBackend() {
-  const w = new Worker(new URL('./gowork.js', import.meta.url), { type: 'module' });
-  let seq = 0, onProgress = null;
+  let w = null, seq = 0, onProgress = null;
   const pending = {};
-  w.onmessage = (e) => {
-    const m = e.data;
-    if (m.type === 'goprogress') { if (onProgress) onProgress(m.message, null); return; }
-    if (m.type !== 'goresult') return;
-    const p = pending[m.id];
-    delete pending[m.id];
-    if (!p) return;
-    if (m.error) p.reject(new Error(m.error)); else p.resolve(m.result);
-  };
-  w.onerror = (e) => { for (const k of Object.keys(pending)) { pending[k].reject(new Error(e.message || 'planner worker failed')); delete pending[k]; } };
+  const fail = (err) => { for (const k of Object.keys(pending)) { pending[k].reject(err); delete pending[k]; } };
+  function spawn() {
+    w = new Worker(new URL('./gowork.js', import.meta.url), { type: 'module' });
+    w.onmessage = (e) => {
+      const m = e.data;
+      if (m.type === 'goprogress') { if (onProgress) onProgress(m); return; }
+      if (m.type !== 'goresult') return;
+      const p = pending[m.id];
+      delete pending[m.id];
+      if (!p) return;
+      if (m.error) {
+        const err = new Error(m.error);
+        err.kind = m.kind || '';
+        // a dead Go runtime cannot be reused: start a fresh one next time
+        if (m.kind === 'memory' || m.kind === 'crash') { w.terminate(); w = null; }
+        p.reject(err);
+      } else p.resolve(m.result);
+    };
+    w.onerror = (e) => { const err = new Error(e.message || 'planner worker failed'); err.kind = 'crash'; fail(err); };
+  }
   const call = (fn, args, onMsg, transfer) => new Promise((resolve, reject) => {
+    if (!w) spawn();
     const id = ++seq;
     onProgress = onMsg || null;
     pending[id] = { resolve, reject };
     w.postMessage({ id, fn, args }, transfer || []);
   });
-  const parse = (s) => { const j = JSON.parse(s); if (j && j.error) throw new Error(j.error); return j; };
+  const parse = (s) => {
+    const j = JSON.parse(s);
+    if (j && j.error) { const err = new Error(j.error); err.kind = j.kind || ''; err.repair = j.repair; throw err; }
+    return j;
+  };
   let urls = [];
   return {
     mode: 'local',
+    canCancel: true,
+    // Stop whatever the planner is doing. The Go runtime runs synchronously
+    // inside its worker, so the only way to stop it is to end the worker;
+    // the loaded model goes with it.
+    cancel() {
+      if (w) { w.terminate(); w = null; }
+      const err = new Error('Cancelled');
+      err.kind = 'cancelled';
+      fail(err);
+    },
     printers: async () => parse(await call('printers', [])),
     kinds: async () => parse(await call('kinds', [])),
-    async load(file, onMsg) {
-      onMsg(`Reading ${file.name}`, null);
+    async load(file, onMsg, opts) {
+      onMsg({ stage: 'read', done: 0, total: 1, message: `Reading ${file.name}` });
       const buf = new Uint8Array(await file.arrayBuffer());
-      return parse(await call('load', [file.name, buf], onMsg, [buf.buffer]));
+      return parse(await call('load', [file.name, buf, JSON.stringify(opts || {})], onMsg, [buf.buffer]));
     },
     async mesh() { const u = await call('mesh', []); return u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength); },
+    async fullMesh() { const u = await call('fullMesh', []); return u ? u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength) : null; },
     scale: async (info, f) => parse(await call('scale', [f])),
     plan: async (info, body, onMsg) => parse(await call('plan', [JSON.stringify(body)], onMsg)),
     async export(info, parts, blobs, planObj, bed, snapshot, onMsg) {

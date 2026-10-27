@@ -1,7 +1,9 @@
 // print-splitter UI controller.
 import { Viewer, partColor, KIND_COLORS } from './viewer.js';
 import { JointMap } from './jointmap.js';
+import { JointEditor } from './jointeditor.js';
 import { createBackend } from './backend.js';
+import { LIMITS, estimateTris, estimateMemMB, estimateLoadSec, estimatePlanSec, fmtTris, fmtDur, fmtMem, msgText, Progress, LOAD_STAGES, PLAN_STAGES, crumbSet, crumbClear, crumbTake } from './progress.js';
 
 const $ = (id) => document.getElementById(id);
 const api = (p) => new URL(p, document.baseURI).href;
@@ -12,6 +14,9 @@ const S = {
   printers: [], kinds: null, fitsDefault: null,
   model: null, mesh: null, plan: null, built: null, export: null,
   sel: {}, face: null, addMode: false, planSeq: 0, workerReady: false, planWasAuto: false, comparison: null,
+  // large meshes: the file (to reload after a cancel), how it was loaded,
+  // and whether the geometry kernel holds the full-detail original
+  file: null, loadOpts: null, fullDetail: {}, kernelFull: false, useFull: true,
 };
 
 // ---------------- infrastructure ----------------
@@ -26,6 +31,7 @@ function toast(msg, err = false, ms = 4200) {
 }
 function busy(text, frac = null) {
   const b = $('busy');
+  if (PROG && PROG.active) { if (text !== false) PROG.update({ message: text }); return; }
   if (text === false) { b.classList.add('hidden'); return; }
   b.classList.remove('hidden');
   $('busyText').textContent = text;
@@ -33,6 +39,7 @@ function busy(text, frac = null) {
   if (frac != null) $('busyFill').style.width = Math.round(100 * Math.max(0.02, Math.min(1, frac))) + '%';
 }
 let BE = null; // planner backend (local WASM or server)
+let PROG = null; // staged progress panel
 let DEFAULTS = null; // form values before any saved settings are applied
 function save() {
   const s = {
@@ -54,6 +61,7 @@ worker.onmessage = (e) => {
   const m = e.data;
   if (m.type === 'progress') {
     const lbl = { cut: 'cutting', joints: 'building joints', parts: 'assembling parts', verify: 'verifying' }[m.phase] || m.phase;
+    if (PROG && PROG.active) { PROG.update({ message: `Geometry kernel: ${lbl} ${m.total > 1 ? `${m.done}/${m.total}` : ''}` }); return; }
     busy(`Building in your browser (Manifold WASM): ${lbl} ${m.total > 1 ? `${m.done}/${m.total}` : ''}`, m.phase === 'parts' ? 0.6 + 0.35 * m.done / m.total : m.phase === 'joints' ? 0.15 + 0.45 * m.done / Math.max(1, m.total) : m.phase === 'verify' ? 0.97 : 0.1);
     return;
   }
@@ -76,15 +84,32 @@ const viewer = new Viewer($('viewport'), {
   onCutDrag: (node, d) => { const inp = $('cutOffset'); if (inp) { inp.value = fmt(d, 2); $('cutOffsetNum').value = fmt(d, 2); } },
   onCutDragEnd: (node, d) => setCut(node, null, d),
 });
+// the inline map is a preview: it selects contacts and opens the editor
 const jmap = new JointMap($('jointMap'), {
-  onSelectJoint: (id) => selectJoint(id),
   onSelectPatch: (pid) => { S.sel.patch = pid; S.sel.joint = null; renderJointPanel(); },
-  onMove: (j, q, pid) => moveJoint(j, q, pid),
-  onAdd: (pid, q) => addJoint(pid, q),
+  onOpen: (q, jid) => { if (jid != null) selectJoint(jid); jed.show(S.face, { at: q, span: 40 }); },
+}, { preview: true });
+const jed = new JointEditor({
+  S,
+  cutName: (n) => cutName(n),
+  selectFace: (n) => selectFace(n, false),
+  selectJoint: (id) => selectJoint(id),
+  selectPatch: (pid) => { S.sel.patch = pid; S.sel.joint = null; renderJointPanel(); },
+  addJoint: (pid, q) => addJoint(pid, q),
+  moveJoint: (j, q, pid) => moveJoint(j, q, pid),
+  deleteJoint: (id) => deleteJoint(id),
+  setAddMode: (on) => setAddMode(on),
+  protoJoint: (k) => protoJoint(k),
+  mapOpts: () => mapOpts(),
+  toast: (m, e) => toast(m, e),
+  // docking resizes the 3D view: re-frame it once the layout has settled
+  onLayout: () => requestAnimationFrame(() => requestAnimationFrame(() => { viewer.resize(); viewer.frame(); })),
 });
 
 async function init() {
+  PROG = new Progress();
   BE = await createBackend();
+  crashNote(crumbTake());
   document.body.dataset.mode = BE.mode;
   $('privacy').textContent = BE.mode === 'local'
     ? 'Runs entirely in your browser: your model is never uploaded.'
@@ -212,13 +237,15 @@ function bind() {
   $('explode').addEventListener('change', () => { if (viewer.view === 'parts') viewer.frame(viewer.explodedBox()); });
   $('applyScale').addEventListener('click', applyScale);
   $('units').addEventListener('change', () => { $('scalePct').value = String(+$('units').value * 100); });
-  $('addJointMode').addEventListener('click', () => setAddMode(!S.addMode));
+  $('addJointMode').addEventListener('click', () => { if (S.face != null) jed.show(S.face, { add: true }); });
+  $('openEditor').addEventListener('click', () => { if (S.face != null) jed.show(S.face); });
   $('showField').addEventListener('change', (e) => { jmap.showField = e.target.checked; jmap.draw(); });
-  $('addKind').addEventListener('change', () => renderJointPanel());
+  $('addKind').addEventListener('change', (e) => { if (e.isTrusted || S.addMode) S.addKindTouched = true; renderJointPanel(); });
   for (const b of document.querySelectorAll('#views button')) b.addEventListener('click', () => setView(b.dataset.view));
   $('helpBtn').addEventListener('click', () => $('helpDlg').showModal());
   $('licLink').addEventListener('click', (e) => { e.preventDefault(); $('licDlg').showModal(); });
   document.addEventListener('keydown', (e) => {
+    if (jed.open) { if (e.key === 'Escape') jed.close(); return; }
     if (e.target.matches('input, select, textarea')) return;
     if (['1', '2', '3', '4'].includes(e.key)) setView(['model', 'cuts', 'parts', 'plates'][+e.key - 1]);
     if (e.key === 'Escape') { setAddMode(false); select({}); }
@@ -236,13 +263,104 @@ function setView(v) {
 }
 
 // ---------------- model ----------------
-async function upload(file) {
-  if (file.size > 300 * 1024 * 1024) { toast('File is larger than the 300 MB limit', true); return; }
-  busy(`Loading ${file.name}`, 0.02);
+const fileKey = (f) => `${f.name}/${f.size}`;
+
+// Load a model. Before reading it, estimate its triangle count and the
+// memory it needs, and refuse cleanly instead of letting the tab die.
+// opts.full: plan on the full-detail mesh; opts.restore: reload after a
+// cancel (keeps scale, quiet).
+async function upload(file, opts = {}) {
+  hideNote('loadNote');
+  if (file.size > 300 * 1024 * 1024) { showLoadNote('File too large', `${esc(file.name)} is ${fmt(file.size / 1e6, 0)} MB; the limit is 300 MB.`); return; }
+  const local = BE.mode === 'local';
+  const est = await estimateTris(file);
+  const full = opts.full != null ? opts.full : !!S.fullDetail[fileKey(file)];
+  const simplify = local && !full && est.tris > LIMITS.threshold;
+  const mem = estimateMemMB(est.tris, file.size, simplify);
+  if (local && mem > LIMITS.refuseMB) {
+    const simpMem = estimateMemMB(est.tris, file.size, true);
+    const canSimp = !simplify && simpMem <= LIMITS.refuseMB;
+    showLoadNote(`${esc(file.name)} is too large for this browser tab`,
+      `${est.exact ? '' : 'About '}${fmtTris(est.tris)} triangles (${est.format}, ${fmt(file.size / 1e6, 0)} MB). ${simplify ? 'Even simplified, loading' : 'Planning it at full detail'} needs an estimated ${fmtMem(mem)} of memory; a tab gets ~${fmtMem(LIMITS.refuseMB)} reliably, and running out would stop the tab without a word.`
+      + (canSimp ? ' Simplified for planning it needs ≈ ' + fmtMem(simpMem) + '.' : ' Reduce it first (e.g. Blender Decimate, Meshmixer Reduce) or use the command-line planner (<code>print-splitter plan</code>), which has no browser memory limit.'),
+      canSimp ? [['Simplify and load', () => upload(file, { full: false })]] : []);
+    if (canSimp) S.fullDetail[fileKey(file)] = false;
+    return;
+  }
+  const stages = LOAD_STAGES.filter(([k]) => (simplify || (k !== 'simplify' && k !== 'measure')) && (local || ['parse', 'repair', 'index', 'kernel'].includes(k)));
+  const title = opts.restore ? `Restoring ${file.name}` : `Loading ${file.name}`;
+  // nothing may run against the planner while it (re)loads
+  S.workerReady = false;
+  for (const id of ['autoSplit', 'buildBtn', 'exportBtn']) $(id).disabled = true;
+  PROG.start(title, { kind: 'load', stages, est: estimateLoadSec(est.tris, simplify), cancel: BE.canCancel ? () => BE.cancel() : null,
+    message: `${est.exact ? '' : '~'}${fmtTris(est.tris)} triangles${simplify ? ` · will simplify to ≤ ${fmtTris(LIMITS.target)} for planning` : ''}${local && mem > LIMITS.warnMB ? ` · needs ≈ ${fmtMem(mem)} of memory` : ''}` });
+  const loadOpts = { simplify: simplify ? 'auto' : 'off', threshold: LIMITS.threshold, target: LIMITS.target, maxError: LIMITS.maxError, keepOriginal: LIMITS.keepOriginal };
+  crumbSet({ what: 'load', name: file.name, tris: est.tris, full: !simplify });
+  const scale = opts.restore && S.model ? S.model.scale : 1;
   try {
-    const info = await BE.load(file, (m, f) => busy(m, f));
-    await onModel(info);
-  } catch (err) { busy(false); toast(err.message, true, 8000); }
+    let info = await BE.load(file, (m) => PROG.update(m), loadOpts);
+    if (scale !== 1) info = await BE.scale(info, scale);
+    S.file = file; S.loadOpts = loadOpts; S.loadEst = est; S.fullDetail[fileKey(file)] = !simplify;
+    PROG.setStage('kernel');
+    await onModel(info, { restore: opts.restore, loadSec: PROG.elapsed() });
+    crumbClear();
+    PROG.end();
+  } catch (err) {
+    crumbClear();
+    PROG.end();
+    loadFailed(err, file, est, simplify);
+  }
+}
+
+function loadFailed(err, file, est, simplified) {
+  if (err.kind === 'cancelled') {
+    // the planner was stopped; whatever it held is gone
+    resetModel();
+    toast(`Loading ${file.name} cancelled`);
+    return;
+  }
+  if (err.kind === 'watertight') {
+    resetModel();
+    showLoadNote(`${esc(file.name)} is not a closed solid`, esc(err.message));
+    return;
+  }
+  if (err.kind === 'memory') {
+    resetModel();
+    showLoadNote(`Out of memory while loading ${esc(file.name)}`, `${esc(err.message)} (${fmtTris(est.tris)} triangles${simplified ? ', simplified' : ', full detail'}).`,
+      !simplified && est.tris > 200000 ? [['Simplify and load', () => { S.fullDetail[fileKey(file)] = false; upload(file, { full: false }); }]] : []);
+    return;
+  }
+  toast(err.message, true, 9000);
+}
+
+function resetModel() {
+  S.model = null; S.plan = null; S.built = null; S.export = null; S.sel = {}; S.workerReady = false;
+  $('autoSplit').disabled = true; $('buildBtn').disabled = true; $('exportBtn').disabled = true;
+  for (const id of ['modelInfo', 'meshNote', 'planSummary', 'cutEditor', 'partEditor', 'mapWrap', 'buildInfo', 'exportInfo', 'unitRow', 'detailRow']) $(id).classList.add('hidden');
+  $('faceList').innerHTML = '';
+  $('modelTitle').textContent = '';
+  if (jed.open) jed.close();
+  viewer.clear('parts'); viewer.clear('plates');
+  if (viewer.clearAll) viewer.clearAll();
+  $('empty').classList.remove('hidden');
+  hud();
+}
+
+function showLoadNote(title, html, actions = []) {
+  const n = $('loadNote');
+  n.innerHTML = `<h4>${title}</h4><p>${html}</p>${actions.length ? `<div class="btns">${actions.map((a, i) => `<button class="small" data-act="${i}">${esc(a[0])}</button>`).join('')}</div>` : ''}`;
+  actions.forEach((a, i) => n.querySelector(`[data-act="${i}"]`).addEventListener('click', a[1]));
+  n.classList.remove('hidden');
+  n.scrollIntoView({ block: 'nearest' });
+}
+function hideNote(id) { $(id).classList.add('hidden'); }
+
+// the tab died during the previous visit (most likely out of memory)
+function crashNote(c) {
+  if (!c) return;
+  const what = c.what === 'plan' ? 'planning' : 'loading';
+  showLoadNote(`The last ${what} of ${esc(c.name)} stopped the tab`,
+    `It was ${what} ${fmtTris(c.tris)} triangles${c.full ? ' at full detail' : ''} and the tab ended before it finished. That is almost always the browser running out of memory; a file problem would have shown an explanation instead. ${c.full ? 'Load it again with simplification (the default above ' + fmtTris(LIMITS.threshold) + ' triangles).' : 'Close other tabs, or plan it with the command-line tool.'}`);
 }
 async function loadSample(name) {
   busy(`Fetching sample ${name}`);
@@ -253,10 +371,11 @@ async function loadSample(name) {
   } catch (err) { busy(false); toast(err.message, true); }
 }
 
-async function onModel(info) {
+async function onModel(info, o = {}) {
   S.model = info;
+  S.kernelFull = false;
   S.plan = null; S.built = null; S.export = null; S.sel = {}; S.comparison = null; S.planWasAuto = false;
-  busy('Loading repaired mesh', null);
+  busy(info.simplified && !info.simplified.failed ? 'Loading the simplified mesh into the 3D view' : 'Loading repaired mesh', null);
   const buf = await BE.mesh(info);
   const dv = new DataView(buf);
   const nv = dv.getUint32(4, true), nt = dv.getUint32(8, true);
@@ -273,12 +392,79 @@ async function onModel(info) {
   } catch (err) { toast('Geometry kernel rejected the mesh: ' + err.message, true, 10000); S.workerReady = false; }
   busy(false);
   renderModelInfo();
+  renderMeshNote(o.loadSec);
+  renderDetailRow();
   $('autoSplit').disabled = false;
   $('buildBtn').disabled = true; $('exportBtn').disabled = true;
   $('planSummary').classList.add('hidden'); $('cutEditor').classList.add('hidden'); $('partEditor').classList.add('hidden');
   $('faceList').innerHTML = ''; $('mapWrap').classList.add('hidden');
   $('buildInfo').classList.add('hidden'); $('exportInfo').classList.add('hidden');
   hud();
+}
+
+// What the planner is working on, how far it is from the file, and how to
+// change that. Shown under the model info.
+function renderMeshNote(loadSec) {
+  const m = S.model, n = $('meshNote');
+  const sm = m.simplified;
+  const local = BE.mode === 'local';
+  const est = S.loadEst || { tris: m.tris };
+  const planEst = estimatePlanSec(m.tris);
+  const fullMem = S.file ? estimateMemMB(est.tris, S.file.size, false) : 0;
+  const fullPlan = estimatePlanSec(est.tris);
+  let html = '', cls = '', btns = [];
+  if (sm && !sm.failed) {
+    html = `<h4>Simplified for planning: ${fmtTris(sm.inputTris)} → ${fmtTris(sm.outputTris)} triangles</h4>
+      <p>Measured deviation from your file: <span class="num">max ${fmt(sm.maxDev, 3)} mm</span>, <span class="num">mean ${fmt(sm.meanDev, 4)} mm</span> over ${fmtTris(sm.samples)} sample points${sm.maxDev < 0.1 ? `, well under one ${fmt(+$('nozzle').value, 1)} mm nozzle line` : ''}. ${sm.limited ? `Stopped at ${fmtTris(sm.outputTris)} to stay within ${fmt(LIMITS.maxError, 2)} mm. ` : ''}Cuts and joints are planned on the simplified mesh; ${m.originalKept ? 'parts are cut from your <b>full-detail original</b> with the same planes and joints (step 5).' : 'the original is too large to keep, so <b>exports are cut from the simplified mesh</b>.'}</p>
+      <p class="small mute">Took ${fmtDur(sm.seconds)}. Auto split ≈ ${fmtDur(planEst)} now; at full detail ≈ ${fmtDur(fullPlan)} and ≈ ${fmtMem(fullMem)} of memory.</p>`;
+    if (fullMem <= LIMITS.refuseMB) btns.push(['Use full detail', () => { if (confirm(`Plan on all ${fmtTris(sm.inputTris)} triangles?\n\nLoading and planning will take about ${fmtDur(estimateLoadSec(sm.inputTris, false) + fullPlan)} and need about ${fmtMem(fullMem)} of memory. If the browser runs out, the tab stops and you will have to reload the page.`)) { S.fullDetail[fileKey(S.file)] = true; upload(S.file, { full: true }); } }, `≈ ${fmtDur(fullPlan)} to plan, ≈ ${fmtMem(fullMem)}`]);
+    else btns.push(['Use full detail', null, `needs ≈ ${fmtMem(fullMem)}: more than a tab can reliably get`]);
+  } else if (sm && sm.failed) {
+    cls = 'warn';
+    html = `<h4>Large mesh: ${fmtTris(m.tris)} triangles, not simplified</h4><p>Simplification could not keep the mesh closed (${esc(sm.failed)}), so the planner uses every triangle. Auto split ≈ ${fmtDur(planEst)}; you can cancel it.</p>`;
+  } else if (local && S.file && est.tris > LIMITS.threshold) {
+    cls = 'warn';
+    html = `<h4>Full detail: ${fmtTris(m.tris)} triangles</h4><p>Auto split ≈ ${fmtDur(planEst)} and ≈ ${fmtMem(estimateMemMB(m.tris, S.file.size, false))} of memory. Simplifying first keeps the deviation to a few hundredths of a mm and plans much faster.</p>`;
+    btns.push(['Simplify for planning', () => { S.fullDetail[fileKey(S.file)] = false; upload(S.file, { full: false }); }]);
+  } else if (planEst > 30) {
+    html = `<h4>Large mesh: ${fmtTris(m.tris)} triangles</h4><p>Auto split takes ≈ ${fmtDur(planEst)} in this browser; progress is shown step by step and you can cancel it.</p>`;
+  } else { n.classList.add('hidden'); return; }
+  n.className = 'meshnote ' + cls;
+  n.innerHTML = html + (btns.length ? `<div class="btns">${btns.map((b, i) => `<button class="small" data-mb="${i}" ${b[1] ? '' : 'disabled'} ${b[2] ? `title="${esc(b[2])}"` : ''}>${esc(b[0])}</button>${b[2] ? `<span class="small mute">${esc(b[2])}</span>` : ''}`).join('')}</div>` : '');
+  btns.forEach((b, i) => { if (b[1]) n.querySelector(`[data-mb="${i}"]`).addEventListener('click', b[1]); });
+}
+
+function renderDetailRow() {
+  const m = S.model, r = $('detailRow');
+  const sm = m && m.simplified;
+  if (!sm || sm.failed) { r.classList.add('hidden'); return; }
+  if (m.originalKept) {
+    r.innerHTML = `<label><input type="checkbox" id="useFull" ${S.useFull ? 'checked' : ''}> Cut parts from the full-detail original (${fmtTris(sm.inputTris)} triangles)</label>
+      <span class="mute">Same planes and joints as planned. ${sm.inputTris > 1500000 ? 'Building takes longer and needs more memory than the simplified mesh.' : ''} Unticked: parts come from the simplified mesh (max deviation ${fmt(sm.maxDev, 3)} mm).</span>`;
+    $('useFull').addEventListener('change', (e) => { S.useFull = e.target.checked; });
+  } else {
+    r.innerHTML = `<span class="warnc">Exports are cut from the simplified mesh (${fmtTris(m.tris)} triangles, max deviation ${fmt(sm.maxDev, 3)} mm): the original was too large to keep in this tab.</span>`;
+  }
+  r.classList.remove('hidden');
+}
+
+// put the full-detail original (or back the planning mesh) into the
+// geometry kernel before building
+async function kernelDetail(full) {
+  if (!!full === S.kernelFull) return;
+  if (full) {
+    busy(`Loading the full-detail original (${fmtTris(S.model.simplified.inputTris)} triangles) into the geometry kernel`, null);
+    const buf = await BE.fullMesh();
+    if (!buf) return;
+    const dv = new DataView(buf);
+    const nv = dv.getUint32(4, true), nt = dv.getUint32(8, true);
+    await work('mesh', { mesh: { positions: new Float32Array(buf, 12, nv * 3), indices: new Uint32Array(buf, 12 + nv * 12, nt * 3) } }, 'meshok', [buf]);
+    S.kernelFull = true;
+  } else {
+    busy('Loading the planning mesh into the geometry kernel', null);
+    await work('mesh', { mesh: { positions: S.mesh.positions.slice(), indices: S.mesh.indices.slice() } }, 'meshok');
+    S.kernelFull = false;
+  }
 }
 
 function renderModelInfo() {
@@ -298,7 +484,7 @@ function renderModelInfo() {
   if (r.shells > 1) badges.push(`<span class="badge">${r.shells} shells</span>`);
   $('modelInfo').innerHTML = `<div class="kv"><b>Size</b><span>${fmt(m.size[0])} × ${fmt(m.size[1])} × ${fmt(m.size[2])} mm</span>
     <b>Volume</b><span>${fmt(m.volume / 1000)} cm³ (≈ ${fmt(m.volume / 1000 * 1.24, 0)} g PLA solid)</span>
-    <b>Mesh</b><span>${m.tris.toLocaleString()} triangles · ${m.format}</span></div>
+    <b>Mesh</b><span>${m.simplified && !m.simplified.failed ? `${m.simplified.inputTris.toLocaleString()} triangles, planned on ${m.tris.toLocaleString()}` : `${m.tris.toLocaleString()} triangles`} · ${m.format}</span></div>
     <div class="badges">${badges.join('')}</div>
     ${(r.notes || []).map((n) => `<div class="small warnc">${esc(n)}</div>`).join('')}
     ${m.unitHint ? `<div class="small warnc">⚠ ${esc(m.unitHint)}</div>` : ''}`;
@@ -371,13 +557,39 @@ async function runPlan(mode, opts = {}) {
     body.seams = opts.seams || seamOverrides();
     body.styles = styleOverrides();
   }
-  busy(mode === 'auto' ? 'Planning cuts' : 'Updating plan', null);
+  const splitting = mode === 'auto' || st.autoSplit;
+  const tris = S.model.tris;
+  PROG.start(mode === 'auto' ? 'Planning cuts' : splitting ? 'Completing the split' : 'Updating joints', {
+    kind: 'plan', stages: PLAN_STAGES.filter(([k]) => splitting || k !== 'cut'),
+    est: splitting ? estimatePlanSec(tris) : 2 + 1.5e-5 * tris,
+    cancel: BE.canCancel ? () => BE.cancel() : null,
+    message: splitting ? `${fmtTris(tris)} triangles${S.model.simplified && !S.model.simplified.failed ? ' (simplified)' : ''} · estimate ≈ ${fmtDur(estimatePlanSec(tris))}` : '',
+  });
+  if (!splitting) PROG.setStage('faces');
+  if (splitting) crumbSet({ what: 'plan', name: S.model.name, tris, full: !S.model.simplified });
   try {
-    const plan = await BE.plan(S.model, body, (m) => busy(m[0].toUpperCase() + m.slice(1), null));
+    const plan = await BE.plan(S.model, body, (m) => PROG.update(m));
+    crumbClear();
     if (seq !== S.planSeq) return;
-    busy(false);
+    PROG.end();
     onPlan(plan, mode === 'auto');
-  } catch (err) { busy(false); toast(err.message, true, 8000); }
+  } catch (err) {
+    crumbClear();
+    PROG.end();
+    if (err.kind === 'cancelled' || err.kind === 'memory' || err.kind === 'crash') {
+      // the planner's state went with it: reload the model quietly
+      if (err.kind === 'memory') showLoadNote(`Out of memory while planning ${esc(S.model.name)}`, `${esc(err.message)} The model is being reloaded${S.model.simplified ? '' : ' simplified'}.`);
+      else toast(err.kind === 'cancelled' ? 'Planning cancelled · restoring the model' : err.message, err.kind !== 'cancelled', 6000);
+      const keepPlan = S.plan;
+      if (err.kind === 'memory' && S.file && !S.model.simplified) S.fullDetail[fileKey(S.file)] = false;
+      if (S.file) {
+        await upload(S.file, { restore: true });
+        if (keepPlan && S.model && !err.kind.startsWith('mem')) { S.plan = keepPlan; onPlan(keepPlan, false); }
+      } else resetModel();
+      return;
+    }
+    toast(err.message, true, 8000);
+  }
 }
 
 function onPlan(plan, fresh) {
@@ -625,9 +837,12 @@ function mapOpts() {
 
 function setAddMode(on) {
   S.addMode = on;
+  // offer the chosen joint style first, unless the user picked another kind
+  if (on && !S.addKindTouched) { const st = $('jointStyle').value; if ([...$('addKind').options].some((o) => o.value === st)) $('addKind').value = st; }
   $('addJointMode').classList.toggle('on', on);
-  jmap.addMode = on;
+  $('jointDlg').classList.toggle('adding', on);
   if (S.plan && S.face != null) jmap.set(S.plan, S.plan.faces.find((x) => x.node === S.face), mapOpts());
+  if (jed.open) jed.render();
 }
 
 // client-side estimate of the footprint radius (server recomputes exactly)
@@ -655,6 +870,10 @@ function selectJoint(id) {
 }
 
 function renderJointPanel() {
+  renderJointPanelInner();
+  renderJointPanelHook();
+}
+function renderJointPanelInner() {
   if (!S.plan || S.face == null) return;
   const f = S.plan.faces.find((x) => x.node === S.face);
   if (!f) return;
@@ -714,6 +933,7 @@ function renderJointPanel() {
   });
   $('jDel').addEventListener('click', () => deleteJoint(j.id));
 }
+function renderJointPanelHook() { if (jed.open) jed.render(); }
 
 function minWall() { return Math.max(1.2, 2 * +$('nozzle').value * 1.05); }
 // badge + actions for a contact that did not get the chosen style
@@ -806,7 +1026,10 @@ async function build() {
   busy('Building parts in your browser (Manifold WASM)', 0.05);
   const t0 = performance.now();
   try {
+    await kernelDetail(S.useFull && S.model.originalKept);
+    busy('Building parts in your browser (Manifold WASM)', 0.05);
     const res = await work('build', { plan: S.plan }, 'built');
+    res.fromFull = S.kernelFull;
     S.built = res;
     viewer.pins = res.pins;
     viewer.setParts(res.parts, S.plan);
@@ -825,8 +1048,9 @@ function renderBuild(res, ms) {
   const rows = res.parts.map((p) => `<tr><td><span class="sw" style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${partColor(leafIdx[p.leaf])}"></span> ${p.label}</td><td>${fmt(p.volume / 1000)} cm³</td><td>${p.status === 'NoError' ? '<span class="okc">manifold ✓</span>' : '<span class="badc">' + p.status + '</span>'}</td><td>genus ${p.genus}</td></tr>`).join('');
   const pins = res.pins.map((p) => `<tr><td>pin Ø${fmt(p.d, 2)}</td><td>${fmt(p.len)} mm</td><td>× ${p.count}</td><td></td></tr>`).join('');
   $('buildInfo').innerHTML = `<div>${ok ? '<span class="okc">All parts are closed manifolds.</span>' : '<span class="badc">Some parts failed.</span>'} ${fmt(ms / 1000, 1)} s</div>
+    <div class="small ${res.fromFull ? 'okc' : 'mute'}">${res.fromFull ? `Cut from the full-detail original (${fmtTris(S.model.simplified.inputTris)} triangles).` : S.model.simplified && !S.model.simplified.failed ? `Cut from the simplified mesh (${fmtTris(S.model.tris)} triangles; max deviation ${fmt(S.model.simplified.maxDev, 3)} mm).` : ''}</div>
     <table class="ver">${rows}${pins}</table>
-    <div class="small">Mating checks: max interference ${fmt(maxInt, 3)} mm³ ${maxInt < 0.05 ? '<span class="okc">✓</span>' : '<span class="badc">✗</span>'} · material added outside the model ${fmt(res.outside, 2)} mm³ · voids (holes + clearances) ${fmt(100 * res.voids / res.original, 2)} %</div>`;
+    <div class="small">Mating checks: max interference ${fmt(maxInt, 3)} mm³ ${maxInt < 0.05 ? '<span class="okc">✓</span>' : '<span class="badc">✗</span>'}${res.light ? ` (within 40 mm of each cut) · whole-model void/outside checks skipped at ${fmtTris(res.tris)} triangles` : ` · material added outside the model ${fmt(res.outside, 2)} mm³ · voids (holes + clearances) ${fmt(100 * res.voids / res.original, 2)} %`}</div>`;
   $('buildInfo').classList.remove('hidden');
 }
 
@@ -869,7 +1093,7 @@ async function exportPkg() {
     const parts = [], files = [];
     S.built.parts.forEach((p) => { parts.push({ label: p.label, leaf: p.leaf, kind: 'part', count: 1, file: 'm' + files.length }); files.push(psm(p.mesh)); });
     S.built.pins.forEach((p) => { parts.push({ label: `pin_d${fmt(p.d, 2)}_L${fmt(p.len)}`, leaf: -1, kind: 'pin', count: p.count, file: 'm' + files.length, d: p.d, len: p.len }); files.push(psm(p.mesh)); });
-    const res = await BE.export(S.model, parts, files, S.plan, null, png, (m) => busy(m[0].toUpperCase() + m.slice(1), null));
+    const res = await BE.export(S.model, parts, files, S.plan, null, png, (m) => busy(msgText(m), null));
     S.export = res;
     $('exportInfo').innerHTML = `<div><b>${res.parts.length}</b> files on <b>${res.plates}</b> plate(s) ${res.warnings && res.warnings.length ? '<span class="warnc">· ' + esc(res.warnings.join('; ')) + '</span>' : '<span class="okc">· all closed, all fit</span>'}</div>${linkList(res)}`;
     $('exportInfo').classList.remove('hidden');
@@ -897,4 +1121,5 @@ async function coupon() {
 init().catch((err) => toast('Startup failed: ' + err.message, true, 15000));
 window.__ps = S; // for debugging and end-to-end tests
 window.__jmap = jmap;
+window.__jed = jed;
 window.__viewer = viewer;
