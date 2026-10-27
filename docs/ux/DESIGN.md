@@ -238,7 +238,7 @@ Before is left, after is right. "Before" is the first design build, fb606e0. The
 
 - `go test ./...` and `go vet ./...` (including `GOOS=js GOARCH=wasm go vet ./cmd/splitter-wasm`) PASS. New Go tests: `geom.QuarterTurn` accepts the four quarter-turn cases and rejects mirrors, scaling, repeated columns, short input and non-integer rotations. The server rotate test swaps W and D on a scaled box, keeps the scale, keeps the mesh closed with positive volume and rejects bad input with HTTP 400.
 - New `e2e/design-r2.mjs`: **52 checks** at 1440×900, 1280×720 and 390×844. It covers the verdict headline, honest next step, rotate offer only when a quarter turn fits, applying the turn (W and D swap), the turned model planning as **one piece**, restoring the file orientation, framing margins, label clearance and overlap, failing-axis-only emphasis, one primary, pre-plan copy, panel end clearance and the More below behaviour.
-- The full browser suite (`scripts/e2e-all.sh`, now 18 suites with `design-r2`) is reported in the commit/handoff with the private-model check. Reproduce the captures with `e2e/design-r2-pairs.mjs` (bracket, any build) and `e2e/design-r2-shots.mjs` (any STL, with metrics).
+- Full browser suite (`scripts/e2e-all.sh`, now 18 suites with `design-r2`): **18/18 PASS**, including the private 226k-triangle helmet check, large-mesh, joints, support, WASM, touch and keyboard (still 4 activations to a downloaded ZIP). `guided-flow`, `design-r2`, `merge-expert` and `design-system` also pass against the deployed preview. Reproduce the captures with `e2e/design-r2-pairs.mjs` (bracket, any build) and `e2e/design-r2-shots.mjs` (any STL, with metrics).
 
 ### 7.8 Honest gaps after round 2
 
