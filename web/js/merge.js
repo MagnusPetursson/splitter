@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import {readiness} from './readiness.js';
 
 const $ = id => document.getElementById(id);
+import {plural} from './icons.js';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toLocaleString('en-US', {maximumFractionDigits: d});
 const phone = () => matchMedia('(max-width:760px)').matches;
@@ -70,9 +71,7 @@ export class MergeLayer {
     const S = this.S, step = document.body.dataset.step;
     if (!S.model) return 'Load a model to begin.';
     if (step === 'fit') {
-      const over = $('fitVerdict').classList.contains('over');
-      const t = $('fitVerdict').textContent.replace(/^[^:]+:\s*/, '');
-      return over ? t.split(' Splitting')[0].replace(/ for the usable space \([^)]*\)/g, '') : 'Fits as placed.';
+      return $('fitVerdict').dataset.summary || 'Fits as placed.';
     }
     if (!S.plan) return 'Ready to plan cuts.';
     const parts = S.plan.leaves.filter(l => !l.empty), bad = parts.filter(l => !l.fits).length;
@@ -203,7 +202,7 @@ export class MergeLayer {
     else if (document.body.dataset.step === 'join' && S.sel.patch != null && S.plan.patches[S.sel.patch]) { const p = S.plan.patches[S.sel.patch]; title = `Contact ${this.a.contactName(p)}`; facts = `${fmt(p.area || 0, 0)} mm² · ${S.plan.joints.filter(j => j.patch === p.id).length} pins${p.fallback ? ' · ' + p.fallback.reason : ''}. Joint settings are below.`; }
     else if (S.sel.cut != null && S.plan.tree.nodes[S.sel.cut]?.cut) { const n = S.plan.tree.nodes[S.sel.cut]; title = this.a.cutName(n.id); facts = `${n.locked ? 'Manual' : 'Automatic'} · offset ${fmt(n.cut.d, 1)} mm · ${n.reason || 'placed by you'}. Precise values are below; drag it in the view.`; }
     if ($('inspectorTitle').textContent !== title) $('inspectorTitle').textContent = title;
-    if ($('inspectorFacts').textContent !== facts) $('inspectorFacts').textContent = facts;
+    facts = plural(facts); if ($('inspectorFacts').textContent !== facts) $('inspectorFacts').textContent = facts;
   }
 
   // ---------- output state: one authoritative build/export status ----------
@@ -214,7 +213,7 @@ export class MergeLayer {
     if (!S.plan) { this.stale = false; this.hadBuild = false; }
     if (S.outputStale !== this.stale) { S.outputStale = this.stale; queueMicrotask(() => this.a.FLOW.sync()); }
     const el = $('outputState');
-    const text = S.export ? 'Downloads match the current plan.' : S.built ? 'Parts are built from the current plan. Downloads are not prepared yet.' : this.stale ? 'Changes since last build. Rebuild to update the parts and downloads.' : '';
+    const text = S.export ? 'Print package ready. Downloads match the current plan.' : S.built ? 'Parts are built from the current plan. Downloads are not prepared yet.' : this.stale ? 'Changes since last build. Rebuild to update the parts and downloads.' : '';
     el.hidden = !text; if (el.textContent !== text) el.textContent = text; el.dataset.state = S.export ? 'current' : S.built ? 'built' : this.stale ? 'stale' : '';
     const build = $('buildBtn'), label = this.stale && !S.built ? 'Rebuild parts' : 'Build parts';
     if (build.firstChild?.nodeType === 3 && build.firstChild.textContent.trim() !== label) build.firstChild.textContent = label + ' ';

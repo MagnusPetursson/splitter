@@ -9,7 +9,7 @@ try{for(const [device,width,height] of [['desktop',1440,900],['phone',390,844]])
  const ctx=await b.newContext({viewport:{width,height},isMobile:device==='phone',hasTouch:device==='phone'});await ctx.addInitScript(()=>{try{localStorage.setItem('ps.sheet','open')}catch{}});const p=await ctx.newPage();p.on('pageerror',e=>report.errors.push(e.message));
  await p.goto(url,{waitUntil:'networkidle'});await p.waitForFunction(()=>document.querySelector('#printer').options.length>5);await state(p,device+'-empty');
  await p.click('[data-sample="bracket_320mm.stl"]');await p.waitForFunction(()=>window.__ps.workerReady);await idle(p);await state(p,device+'-fit');
- check(device+' plan action states next consequence',/^Plan cuts for Prusa/.test(await p.locator('#flowNext').innerText()));
+ check(device+' plan action states next consequence',/^Plan cuts$/.test(await p.locator('#flowNext').innerText())&&/^Plan cuts for Prusa/.test(await p.locator('#flowNext').getAttribute('title'))&&/Prusa/.test(await p.locator('#fitVerdict').innerText()));
  check(device+' overflow in words',/76\.0 mm too wide/.test(await p.locator('#fitVerdict').innerText()));
  check(device+' labelled dimension order',/W × D × H/.test(await p.locator('#fitReadout').innerText()));
  check(device+' dimension annotation',await p.locator('#fitDimensions').isVisible());
@@ -25,7 +25,7 @@ try{for(const [device,width,height] of [['desktop',1440,900],['phone',390,844]])
  check(device+' both depth sides previewed',await p.locator('#pinDepthPreview [data-side]').count()===2);
  const old=await p.inputValue('#pinDepth');await p.fill('#pinDepth',String(+old+1));check(device+' changed Apply enabled',!(await p.locator('#pinApply').isDisabled()));check(device+' pending draft explicit',/Not applied/.test(await p.locator('#pinPopover').innerText()));await state(p,device+'-draft');await p.fill('#pinDepth',old);check(device+' reverting draft restores applied state',await p.locator('#pinApply').isDisabled());await p.click('#pinClose');
  check(device+' camera agrees with face-on',await p.inputValue('#cameraView')==='face');await p.click('#frameModel');check(device+' Fit clears face state',await p.locator('#viewFace').getAttribute('aria-pressed')==='false'&&await p.inputValue('#cameraView')==='iso');
- await p.click('#precisionMap summary');await state(p,device+'-map');check(device+' open map minus indicator',await p.locator('#precisionMap summary').evaluate(e=>getComputedStyle(e,'::before').content)==='"−"');
+ await p.click('#precisionMap summary');await state(p,device+'-map');check(device+' open map disclosure indicator',await p.locator('#precisionMap summary').evaluate(e=>getComputedStyle(e,'::before').transform!=='none'&&e.parentElement.open));
  await p.click('#precisionMap summary');await p.click('#flowNext');await p.waitForFunction(()=>window.__ps.export,null,{timeout:600000});await idle(p);await state(p,device+'-export');await p.click('#expertMode');await state(p,device+'-expert');
  await ctx.close();
 }check('no console exceptions',report.errors.length===0);assert.ok(report.checks.every(c=>c.pass),report.checks.filter(c=>!c.pass).map(c=>c.name).join('\n'));console.log('PASS round-three context');}finally{fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(report,null,2));await b.close();}

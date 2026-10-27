@@ -1,5 +1,6 @@
 // Five workflow steps share one model and plan. No duplicated planner state.
 import {readiness} from './readiness.js';
+import {ico} from './icons.js';
 const $ = id => document.getElementById(id);
 const steps = ['load','fit','split','join','export'];
 const panels = ['stepModel','stepPrinter','stepSplit','stepJoints','stepExport'];
@@ -95,7 +96,7 @@ export class GuidedFlow {
     $('readiness').classList.toggle('warnc',!ready.ok);
     $('loadedActions').hidden=!S.model;$('drop').hidden=!!S.model;
     $('loadedStrip').hidden=!S.model||this.step==='load';
-    $('loadedStripText').textContent=S.model?`✓ ${S.model.name} loaded · ${Math.abs((S.model.scale||1)-1)<1e-9?'original scale':`scale ${S.model.scale}×`}`:'';
+    $('loadedStripText').textContent=S.model?`${S.model.name} loaded · ${Math.abs((S.model.scale||1)-1)<1e-9?'original scale':`scale ${S.model.scale}×`}`:'';
     document.querySelector('#stepModel .samples').hidden=!!S.model;
     $('loadHeading').textContent=S.model?`${S.model.name.replace(/\.[^.]+$/,'').replace(/_/g,' ')} loaded`:'Start with your model.';
     document.querySelector('#stepModel .step-intro').textContent=S.model?`${Math.abs((S.model.scale||1)-1)<1e-9?'Original size retained.':`Scale ${S.model.scale}× applied.`} Replace the file or review its measurements below.`:'Keep its size. We’ll make the pieces fit your printer.';
@@ -109,13 +110,13 @@ export class GuidedFlow {
       const state=j===i?'current':done?'done':blocked?'blocked':'upcoming';
       const why=blocked?(!S.model?'Load a model':S.settingsDirty?'Recalculate split':'Find cuts first'):state==='done'?'Done':state==='current'?'Current':'Available';
       b.dataset.state=state;b.title=`${names[j]} · ${why}`;b.removeAttribute('aria-label');b.setAttribute('aria-description',why);
-      b.querySelector('small').textContent=why;b.classList.toggle('done',done);
-      b.querySelector('.step-number').textContent=done&&j!==i?'✓':String(j+1);b.querySelector('.step-number').setAttribute('aria-hidden','true');
+      b.querySelector('small').textContent=why;b.querySelector('small').classList.add('sr-only');b.classList.toggle('done',done);
+      {const n=b.querySelector('.step-number'),v=done&&j!==i?'done':String(j+1);if(n.dataset.v!==v){n.dataset.v=v;n.innerHTML=v==='done'?ico('check'):v;}}b.querySelector('.step-number').setAttribute('aria-hidden','true');
     });
     $('flowBack').disabled=busy||i===0;
     const canAct=i===0?!!S.model:i<=2?!!S.model:i>=3?ready.ok:false;
     $('flowNext').disabled=busy||!canAct;
-    $('flowNext').textContent=i===0?(S.model?'Check printer →':'Choose a model first'):i===1||i===2&&(!S.plan||S.settingsDirty)?`Plan cuts for ${this.printerName()}`:i===2?'Review joints →':!ready.ok?(S.pendingPin?'Apply or discard pin edits':'Resolve warnings first'):S.export?'Download ZIP':S.built?'Prepare downloads':S.outputStale?'Rebuild & prepare downloads':'Build & prepare downloads';
+    {const nt=i===0?(S.model?'Check printer fit':'Load a model to continue'):i===1||i===2&&(!S.plan||S.settingsDirty)?`Plan cuts for ${this.printerName()}`:i===2?'Review joints':!ready.ok?(S.pendingPin?'Apply or discard pin edits':'Resolve warnings first'):S.export?'Download ZIP':S.built?'Prepare downloads':S.outputStale?'Rebuild & prepare downloads':'Build & prepare downloads';const m=/^Plan cuts for (.+)$/.exec(nt);if($('flowNext').dataset.t!==nt){$('flowNext').dataset.t=nt;$('flowNext').title=nt;$('flowNext').textContent=m?'Plan cuts':nt;}}
     const editing=!$('jointDlg').classList.contains('hidden');
     $('side').inert=busy||editing||!!this.expanded;
     for(const el of document.querySelectorAll('.top, #flowNav, .flow-footer'))el.inert=editing||!!this.expanded;
@@ -123,7 +124,7 @@ export class GuidedFlow {
     $('views').inert=busy;$('viewerTools').inert=busy;
     // Presentations are views of the current step, not another navigation.
     $('views').hidden=!S.model||(!this.expert&&this.step!=='export');$('viewerTools').hidden=!S.model;
-    $('viewCaption').textContent=({load:'LOADED MODEL',fit:'PRINTER FIT',split:'EDIT CUTS IN 3D',join:'PLACE & CHECK JOINTS',export:'INSPECT BUILT PARTS'})[this.step];
+    $('viewCaption').textContent=({load:'Model',fit:'Printer fit',split:'Cuts',join:'Joints',export:'Built parts'})[this.step];
     for(const b of document.querySelectorAll('#views button')) {
       b.disabled=(b.dataset.view==='cuts'&&!S.plan)||(['parts','plates'].includes(b.dataset.view)&&!S.built);
       b.setAttribute('aria-pressed',String(this.viewer.view===b.dataset.view));
@@ -133,9 +134,11 @@ export class GuidedFlow {
     $('spreadParts').textContent=this.viewer.explode>=.02?'Exploded':'Assembled';
     const x=+$('bedX').value,y=+$('bedY').value,z=+$('bedZ').value,m=+$('margin').value;
     const u=[Math.max(0,x-2*m),Math.max(0,y-2*m),Math.max(0,z-m)];
-    $('fitReadout').innerHTML=`<b>W × D × H</b> · mm<small>${x} × ${y} × ${z} nominal<br>Usable: ${u.join(' × ')} mm.<br>Reserve ${m} mm at each side and at the top for clearance; nothing is scaled.</small>`;
+    $('fitReadout').innerHTML=`<div class="readout-head"><b>Usable volume</b><span>W × D × H · mm</span></div><dl class="metrics">${['Width','Depth','Height'].map((n,k)=>`<div class="${S.model&&S.model.size[k]>u[k]?'over':''}"><dt>${n}</dt><dd>${u[k]}${S.model?` <span>model ${S.model.size[k].toFixed(1)}</span>`:''}</dd></div>`).join('')}</dl><p>Bed ${x} × ${y} × ${z} mm. Reserve ${m} mm at each side and at the top for clearance; nothing is scaled.</p>`;
     const over=S.model?S.model.size.map((s,k)=>s>u[k]?`${(s-u[k]).toFixed(1)} mm too ${['wide','deep','tall'][k]} for the usable space (${['Width','Depth','Height'][k]} ${s.toFixed(1)} mm > ${u[k]} mm).`:'').filter(Boolean):[];
-    $('fitVerdict').textContent=S.model?`${this.printerName()}: ${over.length?over.join(' ')+' Splitting finds pieces that fit. Review the cuts and joints before anything is built.':'Whole model fits as placed. The planner can keep it in one piece.'}`:'';
+    {const pn=this.printerName(),head=over.map(o=>o.split(' for the usable')[0]),k=(over.length?'o':'f')+pn+over.join('|');if($('fitVerdict').dataset.k!==k){$('fitVerdict').dataset.k=k;$('fitVerdict').dataset.summary=over.length?head.join(' · ')+'.':'Fits as placed.';
+      $('fitVerdict').innerHTML=!S.model?'':over.length?`${ico('alert')}<div><b>${head.join(' · ')}</b><p>${over.map(o=>o.replace(/^.*\((\w+) ([\d.]+) mm > ([\d.]+) mm\)\.$/,'$1 $2 mm, usable $3 mm')).join(' · ')} on <span class="pn"></span> (the usable space).</p><p class="sub">Splitting finds pieces that fit. Review the cuts and joints before anything is built.</p></div>`:`${ico('success')}<div><b>Whole model fits as placed</b><p>on <span class="pn"></span>. The planner can keep it in one piece.</p></div>`;
+      $('fitVerdict').querySelectorAll('.pn').forEach(e=>e.textContent=pn);}}
     $('fitVerdict').classList.toggle('over',!!over.length);
     const simp=S.model?.simplified;$('fitMeshNote').hidden=!simp;
     $('fitMeshNote').textContent=simp?`Simplified for planning: ${simp.inputTris.toLocaleString()} → ${simp.outputTris.toLocaleString()} triangles. Maximum sampled deviation ${simp.maxDev.toFixed(3)} mm. ${S.model.originalKept?'Full-detail original retained for export.':'Export will use this simplified mesh.'} See Load for the complete repair and simplification report.`:'';

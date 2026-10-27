@@ -6,6 +6,7 @@ import { createBackend } from './backend.js';
 import { GuidedFlow } from './flow.js';
 import { DirectEditor } from './direct-editor.js';
 import { MergeLayer } from './merge.js';
+import { ico, plural } from './icons.js';
 import { PlanHistory, readiness } from './readiness.js';
 import { LIMITS, estimateTris, estimateMemMB, estimateLoadSec, estimatePlanSec, fmtTris, fmtDur, fmtMem, msgText, Progress, LOAD_STAGES, PLAN_STAGES, crumbSet, crumbClear, crumbTake } from './progress.js';
 
@@ -27,7 +28,8 @@ const S = {
 let toastT = 0;
 function toast(msg, err = false, ms = 4200) {
   const t = $('toast');
-  t.textContent = msg;
+  t.innerHTML = `${ico(err ? 'error' : 'info')}<span></span>`;
+  t.lastChild.textContent = msg;
   t.classList.toggle('err', err);
   t.classList.remove('hidden');
   clearTimeout(toastT);
@@ -345,7 +347,7 @@ function loadFailed(err, file, est, simplified) {
   }
   if (err.kind === 'watertight') {
     resetModel();
-    showLoadNote(`${esc(file.name)} is not a closed solid`, esc(err.message));
+    showLoadNote(`${esc(file.name)} is not a closed solid`, `${esc(cap1(err.message))}. Splitting needs a watertight mesh: close the holes in your modelling tool, or try its “make solid” repair.`, [], 'error');
     return;
   }
   if (err.kind === 'memory') {
@@ -354,8 +356,14 @@ function loadFailed(err, file, est, simplified) {
       !simplified && est.tris > 200000 ? [['Simplify and load', () => { S.fullDetail[fileKey(file)] = false; upload(file, { full: false }); }]] : []);
     return;
   }
+  if (file) {
+    resetModel();
+    showLoadNote(`Couldn’t load ${esc(file.name)}`, `${esc(cap1(err.message))}. Re-export it from your modelling tool as STL, OBJ or 3MF, then choose it again.`, [], 'error');
+    return;
+  }
   toast(err.message, true, 9000);
 }
+const cap1 = (s) => String(s || '').replace(/^./, (c) => c.toUpperCase()).replace(/\.$/, '');
 
 function resetModel() {
   history.reset();S.settingsDirty=false;S.addMode=false;S.face=null;S.file=null;S.mesh=null;
@@ -372,10 +380,12 @@ function resetModel() {
   FLOW?.sync();
 }
 
-function showLoadNote(title, html, actions = []) {
+function showLoadNote(title, html, actions = [], tone = 'warn') {
   const n = $('loadNote');
-  n.innerHTML = `<h4>${title}</h4><p>${html}</p>${actions.length ? `<div class="btns">${actions.map((a, i) => `<button class="small" data-act="${i}">${esc(a[0])}</button>`).join('')}</div>` : ''}`;
-  actions.forEach((a, i) => n.querySelector(`[data-act="${i}"]`).addEventListener('click', a[1]));
+  const all = [...actions, ['Choose a file', () => $('fileInput').click()]];
+  n.dataset.tone = tone;
+  n.innerHTML = `<div class="note-head">${ico(tone === 'error' ? 'error' : 'alert')}<h4>${title}</h4></div><p>${html}</p><div class="btns">${all.map((a, i) => `<button class="${i === 0 && actions.length ? 'primary' : ''}" data-act="${i}">${esc(a[0])}</button>`).join('')}<a class="context-help" href="guide.html#faq" target="_blank" rel="noopener">How to fix a model${ico('external')}<span class="sr-only"> (new tab)</span></a></div>`;
+  all.forEach((a, i) => n.querySelector(`[data-act="${i}"]`).addEventListener('click', a[1]));
   n.classList.remove('hidden');
   n.scrollIntoView({ block: 'nearest' });
 }
@@ -504,12 +514,12 @@ function renderModelInfo() {
   const badges = [];
   badges.push(r.closed ? '<span class="badge ok">watertight</span>' : '<span class="badge bad">not closed</span>');
   if (r.weldedVertices) badges.push(`<span class="badge">${r.weldedVertices.toLocaleString()} vertices welded</span>`);
-  if (r.holesFilled) badges.push(`<span class="badge warn">${r.holesFilled} hole(s) capped</span>`);
+  if (r.holesFilled) badges.push(`<span class="badge warn">${plural(r.holesFilled + ' hole(s)')} capped</span>`);
   if (r.flippedFaces) badges.push(`<span class="badge warn">${r.flippedFaces.toLocaleString()} faces re-oriented</span>`);
-  if (r.invertedShells) badges.push(`<span class="badge warn">${r.invertedShells} inside-out shell(s) fixed</span>`);
+  if (r.invertedShells) badges.push(`<span class="badge warn">${plural(r.invertedShells + ' inside-out shell(s)')} fixed</span>`);
   if (r.duplicateRemoved) badges.push(`<span class="badge warn">${r.duplicateRemoved} duplicate faces removed</span>`);
   if (r.degenerateRemoved) badges.push(`<span class="badge warn">${r.degenerateRemoved} degenerate faces removed</span>`);
-  if (r.debrisRemoved) badges.push(`<span class="badge warn">${r.debrisRemoved} debris shell(s) dropped</span>`);
+  if (r.debrisRemoved) badges.push(`<span class="badge warn">${plural(r.debrisRemoved + ' debris shell(s)')} dropped</span>`);
   if (r.nonManifoldResolved) badges.push(`<span class="badge warn">${r.nonManifoldResolved} non-manifold edges split</span>`);
   if (r.shells > 1) badges.push(`<span class="badge">${r.shells} shells</span>`);
   $('modelInfo').innerHTML = `<div class="kv"><b>Size</b><span>${fmt(m.size[0])} × ${fmt(m.size[1])} × ${fmt(m.size[2])} mm</span>
@@ -517,7 +527,7 @@ function renderModelInfo() {
     <b>Mesh</b><span>${m.simplified && !m.simplified.failed ? `${m.simplified.inputTris.toLocaleString()} triangles, planned on ${m.tris.toLocaleString()}` : `${m.tris.toLocaleString()} triangles`} · ${m.format}</span></div>
     <div class="badges">${badges.join('')}</div>
     ${(r.notes || []).map((n) => `<div class="small warnc">${esc(n)}</div>`).join('')}
-    ${m.unitHint ? `<div class="small warnc">⚠ ${esc(m.unitHint)}</div>` : ''}`;
+    ${m.unitHint ? `<div class="small warnc">${ico('alert')}${esc(m.unitHint)}</div>` : ''}`;
   $('modelInfo').classList.remove('hidden');
   $('unitRow').classList.remove('hidden');
   $('scalePct').value = String(Math.round(m.scale * 100 * 1000) / 1000);
@@ -595,7 +605,7 @@ async function runPlan(mode, opts = {}) {
   }
   const splitting = mode === 'auto' || st.autoSplit;
   const tris = S.model.tris;
-  PROG.start(mode === 'auto' ? 'Planning cuts' : splitting ? 'Completing the split' : 'Updating joints', {
+  PROG.start(mode === 'auto' ? 'Planning cuts' : splitting ? 'Completing the split' : 'Updating joints', { subject: S.model?.name,
     kind: 'plan', stages: PLAN_STAGES.filter(([k]) => splitting || k !== 'cut'),
     est: splitting ? estimatePlanSec(tris) : 2 + 1.5e-5 * tris,
     cancel: BE.canCancel ? () => BE.cancel() : null,
@@ -680,7 +690,7 @@ function renderPlan() {
   }).join('');
   const cutChips = cuts.map((n) => `<button aria-pressed="${S.sel.cut === n.id}" class="chip ${S.sel.cut === n.id ? 'sel' : ''}" data-cut="${n.id}" title="${esc(n.reason || 'manual cut')}"><span class="sw" style="background:#e07a3f"></span>${cutName(n.id)}<span class="x">${axisName(n.cut.n)} ${fmt(n.cut.d, 0)}</span></button>`).join('');
   const fbs = p.patches.filter((x) => x.fallback || x.single);
-  const fallbackNote = fbs.length ? `<div class="fblist">${fbs.map((x) => `<button class="fbitem ${x.fallback ? '' : 'single'}" data-fbpatch="${x.id}" title="${esc(x.fallback ? x.fallback.why : (x.notes || []).join('; '))}">⚠ ${cutName(x.node)} ${contactName(x)}: ${x.fallback ? `${esc(fbText(x.fallback))}` : esc(singleNote(x))}</button>`).join('')}</div>` : '';
+  const fallbackNote = fbs.length ? `<div class="fblist">${fbs.map((x) => `<button class="fbitem ${x.fallback ? '' : 'single'}" data-fbpatch="${x.id}" title="${esc(x.fallback ? x.fallback.why : (x.notes || []).join('; '))}">${ico('alert')}${cutName(x.node)} ${contactName(x)}: ${x.fallback ? `${esc(fbText(x.fallback))}` : esc(singleNote(x))}</button>`).join('')}</div>` : '';
   $('planSummary').innerHTML = `${fallbackNote}<div><span class="big">${leaves.length}</span> part${leaves.length === 1 ? '' : 's'} · ${bad.length ? `<span class="badc">${bad.length} do not fit</span> <button class="small" id="autoComplete">Auto-complete</button>` : '<span class="okc">all fit</span>'} · calculated in ${fmt(p.timing.total, 1)} s</div>
     <div class="support-estimate"><b>Support proxy ≈ ${fmt(leaves.reduce((a, l) => a + (l.supportVolume || 0), 0) / 1000, 0)} cm³</b><br><span class="small mute">Downward faces steeper than 45° × height to bed. Before joints; excludes bridges and support density.<br>${esc(supportPreference(p.settings.supportWeight ?? 0.5))} · verify in your slicer.</span>${previous}</div>
     <div class="small mute" style="margin-top:6px">Parts (click to select, then add a cut through it)</div><div class="partlist">${chips}</div>
@@ -867,7 +877,7 @@ function renderFaces() {
     const js = S.plan.joints.filter((j) => f.patches.includes(j.patch)).length;
     const sm = S.plan.patches.filter((p) => p.node === f.node && p.seam && p.seam.kind !== 'none').length;
     const warn = S.plan.patches.some((p) => p.node === f.node && (p.fallback || p.single));
-    return `<button data-face="${f.node}" class="${S.face === f.node ? 'sel' : ''} ${warn ? 'warn' : ''}">${warn ? '⚠ ' : ''}${cutName(f.node)} · ${js ? js + ' pins' : ''}${js && sm ? ' + ' : ''}${sm ? sm + ' seam' : ''}${!js && !sm ? 'butt' : ''}</button>`;
+    return `<button data-face="${f.node}" class="${S.face === f.node ? 'sel' : ''} ${warn ? 'warn' : ''}">${warn ? ico('alert') : ''}${cutName(f.node)} · ${js ? js + ' pins' : ''}${js && sm ? ' + ' : ''}${sm ? sm + ' seam' : ''}${!js && !sm ? 'butt' : ''}</button>`;
   }).join('');
   for (const b of fl.querySelectorAll('[data-face]')) b.addEventListener('click', () => { selectFace(+b.dataset.face, true); });
   if (S.face == null || !faces.find((f) => f.node === S.face)) selectFace(faces[0].node, false);
@@ -986,7 +996,7 @@ function renderJointPanelInner() {
     <div class="row two">${sizeField}</div>
     ${['peg', 'keyed', 'insert', 'bolt', 'snap'].includes(j.kind) ? `<div class="row two"><label>${j.kind === 'insert' ? 'Insert in' : j.kind === 'bolt' ? 'Nut in' : 'Male on'}<select id="jMale"><option value="neg" ${j.male === 'neg' ? 'selected' : ''}>${ln(pp.negLeaf)}</option><option value="pos" ${j.male === 'pos' ? 'selected' : ''}>${ln(pp.posLeaf)}</option></select></label>${j.kind === 'keyed' ? `<label>Shape<select id="jShape"><option value="hex" ${j.shape === 'hex' ? 'selected' : ''}>hex</option><option value="d" ${j.shape === 'd' ? 'selected' : ''}>D</option></select></label>` : '<span></span>'}</div>` : ''}
     <div class="small">Clearance ${fmt(j.clear, 2)} mm · holes ${fmt(j.holeNeg)} / ${fmt(j.holePos)} mm · material behind face ${fmt(j.availNeg)} / ${fmt(j.availPos)} mm</div>
-    ${(j.warnings || []).map((w) => `<div class="small badc">⚠ ${esc(w)}</div>`).join('')}
+    ${(j.warnings || []).map((w) => `<div class="small badc">${ico('alert')}${esc(w)}</div>`).join('')}
     <div class="btns"><button class="small primary" id="jApply">Apply</button><button class="small danger" id="jDel">Delete joint</button></div>
     <div class="small mute">Drag the joint on the map to move it.</div>`;
   je.classList.remove('hidden');
@@ -1015,10 +1025,10 @@ function fallbackBlock(p) {
     const btn = fb.forced
       ? `<div class="small why">Forcing ${esc(fb.want.toLowerCase())} does not work here either.</div>`
       : `<button class="small" data-pstyle="${esc(p.style || '')}" data-force="1" title="Try ${esc(fb.want.toLowerCase())} again with relaxed limits (2 mm minimum hole depth, 2-perimeter walls)">Use ${esc(fb.want.toLowerCase())} here anyway</button>`;
-    return `<div class="fb small"><div class="head">⚠ ${esc(fbText(fb))}</div><div class="why">${esc(fb.why)}</div><div class="btns">${btn}${own}</div></div>`;
+    return `<div class="fb small"><div class="head">${ico('alert')}${esc(fbText(fb))}</div><div class="why">${esc(fb.why)}</div><div class="btns">${btn}${own}</div></div>`;
   }
   if (p.single) {
-    return `<div class="fb small"><div class="head">⚠ ${esc(singleNote(p))}</div><div class="why">One pin is a pivot: the parts can rotate about it. Keyed pegs or a seam stop that.</div>
+    return `<div class="fb small"><div class="head">${ico('alert')}${esc(singleNote(p))}</div><div class="why">One pin is a pivot: the parts can rotate about it. Keyed pegs or a seam stop that.</div>
       <div class="btns"><button class="small" data-pstyle="seam" data-force="0">Use seam here</button><button class="small" data-pstyle="keyed" data-force="0">Use keyed peg here</button>${own}</div></div>`;
   }
   return own ? `<div class="btns">${own}</div>` : '';
@@ -1026,7 +1036,7 @@ function fallbackBlock(p) {
 function seamWallWarn(p, sm) {
   const need = { tongue: 3, lap: 2 }[sm.kind];
   if (!need || !sm.locked || p.thickness >= need * minWall()) return '';
-  return `<div class="small warnc">⚠ ${sm.kind === 'tongue' ? 'Tongue and groove' : 'Half lap'} wants a wall ≥ ${fmt(need * minWall())} mm; this one is ${fmt(p.thickness)} mm.</div>`;
+  return `<div class="small warnc">${ico('alert')}${sm.kind === 'tongue' ? 'Tongue and groove' : 'Half lap'} wants a wall ≥ ${fmt(need * minWall())} mm; this one is ${fmt(p.thickness)} mm.</div>`;
 }
 
 // any edit makes the whole patch manual so its other joints stay put
@@ -1118,12 +1128,12 @@ function renderBuild(res, ms) {
   const leafIdx = Object.fromEntries(S.plan.leaves.map((l, i) => [l.id, i]));
   const ok = res.parts.every((p) => p.status === 'NoError');
   const maxInt = Math.max(0, ...res.checks.map((c) => c.interference));
-  const rows = res.parts.map((p) => `<tr><td><span class="sw" style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${partColor(leafIdx[p.leaf])}"></span> ${p.label}</td><td>${fmt(p.volume / 1000)} cm³</td><td>${p.status === 'NoError' ? '<span class="okc">manifold ✓</span>' : '<span class="badc">' + p.status + '</span>'}</td><td>genus ${p.genus}</td></tr>`).join('');
-  const pins = res.pins.map((p) => `<tr><td>pin Ø${fmt(p.d, 2)}</td><td>${fmt(p.len)} mm</td><td>× ${p.count}</td><td></td></tr>`).join('');
-  $('buildInfo').innerHTML = `<div>${ok ? '<span class="okc">All parts are closed manifolds.</span>' : '<span class="badc">Some parts failed.</span>'} ${fmt(ms / 1000, 1)} s</div>
+  const rows = res.parts.map((p) => `<tr><th scope="row"><span class="sw" style="background:${partColor(leafIdx[p.leaf])}"></span>${p.label}</th><td class="num">${fmt(p.volume / 1000)} cm³</td><td>${p.status === 'NoError' ? `<span class="okc">${ico('check')}Closed</span>` : '<span class="badc">' + p.status + '</span>'}</td><td class="num" title="Number of through-holes (topological genus)">${p.genus}</td></tr>`).join('');
+  const pins = res.pins.length ? `<tbody class="ver-pins">${res.pins.map((p) => `<tr><th scope="row">Pin Ø${fmt(p.d, 2)}</th><td class="num">${fmt(p.len)} mm long</td><td>× ${p.count}</td><td></td></tr>`).join('')}</tbody>` : '';
+  $('buildInfo').innerHTML = `<div class="ver-head">${ok ? `<span class="okc">${ico('success')}All parts are closed manifolds.</span>` : `<span class="badc">${ico('error')}Some parts failed.</span>`}<span class="mute small">checked in ${fmt(ms / 1000, 1)} s</span></div>
     <div class="small ${res.fromFull ? 'okc' : 'mute'}">${res.fromFull ? `Cut from the full-detail original (${fmtTris(S.model.simplified.inputTris)} triangles).` : S.model.simplified && !S.model.simplified.failed ? `Cut from the simplified mesh (${fmtTris(S.model.tris)} triangles; max deviation ${fmt(S.model.simplified.maxDev, 3)} mm).` : ''}</div>
-    <table class="ver">${rows}${pins}</table>
-    <div class="small">Mating checks: max interference ${fmt(maxInt, 3)} mm³ ${maxInt < 0.05 ? '<span class="okc">✓</span>' : '<span class="badc">✗</span>'}${res.light ? ` (within 40 mm of each cut) · whole-model void/outside checks skipped at ${fmtTris(res.tris)} triangles` : ` · material added outside the model ${fmt(res.outside, 2)} mm³ · voids (holes + clearances) ${fmt(100 * res.voids / res.original, 2)} %`}</div>`;
+    <table class="ver"><thead><tr><th scope="col">Part</th><th scope="col" class="num">Volume</th><th scope="col">Solid</th><th scope="col" class="num" title="Number of through-holes">Holes</th></tr></thead><tbody>${rows}</tbody>${pins}</table>
+    <div class="small">Mating checks: max interference ${fmt(maxInt, 3)} mm³ ${maxInt < 0.05 ? `<span class="okc">${ico('check')}<span class="sr-only">passed</span></span>` : `<span class="badc">${ico('error')}<span class="sr-only">failed</span></span>`}${res.light ? ` (within 40 mm of each cut) · whole-model void/outside checks skipped at ${fmtTris(res.tris)} triangles` : ` · material added outside the model ${fmt(res.outside, 2)} mm³ · voids (holes + clearances) ${fmt(100 * res.voids / res.original, 2)} %`}</div>`;
   $('buildInfo').classList.remove('hidden');
 }
 
@@ -1168,7 +1178,7 @@ async function exportPkg() {
     S.built.pins.forEach((p) => { parts.push({ label: `pin_d${fmt(p.d, 2)}_L${fmt(p.len)}`, leaf: -1, kind: 'pin', count: p.count, file: 'm' + files.length, d: p.d, len: p.len }); files.push(psm(p.mesh)); });
     const res = await BE.export(S.model, parts, files, S.plan, null, png, (m) => busy(msgText(m), null));
     S.export = res;
-    $('exportInfo').innerHTML = `<div><b>${res.parts.length}</b> files on <b>${res.plates}</b> plate(s) ${res.warnings && res.warnings.length ? '<span class="warnc">· ' + esc(res.warnings.join('; ')) + '</span>' : '<span class="okc">· all closed, all fit</span>'}</div>${linkList(res)}`;
+    $('exportInfo').innerHTML = `<div><b>${res.parts.length}</b> ${res.parts.length === 1 ? 'print file' : 'print files'} on <b>${res.plates}</b> ${res.plates === 1 ? 'plate' : 'plates'} ${res.warnings && res.warnings.length ? '<span class="warnc">· ' + esc(res.warnings.join('; ')) + '</span>' : '<span class="okc">· all closed, all fit</span>'}</div>${linkList(res)}`;
     $('exportInfo').classList.remove('hidden');
     toast('Export ready');
   } catch (err) { toast('Export failed: ' + err.message, true, 10000); }

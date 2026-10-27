@@ -123,7 +123,7 @@ export class JointEditor {
     this.map.set(S.plan, f, this.app.mapOpts());
     $('jdAdd').classList.toggle('on', S.addMode);
     $('jdAdd').setAttribute('aria-pressed', String(!!S.addMode));
-    $('jdAdd').textContent = S.addMode ? '✓ Adding… (Esc to stop)' : '+ Add joint';
+    $('jdAdd').innerHTML = S.addMode ? 'Adding… <kbd>Esc</kbd> to stop' : `<svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Add joint`;
     $('jdKind').value = $('addKind').value;
     // joint chips: Tab-able, show selection
     const js = this.map.joints();

@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { OrbitControls } from '../vendor/three/OrbitControls.js';
 import { TransformControls } from '../vendor/three/TransformControls.js';
 
-export const PALETTE = ['#e07a3f', '#3fa7e0', '#7bc96f', '#c96fb8', '#e0c23f', '#6f8fc9', '#c9786f', '#4fc9b0', '#a3a3e0', '#e09f9f', '#9fe0c6', '#d4a373'];
+// Part identification colours: equal lightness, moderate chroma, tuned to the dark-mint UI (S3).
+export const PALETTE = ['#d9a066', '#6fa8d6', '#8cc68a', '#c792c9', '#d9c46a', '#7f93d9', '#d98c80', '#5fc2ad', '#a99be0', '#d6a0b4', '#9fd4c1', '#c9a98a'];
 export const KIND_COLORS = { dowel: '#f5f5f5', press: '#ffd166', filament: '#bde0fe', peg: '#90e0a0', keyed: '#5cc98a', magnet: '#c77dff', insert: '#f4a261', bolt: '#e76f51', snap: '#4cc9f0' };
 
 export function partColor(i) { return PALETTE[i % PALETTE.length]; }
@@ -38,7 +39,7 @@ function geomFrom(positions, indices, flat = true) {
 }
 
 function outOfBedMaterial(color) {
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.62, metalness: 0.05, side: THREE.DoubleSide, vertexColors: false });
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.0, side: THREE.DoubleSide, vertexColors: false });
   mat.userData.uniforms = { boxMin: { value: new THREE.Vector3(-1e9, -1e9, -1e9) }, boxMax: { value: new THREE.Vector3(1e9, 1e9, 1e9) } };
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, mat.userData.uniforms);
@@ -47,9 +48,71 @@ function outOfBedMaterial(color) {
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWorldP;\nuniform vec3 boxMin;\nuniform vec3 boxMax;')
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
         bool outside = any(lessThan(vWorldP, boxMin)) || any(greaterThan(vWorldP, boxMax));
-        if (outside) { float s = step(0.5, fract((vWorldP.x + vWorldP.y + vWorldP.z) * 0.12)); gl_FragColor.rgb = mix(gl_FragColor.rgb, mix(vec3(0.95,0.25,0.2), vec3(0.75,0.15,0.12), s), 0.75); }`);
+        if (outside) { float s = step(0.5, fract((vWorldP.x + vWorldP.y + vWorldP.z) * 0.12)); gl_FragColor.rgb = mix(gl_FragColor.rgb, mix(vec3(0.93,0.36,0.30), vec3(0.78,0.24,0.20), s), 0.62); }`);
   };
   return mat;
+}
+
+// ---------- scene dressing (S1/S2) ----------
+// Vertical backdrop: lifted teal at the top, the app background at the floor.
+function stageBackdrop() {
+  const c = document.createElement('canvas'); c.width = 4; c.height = 256;
+  const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, '#1b2726'); g.addColorStop(0.55, '#121a1b'); g.addColorStop(1, '#0c1213');
+  x.fillStyle = g; x.fillRect(0, 0, 4, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+// Line material whose opacity falls off with depth through the volume, so the
+// rear edges of the build box recede behind the model instead of crossing it.
+function depthFadeLine(color, near, far) {
+  return new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: { uColor: { value: new THREE.Color(color) }, uCenter: { value: new THREE.Vector3() }, uR: { value: 100 }, uNear: { value: near }, uFar: { value: far } },
+    vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+    fragmentShader: 'uniform vec3 uColor; uniform vec3 uCenter; uniform float uR, uNear, uFar; varying vec3 vW; void main(){ vec3 d = normalize(uCenter - cameraPosition); float t = smoothstep(-uR, uR, dot(vW - uCenter, d)); gl_FragColor = vec4(uColor, mix(uNear, uFar, t));\n#include <colorspace_fragment>\n}',
+  });
+}
+// 10 mm minor / 50 mm major grid, clipped to the bed.
+function bedGrid(x, y, cx, cy, z) {
+  const grp = new THREE.Group(), minor = [], major = [];
+  const x0 = cx - x / 2, y0 = cy - y / 2;
+  for (let u = 0; u <= x + 1e-6; u += 10) (Math.round(u) % 50 === 0 ? major : minor).push(x0 + u, y0, z, x0 + u, y0 + y, z);
+  for (let v = 0; v <= y + 1e-6; v += 10) (Math.round(v) % 50 === 0 ? major : minor).push(x0, y0 + v, z, x0 + x, y0 + v, z);
+  for (const [arr, col, op] of [[minor, '#7fb2c4', 0.09], [major, '#8fc9ee', 0.2]]) {
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+    grp.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: op, depthWrite: false })));
+  }
+  const rim = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(x, y)), new THREE.LineBasicMaterial({ color: '#8fc9ee', transparent: true, opacity: 0.45 }));
+  rim.position.set(cx, cy, z); grp.add(rim);
+  return grp;
+}
+// Soft contact shadow under the model footprint (an AO-like grounding cue).
+let shadowTex = null, floorTex = null;
+function contactShadow(box, z) {
+  if (!shadowTex) {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, 'rgba(0,0,0,0.85)'); g.addColorStop(0.35, 'rgba(0,0,0,0.6)'); g.addColorStop(0.7, 'rgba(0,0,0,0.22)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+    shadowTex = new THREE.CanvasTexture(c);
+  }
+  if (!floorTex) {
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const x = c.getContext('2d'), g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+    g.addColorStop(0, 'rgba(160,205,200,0.10)'); g.addColorStop(0.6, 'rgba(160,205,200,0.04)'); g.addColorStop(1, 'rgba(160,205,200,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+    floorTex = new THREE.CanvasTexture(c);
+  }
+  const s = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  const grp = new THREE.Group(); grp.userData.noPick = true;
+  // a faint studio floor so built parts (no printer box) still sit on something
+  const R = Math.max(s.x, s.y) * 2.4 + 80;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(R, R), new THREE.MeshBasicMaterial({ map: floorTex, transparent: true, depthWrite: false, toneMapped: false }));
+  floor.position.set(c.x, c.y, z - 0.02); floor.renderOrder = 0; grp.add(floor);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(s.x * 1.25 + 36, s.y * 1.25 + 36), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, toneMapped: false }));
+  m.position.set(c.x, c.y, z); m.renderOrder = 1; grp.add(m);
+  grp.geometry = { dispose() { floor.geometry.dispose(); m.geometry.dispose(); } };
+  return grp;
 }
 
 function makeLabel(text, size) {
@@ -76,7 +139,8 @@ export class Viewer {
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     el.appendChild(this.renderer.domElement);
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#101819');
+    this.scene.background = stageBackdrop();
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.05;
     this.camera = new THREE.PerspectiveCamera(40, 1, 1, 20000);
     this.camera.up.set(0, 0, 1);
     this.camera.position.set(400, -500, 380);
@@ -85,13 +149,17 @@ export class Viewer {
     matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{this.controls.enableDamping=!e.matches;});
     this.controls.addEventListener('change', () => this.dirty());
     this.controls.addEventListener('start',()=>this.cameraState('custom'));
-    const hemi = new THREE.HemisphereLight('#dfe8f2', '#30261f', 1.4);
+    // S1: three-point lighting. Warm key from the front-left, cool rim from behind, soft sky fill.
+    const hemi = new THREE.HemisphereLight('#e4efe9', '#2b2620', 1.15);
     hemi.position.set(0, 0, 1);
     this.scene.add(hemi);
-    this.sun = new THREE.DirectionalLight('#ffffff', 1.6);
-    this.sun.position.set(0.6, -0.8, 1.4);
+    this.sun = new THREE.DirectionalLight('#fff3e2', 2.1);
+    this.sun.position.set(0.55, -0.85, 1.35);
     this.scene.add(this.sun);
-    this.camLight = new THREE.DirectionalLight('#ffffff', 0.7);
+    this.rim = new THREE.DirectionalLight('#a9d4ff', 0.9);
+    this.rim.position.set(-0.7, 0.9, 0.55);
+    this.scene.add(this.rim);
+    this.camLight = new THREE.DirectionalLight('#ffffff', 0.35);
     this.camera.add(this.camLight);
     this.scene.add(this.camera);
     this.groups = {};
@@ -99,6 +167,22 @@ export class Viewer {
       this.groups[n] = new THREE.Group();
       this.scene.add(this.groups[n]);
     }
+    // S5: hovering a cut plane brightens its rim (selection stays distinct).
+    let hoverQ = 0;
+    this.renderer.domElement.addEventListener('pointermove', (e) => {
+      if (hoverQ || e.pointerType === 'touch') return;
+      hoverQ = requestAnimationFrame(() => {
+        hoverQ = 0;
+        if (this.view !== 'cuts' || !this.cutMeshes || this.tc.dragging || e.buttons) { if (this.hoverCut != null) { this.hoverCut = null; this.highlight(); this.dirty(); } return; }
+        const r = this.renderer.domElement.getBoundingClientRect();
+        this._hr ||= new THREE.Raycaster();
+        this._hr.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), this.camera);
+        const quads = Object.values(this.cutMeshes).map((g) => g.userData.quad).filter((q) => q && q.parent?.visible !== false);
+        const hit = this._hr.intersectObjects(quads, false)[0];
+        const id = hit ? hit.object.userData.node : null;
+        if (id !== this.hoverCut) { this.hoverCut = id; this.highlight(); this.dirty(); }
+      });
+    });
     this.tc = new TransformControls(this.camera, this.renderer.domElement);
     this.tc.setSpace('local');
     this.tc.showX = false; this.tc.showY = false;
@@ -181,7 +265,7 @@ export class Viewer {
     const points=f.loops.flat(),u0=Math.min(...points.map(p=>p[0])),u1=Math.max(...points.map(p=>p[0])),v0=Math.min(...points.map(p=>p[1])),v1=Math.max(...points.map(p=>p[1]));
     const fr=f.frame,c=new THREE.Vector3(...fr.o).addScaledVector(new THREE.Vector3(...fr.u),(u0+u1)/2).addScaledVector(new THREE.Vector3(...fr.v),(v0+v1)/2);
     const distance=Math.max((v1-v0)*1.5,(u1-u0)/this.camera.aspect)*1.65;
-    this.faceFocus=true;this.modelMesh.visible=false;this.cameraState('face');
+    this.faceFocus=true;if(this.ground)this.ground.visible=false;this.modelMesh.visible=false;this.cameraState('face');
     this.camera.up.set(...fr.v);this.controls._quat.setFromUnitVectors(this.camera.up,new THREE.Vector3(0,1,0));this.controls._quatInverse.copy(this.controls._quat).invert();this.camera.position.copy(c).addScaledVector(new THREE.Vector3(...fr.n),Math.max(20,distance));this.controls.target.copy(c);this.controls.update();this.dirty();
   }
 
@@ -247,7 +331,7 @@ export class Viewer {
     this.clear('model'); this.clear('cuts'); this.clear('joints'); this.clear('parts'); this.clear('plates');
     this.modelGeom = geomFrom(positions, indices, true);
     this.modelIndexed = { positions, indices };
-    this.modelMat = outOfBedMaterial('#b8c4cf');
+    this.modelMat = outOfBedMaterial('#c9cfc9');
     this.modelMesh = new THREE.Mesh(this.modelGeom, this.modelMat);
     this.groups.model.add(this.modelMesh);
     this.box = this.modelGeom.boundingBox.clone();
@@ -259,7 +343,13 @@ export class Viewer {
 
   frame(box = this.box) {
     if (!box) return;
-    this.faceFocus=false;if(this.modelMesh)this.modelMesh.visible=true;this.cameraState('iso');
+    // In the Fit step on wider screens, the printer volume is the subject too:
+    // frame model ∪ build volume so neither is cropped (phones keep the model).
+    if (box === this.box && this.view === 'model' && this.bed && document.body.dataset.step === 'fit' && (this.el.clientWidth || 0) > 760) {
+      const c0 = this.center, z0 = this.box.min.z, b = this.bed;
+      box = this.box.clone().union(new THREE.Box3(new THREE.Vector3(c0.x - b.x / 2, c0.y - b.y / 2, z0), new THREE.Vector3(c0.x + b.x / 2, c0.y + b.y / 2, z0 + b.z)));
+    }
+    this.faceFocus=false;if(this.ground)this.ground.visible=this.view!=='plates';if(this.modelMesh)this.modelMesh.visible=true;this.cameraState('iso');
     const c = box.getCenter(new THREE.Vector3());
     const r = box.getSize(new THREE.Vector3()).length() * 0.5 || 100;
     this.camera.up.set(0,0,1);this.controls._quat.setFromUnitVectors(this.camera.up,new THREE.Vector3(0,1,0));this.controls._quatInverse.copy(this.controls._quat).invert();
@@ -316,23 +406,24 @@ export class Viewer {
     const min = new THREE.Vector3(c.x - x / 2, c.y - y / 2, zmin);
     const max = new THREE.Vector3(c.x + x / 2, c.y + y / 2, zmin + z);
     const g = new THREE.BoxGeometry(x, y, z);
-    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: '#3fa7e0', transparent: true, opacity: 0.8 }));
+    // S2: quiet build volume. Edges fade with distance from the camera (rear edges dimmed).
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g), depthFadeLine('#8fc9ee', 0.85, 0.2));
     edges.position.set(c.x, c.y, zmin + z / 2);
+    edges.material.uniforms.uCenter.value.set(c.x, c.y, zmin + z / 2); edges.material.uniforms.uR.value = 0.5 * Math.hypot(x, y, z);
     this.groups.bed.add(edges);
-    const plate = new THREE.Mesh(new THREE.PlaneGeometry(x, y), new THREE.MeshBasicMaterial({ color: '#1b3a52', transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false }));
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(x, y), new THREE.MeshBasicMaterial({ color: '#203a46', transparent: true, opacity: 0.34, side: THREE.DoubleSide, depthWrite: false }));
     plate.position.set(c.x, c.y, zmin - 0.05);
     this.groups.bed.add(plate);
-    const grid = new THREE.GridHelper(Math.max(x, y), Math.round(Math.max(x, y) / 10), '#2c4a62', '#20354a');
-    grid.rotation.x = Math.PI / 2;
-    grid.position.set(c.x, c.y, zmin - 0.02);
-    grid.scale.set(x / Math.max(x, y), 1, y / Math.max(x, y));
-    this.groups.bed.add(grid);
+    this.groups.bed.add(bedGrid(x, y, c.x, c.y, zmin - 0.02));
     const u = this.modelMat && this.modelMat.userData.uniforms;
     if (u) {
       u.boxMin.value.copy(min).addScalar(-0.01);
       u.boxMax.value.copy(max).addScalar(0.01);
     }
     this.groups.bed.visible = this.view === 'model';
+    if (this.ground) { this.scene.remove(this.ground); this.ground.geometry.dispose(); }
+    this.ground = contactShadow(this.box, zmin - 0.01); this.scene.add(this.ground);
+    this.ground.visible = this.view !== 'plates';
     this.dirty();
   }
 
@@ -372,7 +463,7 @@ export class Viewer {
     }
     this.modelGeom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     // opaque, so the parts read clearly; joints are drawn on top instead
-    this.planMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.05, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    this.planMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     this.cutMeshes = {};
     for (const f of plan.faces) {
       if (!f.loops || !f.loops.length) continue;
@@ -468,10 +559,10 @@ export class Viewer {
     for (const p of parts) {
       const g = geomFrom(p.mesh.positions, p.mesh.indices, true);
       const col = partColor(leafIndex[p.leaf] || 0);
-      const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: col, roughness: 0.55, metalness: 0.05 }));
+      const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: col, roughness: 0.5, metalness: 0.0 }));
       const c = g.boundingBox.getCenter(new THREE.Vector3());
       m.userData = { pick: 'part', leaf: p.leaf, label: p.label, center: c };
-      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g, 35), new THREE.LineBasicMaterial({ color: '#0b0e12', transparent: true, opacity: 0.35 }));
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g, 35), new THREE.LineBasicMaterial({ color: '#0d1314', transparent: true, opacity: 0.28 }));
       m.add(edges);
       this.groups.parts.add(m);
       this.partMeshes.push(m);
@@ -545,21 +636,17 @@ export class Viewer {
     const gap = 40;
     for (let k = 0; k < nPl; k++) {
       const ox = k * (bed.X + gap);
-      const plate = new THREE.Mesh(new THREE.PlaneGeometry(bed.X, bed.Y), new THREE.MeshBasicMaterial({ color: '#1b3a52', side: THREE.DoubleSide }));
+      const plate = new THREE.Mesh(new THREE.PlaneGeometry(bed.X, bed.Y), new THREE.MeshBasicMaterial({ color: '#1c3440', side: THREE.DoubleSide }));
       plate.position.set(ox + bed.X / 2, bed.Y / 2, -0.1);
       this.groups.plates.add(plate);
-      const grid = new THREE.GridHelper(Math.max(bed.X, bed.Y), Math.round(Math.max(bed.X, bed.Y) / 10), '#2c4a62', '#24405a');
-      grid.rotation.x = Math.PI / 2;
-      grid.scale.set(bed.X / Math.max(bed.X, bed.Y), 1, bed.Y / Math.max(bed.X, bed.Y));
-      grid.position.set(ox + bed.X / 2, bed.Y / 2, -0.05);
-      this.groups.plates.add(grid);
-      const box = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(bed.X, bed.Y, bed.Z)), new THREE.LineBasicMaterial({ color: '#3fa7e0', transparent: true, opacity: 0.12, depthTest: true }));
+      this.groups.plates.add(bedGrid(bed.X, bed.Y, ox + bed.X / 2, bed.Y / 2, -0.05));
+      const box = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(bed.X, bed.Y, bed.Z)), new THREE.LineBasicMaterial({ color: '#8fc9ee', transparent: true, opacity: 0.12, depthTest: true }));
       box.position.set(ox + bed.X / 2, bed.Y / 2, bed.Z / 2);
       this.groups.plates.add(box);
     }
     for (const pc of placed) {
       const it = pc.item;
-      const m = new THREE.Mesh(it.g, new THREE.MeshStandardMaterial({ color: it.color, roughness: 0.55 }));
+      const m = new THREE.Mesh(it.g, new THREE.MeshStandardMaterial({ color: it.color, roughness: 0.5 }));
       if (pc.rot) { m.rotation.z = Math.PI / 2; m.position.set(it.h, 0, 0); }
       m.position.x += pc.x + pc.plate * (bed.X + gap);
       m.position.y += pc.y;
@@ -584,6 +671,7 @@ export class Viewer {
     const v = this.view;
     const g = this.groups;
     g.bed.visible = v === 'model';
+    if (this.ground) this.ground.visible = v !== 'plates' && !this.faceFocus;
     g.model.visible = v === 'model' || v === 'cuts';
     g.cuts.visible = v === 'cuts';
     g.joints.visible = v === 'cuts' || (v === 'parts' && this.explode < 0.02);
@@ -605,10 +693,11 @@ export class Viewer {
   highlight() {
     if (this.cutMeshes) {
       for (const [node, grp] of Object.entries(this.cutMeshes)) {
-        const on = this.sel.cut === +node;
-        grp.userData.quad.material.opacity = on ? 0.20 : 0.035;
-        grp.userData.pivot.visible=on;grp.userData.normalArrow.visible=on;grp.userData.rim.material.opacity=on?1:.25;
-        grp.userData.rim.material.color.set(on ? '#ffffff' : '#e07a3f');
+        // S5: inactive = faint rim, hover = brighter rim + whisper of fill, selected = fill + white rim + pivot.
+        const on = this.sel.cut === +node, hov = !on && this.hoverCut === +node;
+        grp.userData.quad.material.opacity = on ? 0.18 : hov ? 0.08 : 0.025;
+        grp.userData.pivot.visible=on;grp.userData.normalArrow.visible=on;grp.userData.rim.material.opacity=on?1:hov?.85:.35;
+        grp.userData.rim.material.color.set(on ? '#ffffff' : hov ? '#f4d27f' : '#d9a066');
       }
     }
     if (this.jointMeshes) {

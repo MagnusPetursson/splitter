@@ -67,7 +67,7 @@ export class DirectEditor {
     for(const id of ['cutMove','cutTilt','viewAddJoint','viewFace','joinExplode'])$(id).disabled=!this.active();
     $('cutMove').setAttribute('aria-pressed',String(this.v.tc.mode!=='rotate'));$('cutTilt').setAttribute('aria-pressed',String(this.v.tc.mode==='rotate'));
     const changed=this.v.editStep!==step;this.v.editStep=step;
-    if(this.v.planMat){this.v.planMat.transparent=join;this.v.planMat.opacity=join ? 0.20 : 1;this.v.planMat.depthWrite=!join;}
+    if(this.v.planMat){this.v.planMat.transparent=join;this.v.planMat.opacity=join ? 0.42 : 1;this.v.planMat.depthWrite=!join;}
     if(this.v.modelMesh)this.v.modelMesh.visible=!this.v.faceFocus;
     if(changed)this.v.highlight();
     this.v.groups.cuts.children.forEach(g=>{g.visible=!join||g.userData.node===S.face;if(g.userData.quad)g.userData.quad.visible=!join;if(g.userData.rim)g.userData.rim.visible=!join;if(g.userData.pivot)g.userData.pivot.visible=!join&&g.userData.node===S.sel.cut;if(g.userData.normalArrow)g.userData.normalArrow.visible=!join&&g.userData.node===S.sel.cut;g.children.filter(o=>o.isSprite).forEach(o=>o.visible=!join);});
@@ -82,12 +82,12 @@ export class DirectEditor {
     const key=JSON.stringify([j,document.body.dataset.expert]);if(key===this.popKey)return;this.popKey=key;
     if(S.pendingPin){S.pendingPin=false;queueMicrotask(()=>this.a.syncFlow());}
     const name=this.a.jointName(j),fixed=j.kind==='filament'||['insert','bolt'].includes(j.kind);
-    el.innerHTML=`<header><b>${esc(name)}</b><button id="pinClose" aria-label="Deselect pin">×</button></header><div class="pin-fields"><div class="row three"><label>Diameter (mm)<input id="pinDiameter" type="number" min="1" max="30" step="0.25" value="${j.d||3}" ${fixed?'disabled':''}></label><label>Depth (mm)<input id="pinDepth" type="number" min="1" max="60" step="0.5" value="${j.depth||8}"></label><label>Clearance (mm)<input id="pinClearance" type="number" min="0" max="1" step="0.01" value="${j.clear}"></label></div><p class="small mute">Radial clearance for this joint only. ${fixed?'Diameter is fixed by its type; hardware sizes are in Advanced.':''}</p>${this.clearance(j)}${depthProfile(j)}${(j.warnings||[]).map(w=>`<p class="badc">${esc(w)}</p>`).join('')}</div><div class="pin-actions"><p id="pinState" class="small" role="status">Applied · preview shows accepted geometry</p><div class="btns"><button id="pinApply" class="primary" disabled>Apply pin</button><button id="pinDelete" class="danger">Delete pin</button></div></div>`;
+    el.innerHTML=`<header><b>${esc(name)}</b><button id="pinClose" class="icon-btn" aria-label="Deselect pin"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button></header><div class="pin-fields"><div class="row three"><label>Diameter (mm)<input id="pinDiameter" type="number" min="1" max="30" step="0.25" value="${j.d||3}" ${fixed?'disabled':''}></label><label>Depth (mm)<input id="pinDepth" type="number" min="1" max="60" step="0.5" value="${j.depth||8}"></label><label>Clearance (mm)<input id="pinClearance" type="number" min="0" max="1" step="0.01" value="${j.clear}"></label></div><p class="small mute">Radial clearance for this joint only. ${fixed?'Diameter is fixed by its type; hardware sizes are in Advanced.':''}</p>${this.clearance(j)}${depthProfile(j)}${(j.warnings||[]).map(w=>`<p class="badc">${esc(w)}</p>`).join('')}</div><div class="pin-actions"><p id="pinState" class="small" role="status">Applied · preview shows accepted geometry</p><div class="btns"><button id="pinApply" class="primary" disabled>Apply pin</button><button id="pinDelete" class="danger">Delete pin</button></div></div>`;
     for(const input of el.querySelectorAll('input'))input.oninput=()=>{
       const changed=+$('pinDiameter').value!==j.d||+$('pinDepth').value!==j.depth||Math.abs(+$('pinClearance').value-j.clear)>1e-9;
       const valid=[...el.querySelectorAll('input')].every(i=>i.checkValidity());
       S.pendingPin=changed;$('pinApply').disabled=!changed||!valid;
-      $('pinState').textContent=changed?'Not applied · preview still shows accepted geometry':'Applied · preview shows accepted geometry';this.a.syncFlow();
+      $('pinState').textContent=changed?'Not applied · preview still shows accepted geometry':'Applied · preview shows accepted geometry';$('pinState').dataset.state=changed?'pending':'applied';this.a.syncFlow();
     };
     $('pinClose').onclick=()=>{this.a.selectFace(S.face,true);this.dom.focus();};
     $('pinDelete').onclick=()=>{this.a.deleteJoint(j.id);this.dom.focus();};

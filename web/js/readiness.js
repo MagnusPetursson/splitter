@@ -8,8 +8,8 @@ export function readiness(S) {
   const notes=p.patches.filter(p=>p.fallback||p.single).length;
   const cuts=p.faces.filter(f=>f.loops?.length).length;
   const summary=`${cuts} cut${cuts===1?'':'s'} checked · ${p.joints.length-badPins} pin${p.joints.length-badPins===1?'':'s'} valid`;
-  if(badParts||badPins)return {ok:false,text:`${summary} · ${badParts?`${badParts} part(s) too large`:`${badPins} pin(s) need attention`}. Review before building.`};
-  return {ok:true,text:`${summary}${notes?` · ${notes} contact warning(s): review the explanations below`:''} · Ready to build & export.`};
+  if(badParts||badPins)return {ok:false,text:`${summary} · ${badParts?`${badParts} ${badParts===1?'part':'parts'} too large`:`${badPins} ${badPins===1?'pin needs':'pins need'} attention`}. Review before building.`};
+  return {ok:true,text:`${summary}${notes?` · ${notes} contact ${notes===1?'warning':'warnings'}: review the explanations below`:''} · Ready to build & export.`};
 }
 
 // Only accepted immutable plans enter history, never an in-flight drag or a

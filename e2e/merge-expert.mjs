@@ -124,10 +124,13 @@ try {
   //    viewport cut fields, undo/redo, triad and gesture hint persistence.
   {
     const {ctx, p} = await page({width: 1440, height: 900}, true);
+    // The viewer hint and view controls appear once there is a model to orbit.
+    assert.equal(await p.locator('#gestureHint').isVisible(), false, 'no gesture hint before a model is loaded');
+    await p.click('[data-sample="bracket_320mm.stl"]'); await idle(p);
     assert.ok(await p.locator('#gestureHint').isVisible());
     await p.click('#dismissGesture'); await p.reload({waitUntil: 'networkidle'}); await p.waitForFunction(() => document.querySelector('#printer').options.length > 5);
-    assert.equal(await p.locator('#gestureHint').isVisible(), false, 'dismissed gesture hint stays dismissed');
     await p.click('[data-sample="bracket_320mm.stl"]'); await idle(p);
+    assert.equal(await p.locator('#gestureHint').isVisible(), false, 'dismissed gesture hint stays dismissed');
     const triad0 = await p.locator('#triadLines').innerHTML();
     await p.locator('#viewport canvas').focus(); await p.keyboard.press('ArrowLeft'); await p.keyboard.press('ArrowLeft'); await p.waitForTimeout(150);
     assert.notEqual(await p.locator('#triadLines').innerHTML(), triad0, 'triad follows the camera');

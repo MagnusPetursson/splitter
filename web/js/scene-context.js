@@ -45,7 +45,7 @@ export class SceneContext {
         for(const [side,length] of [['neg',j.holeNeg],['pos',j.holePos]]){
           if(!(length>0))continue;
           const g=new THREE.CylinderGeometry(j.d/2+j.clear,j.d/2+j.clear,length,32);g.rotateX(Math.PI/2);g.translate(0,0,(side==='neg'?-1:1)*length/2);
-          const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:side==='neg'?'#efb779':'#a4dbff',transparent:true,opacity:.35,depthTest:false,depthWrite:false,side:THREE.DoubleSide}));m.userData.side=side;m.renderOrder=9;this.depth.add(m);
+          const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:side==='neg'?'#d9a066':'#6fa8d6',transparent:true,opacity:.35,depthTest:false,depthWrite:false,side:THREE.DoubleSide}));m.userData.side=side;m.renderOrder=9;this.depth.add(m);
         }
         this.depth.position.set(...j.origin);this.depth.quaternion.copy(m.quaternion);
       }
@@ -60,12 +60,12 @@ export class SceneContext {
     const usable=[v.bed.x,v.bed.y,v.bed.z];
     svg.innerHTML=`<defs><marker id="dimArrow" viewBox="0 0 8 8" refX="4" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M8 4 L0 0 L0 8Z" fill="context-stroke"/></marker></defs>`+pairs.map(([lo,hi],i)=>{
       const p=this.project(vec(lo)),q=this.project(vec(hi)),label=`${['W','D','H'][i]} ${size.getComponent(i).toFixed(1)} mm`,x=clamp((p.x+q.x)/2,62,stage.width-62),y=clamp((p.y+q.y)/2+(i===0?18:-12),top+14,bottom-12);
-      return `<g data-dimension="${['width','depth','height'][i]}" class="${size.getComponent(i)>usable[i]?'over':''}"><path d="M${p.x},${p.y}L${q.x},${q.y}" marker-start="url(#dimArrow)" marker-end="url(#dimArrow)"/><text x="${x}" y="${y}">${label}</text></g>`;
+      return `<g data-dimension="${['width','depth','height'][i]}" class="${size.getComponent(i)>usable[i]?'over':''}"><path d="M${p.x},${p.y}L${q.x},${q.y}" marker-start="url(#dimArrow)" marker-end="url(#dimArrow)"/><rect class="dim-bg" x="${x-(label.length*7.2+18)/2}" y="${y-15}" width="${label.length*7.2+18}" height="22" rx="5"/><text x="${x}" y="${y}">${label}</text></g>`;
     }).join('');
   }
 }
 
 export function depthProfile(j){
   const neg=Math.max(0,j.holeNeg||0),pos=Math.max(0,j.holePos||0),scale=115/Math.max(neg,pos,1),w=neg*scale,h=pos*scale;
-  return `<figure id="pinDepthPreview"><figcaption>Accepted hole depths · side section${['dowel','press'].includes(j.kind)?' · includes 0.3 mm end allowance':''}</figcaption><svg viewBox="0 0 300 82" role="img" aria-label="Hole depth: negative side ${neg.toFixed(1)} mm, positive side ${pos.toFixed(1)} mm"><rect x="8" y="24" width="142" height="34" fill="#674b30"/><rect x="150" y="24" width="142" height="34" fill="#294b60"/><rect data-side="neg" x="${150-w}" y="34" width="${w}" height="14" fill="#efb779"/><rect data-side="pos" x="150" y="34" width="${h}" height="14" fill="#a4dbff"/><path d="M150 17V64" stroke="#fff" stroke-dasharray="3 3"/><text x="76" y="15">− side ${neg.toFixed(1)} mm</text><text x="224" y="15">+ side ${pos.toFixed(1)} mm</text><text x="150" y="78">cut plane · lengths to scale</text></svg></figure>`;
+  return `<figure id="pinDepthPreview"><figcaption>Accepted hole depths · side section${['dowel','press'].includes(j.kind)?' · includes 0.3 mm end allowance':''}</figcaption><svg viewBox="0 0 300 82" role="img" aria-label="Hole depth: negative side ${neg.toFixed(1)} mm, positive side ${pos.toFixed(1)} mm"><rect x="8" y="24" width="142" height="34" fill="#4a3a2a"/><rect x="150" y="24" width="142" height="34" fill="#26394a"/><rect data-side="neg" x="${150-w}" y="34" width="${w}" height="14" fill="#d9a066"/><rect data-side="pos" x="150" y="34" width="${h}" height="14" fill="#6fa8d6"/><path d="M150 17V64" stroke="#fff" stroke-dasharray="3 3"/><text x="76" y="15">− side ${neg.toFixed(1)} mm</text><text x="224" y="15">+ side ${pos.toFixed(1)} mm</text><text x="150" y="78">cut plane · lengths to scale</text></svg></figure>`;
 }

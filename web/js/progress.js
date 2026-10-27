@@ -80,7 +80,7 @@ export function fmtMem(mb) { return mb >= 1000 ? `${(mb / 1024).toFixed(1)} GB` 
 const $ = (id) => document.getElementById(id);
 
 export const LOAD_STAGES = [
-  ['read', 'Read'], ['parse', 'Parse'], ['repair', 'Repair'], ['simplify', 'Simplify'], ['measure', 'Measure'], ['index', 'Index'], ['kernel', 'Kernel'],
+  ['read', 'Read'], ['parse', 'Parse'], ['repair', 'Repair'], ['simplify', 'Simplify'], ['measure', 'Measure'], ['index', 'Prepare'], ['kernel', 'Build solid'],
 ];
 export const PLAN_STAGES = [['cut', 'Find cuts'], ['faces', 'Analyse cut faces'], ['joints', 'Place joints']];
 
@@ -109,7 +109,11 @@ export class Progress {
     this.seen = new Set();
     this.el.classList.remove('hidden');
     this.el.classList.add('staged');
-    $('busyTitle').textContent = title;
+    document.body.classList.add('is-busy');
+    const m = /^(Loading|Restoring) (.+)$/.exec(title);
+    $('busyTitle').textContent = m ? `${m[1]} model` : title;
+    $('busySubject').textContent = m ? m[2] : (opts.subject || '');
+    $('busySubject').title = $('busySubject').textContent;
     const c = $('busyCancel');
     c.classList.toggle('hidden', !this.onCancel);
     c.disabled = false; c.textContent = 'Cancel';
@@ -194,6 +198,7 @@ export class Progress {
     clearInterval(this.timer);
     this.el.classList.add('hidden');
     this.el.classList.remove('staged');
+    document.body.classList.remove('is-busy');
   }
 
   elapsed() { return (performance.now() - this.t0) / 1000; }
