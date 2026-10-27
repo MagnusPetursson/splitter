@@ -11,7 +11,7 @@ const replanned=async n=>{await p.waitForFunction(n=>window.__ps.planSeq>n&&docu
 try{
  await p.goto(url,{waitUntil:'networkidle'});await p.waitForFunction(()=>document.querySelector('#printer').options.length>5);
  await p.click('[data-sample="bracket_320mm.stl"]');await p.waitForFunction(()=>window.__ps.workerReady);await idle();
- await p.click('[data-step="split"]');await p.click('#autoSplit');await p.waitForFunction(()=>window.__ps.plan);await idle();
+ await p.click('#flowNav [data-step="split"]');await p.click('#autoSplit');await p.waitForFunction(()=>window.__ps.plan);await idle();
  await p.locator('[data-cut]').first().click();await p.click('#cutEditor .precise-values summary');await p.waitForTimeout(200);
  const handle=await p.evaluate(()=>{
    const v=window.__viewer,canvas=v.renderer.domElement,r=canvas.getBoundingClientRect(),pts=[];
@@ -26,11 +26,11 @@ try{
  report.drag.new=await p.evaluate(()=>window.__ps.plan.tree.nodes.find(n=>n.id===window.__ps.sel.cut).cut.d);assert.ok(Math.abs(report.drag.new-handle.old)>5);
  await p.screenshot({path:path.join(out,'desktop-dragged-cut.png')});
  await p.focus('#viewport canvas');const before=await p.evaluate(()=>window.__viewer.camera.position.toArray());await p.keyboard.press('ArrowRight');await p.waitForTimeout(150);assert.notDeepEqual(await p.evaluate(()=>window.__viewer.camera.position.toArray()),before,'keyboard orbits actual camera');await p.keyboard.press('f');
- await p.click('[data-step="join"]');await p.click('#precisionMap summary');await p.click('#openEditor');await p.focus('#jdMap');await p.keyboard.press('ArrowRight');
+ await p.click('#flowNav [data-step="join"]');await p.click('#precisionMap summary');await p.click('#openEditor');await p.focus('#jdMap');await p.keyboard.press('ArrowRight');
  const joint=await p.evaluate(()=>({id:window.__ps.sel.joint,p:window.__ps.plan.joints.find(j=>j.id===window.__ps.sel.joint).p}));const n=await seq();await p.keyboard.press('Shift+ArrowRight');await replanned(n);const moved=await p.evaluate(()=>window.__ps.plan.joints.find(j=>j.id===window.__ps.sel.joint).p);assert.ok(Math.abs(moved[0]-joint.p[0]-.5)<.01,'joint keyboard nudge is 0.5 mm');
  await p.focus('#jdMap');await p.keyboard.press('Alt+ArrowLeft');assert.notEqual(await p.evaluate(()=>window.__jed.map.pan[0]),0,'keyboard pans map');
  await p.keyboard.press('Escape');
- await p.click('[data-step="export"]');await p.click('.coupon summary');await p.click('#couponBtn');await p.waitForFunction(()=>document.querySelector('#couponInfo a'));await idle();
+ await p.click('#flowNav [data-step="export"]');await p.click('.coupon summary');await p.click('#couponBtn');await p.waitForFunction(()=>document.querySelector('#couponInfo a'));await idle();
  const download=p.waitForEvent('download');await p.locator('#couponInfo a').first().click();await(await download).saveAs(path.join(out,'coupon.stl'));assert.ok(fs.statSync(path.join(out,'coupon.stl')).size>100);
  // The sidebar's last content can scroll above, not under, the fixed action row.
  await p.setViewportSize({width:390,height:844});await p.click('#expandView');await p.waitForTimeout(100);assert.equal(await p.locator('#expandView').getAttribute('aria-expanded'),'true');assert.ok((await p.locator('#viewport').boundingBox()).height>600);await p.screenshot({path:path.join(out,'phone-expanded-view.png')});await p.keyboard.press('Escape');assert.equal(await p.locator('#expandView').getAttribute('aria-expanded'),'false');await p.locator('#stepExport .context-help').scrollIntoViewIfNeeded();
@@ -42,8 +42,8 @@ try{
  if(model){
   await p.setViewportSize({width:1440,height:900});await p.goto(url,{waitUntil:'networkidle'});await p.waitForFunction(()=>document.querySelector('#printer').options.length>5);
   const t=Date.now();await p.setInputFiles('#fileInput',model);await p.waitForFunction(()=>window.__ps.workerReady,null,{timeout:900000});await idle();
-  const loadMs=Date.now()-t;await p.click('[data-step="fit"]');await p.selectOption('#printer','prusa-mini');await p.click('[data-step="split"]');await p.click('#autoSplit');await p.waitForFunction(()=>window.__ps.plan,null,{timeout:900000});await idle();
-  const planMs=Date.now()-t-loadMs;await p.click('[data-step="export"]');await p.click('#buildBtn');await p.waitForFunction(()=>window.__ps.built,null,{timeout:900000});await idle();
+  const loadMs=Date.now()-t;await p.click('#flowNav [data-step="fit"]');await p.selectOption('#printer','prusa-mini');await p.click('#flowNav [data-step="split"]');await p.click('#autoSplit');await p.waitForFunction(()=>window.__ps.plan,null,{timeout:900000});await idle();
+  const planMs=Date.now()-t-loadMs;await p.click('#flowNav [data-step="export"]');await p.click('#buildBtn');await p.waitForFunction(()=>window.__ps.built,null,{timeout:900000});await idle();
   await p.click('#exportBtn');await p.waitForFunction(()=>window.__ps.export,null,{timeout:900000});await idle();
   report.realMesh=await p.evaluate(()=>({triangles:window.__ps.model.tris,parts:window.__ps.built.parts.length,manifold:window.__ps.built.parts.every(p=>p.status==='NoError'),fits:window.__ps.plan.fits,files:window.__ps.export.files.length,plates:window.__ps.export.plates}));
   Object.assign(report.realMesh,{loadMs,planMs,totalMs:Date.now()-t});assert.ok(report.realMesh.fits&&report.realMesh.manifold);console.log('Real mesh:',JSON.stringify(report.realMesh));

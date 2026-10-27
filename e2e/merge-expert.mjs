@@ -163,6 +163,7 @@ try {
     await p.click('#flowNav [data-step="export"]');
     assert.match(await p.locator('#outputState').innerText(), /Changes since last build/);
     assert.match(await p.locator('#buildBtn').innerText(), /Rebuild parts/);
+    assert.match(await p.locator('#flowNext').innerText(), /Rebuild & prepare downloads/);
     await audit(p, 'desktop-expert-stale');
     // tilt through the orange-ring field, then undo restores the axis-aligned cut
     await p.click('#flowNav [data-step="split"]'); await p.locator('[data-cut]').first().click();

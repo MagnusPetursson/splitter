@@ -212,6 +212,7 @@ export class MergeLayer {
     if (S.built) { this.hadBuild = true; this.stale = false; this.builtPlan = S.plan; }
     else if (this.hadBuild && S.plan && this.builtPlan !== S.plan) this.stale = true;
     if (!S.plan) { this.stale = false; this.hadBuild = false; }
+    if (S.outputStale !== this.stale) { S.outputStale = this.stale; queueMicrotask(() => this.a.FLOW.sync()); }
     const el = $('outputState');
     const text = S.export ? 'Downloads match the current plan.' : S.built ? 'Parts are built from the current plan. Downloads are not prepared yet.' : this.stale ? 'Changes since last build. Rebuild to update the parts and downloads.' : '';
     el.hidden = !text; if (el.textContent !== text) el.textContent = text; el.dataset.state = S.export ? 'current' : S.built ? 'built' : this.stale ? 'stale' : '';

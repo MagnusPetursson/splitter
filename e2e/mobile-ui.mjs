@@ -23,10 +23,10 @@ try {
  await page.click('#expertMode');await page.click('.samples summary');
  await page.click('[data-sample="bowl_shell_300mm.stl"]');
  await page.waitForFunction(()=>window.__ps.model&&document.querySelector('#busy').classList.contains('hidden'),null,{timeout:300000});
- await page.click('[data-step="fit"]');await page.selectOption('#printer','prusa-mini');await page.click('[data-step="split"]');
+ await page.click('#flowNav [data-step="fit"]');await page.selectOption('#printer','prusa-mini');await page.click('#flowNav [data-step="split"]');
  await page.click('#autoSplit');
  await page.waitForFunction(()=>window.__ps.plan&&document.querySelector('#busy').classList.contains('hidden'),null,{timeout:300000});
- await page.click('[data-step="export"]');await page.click('#buildBtn');await page.waitForFunction(()=>window.__ps.built&&document.querySelector('#busy').classList.contains('hidden'),null,{timeout:600000});
+ await page.click('#flowNav [data-step="export"]');await page.click('#buildBtn');await page.waitForFunction(()=>window.__ps.built&&document.querySelector('#busy').classList.contains('hidden'),null,{timeout:600000});
  for(const width of [360,390,412,1440]) {
   await page.setViewportSize({width,height:915});
   for(const name of ['model','cuts','parts','plates']) {
@@ -39,7 +39,7 @@ try {
    if(visible&&hit) {await page.mouse.click(rect.x+rect.width/2,rect.y+rect.height/2);check(await b.evaluate(e=>e.classList.contains('on')),`${width}: ${name} click`);}
    results.tabs.push({width,name,rect,hit,visible});
   }
-  await page.click('[data-step="join"]');if(!await page.locator('#precisionMap').evaluate(e=>e.open))await page.click('#precisionMap summary');results.actualMaps ||= [];
+  await page.click('#flowNav [data-step="join"]');if(!await page.locator('#precisionMap').evaluate(e=>e.open))await page.click('#precisionMap summary');results.actualMaps ||= [];
   for(const node of await page.locator('[data-face]').evaluateAll(es=>es.map(e=>e.dataset.face))) {
    await page.locator(`[data-face="${node}"]`).click();
    await page.locator('#jointMap').scrollIntoViewIfNeeded();
@@ -68,7 +68,7 @@ try {
   }
   await page.locator('#jointMap').scrollIntoViewIfNeeded();
   await page.screenshot({path:`${out}/map-${width}.png`});
-  await page.click('[data-step="split"]');await page.locator('#supportWeight').scrollIntoViewIfNeeded();
+  await page.click('#flowNav [data-step="split"]');await page.locator('#supportWeight').scrollIntoViewIfNeeded();
   const slider=page.locator('#supportWeight'),r=await slider.boundingBox(),before=await slider.inputValue();
   const seq=await page.evaluate(()=>window.__ps.planSeq);
   check(await slider.evaluate(e=>{const r=e.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===e;}),`${width}: slider hit`);

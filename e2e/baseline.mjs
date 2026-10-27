@@ -10,7 +10,7 @@ await p.goto(url,{waitUntil:'networkidle'});await p.waitForFunction(()=>document
 const count=()=>p.evaluate(()=>{const all=[...document.querySelectorAll('button,input,select,summary,a[href]')].filter(e=>e.checkVisibility()&&!e.closest('dialog:not([open])'));return {rendered:all.length,inViewport:all.filter(e=>{const r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth}).length,controls:all.map(e=>e.id||e.textContent.trim())};});
 const report={empty:await count()};await p.screenshot({path:out+'/desktop.png'});
 await p.click('[data-sample="bracket_320mm.stl"]');await p.waitForFunction(()=>window.__ps.workerReady&&document.querySelector('#busy').classList.contains('hidden'),null,{timeout:300000});
-if(await p.locator('#flowNav').count())await p.click('[data-step="split"]');
+if(await p.locator('#flowNav').count())await p.click('#flowNav [data-step="split"]');
 await p.click('#autoSplit');await p.waitForFunction(()=>window.__ps.plan&&document.querySelector('#busy').classList.contains('hidden'),null,{timeout:600000});
 report.planned=await count();await p.screenshot({path:out+'/planned.png'});
 await p.setViewportSize({width:390,height:844});await p.screenshot({path:out+'/phone.png'});

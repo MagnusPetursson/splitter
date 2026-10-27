@@ -95,10 +95,10 @@ try {
   check(m.simp.maxDev < 0.1 && m.simp.samples > 50000, `measured deviation ${m.simp.maxDev.toFixed(4)} mm over ${m.simp.samples} samples`);
   check(/Simplified for planning: 720 k → /.test(m.note) && /max 0\.\d+ mm/.test(m.note) && /full-detail original/.test(m.note), 'banner states simplification, deviation and export source');
   check(await page.locator('#meshNote button', { hasText: 'Use full detail' }).isEnabled(), '"Use full detail" offered');
-  await page.click('[data-step="load"]');await page.locator('#meshNote').scrollIntoViewIfNeeded();
+  await page.click('#flowNav [data-step="load"]');await page.locator('#meshNote').scrollIntoViewIfNeeded();
   await shot('03-simplified-banner');
 
-  await page.click('[data-step="fit"]');await page.selectOption('#printer','bambu-a1-mini');await page.click('[data-step="split"]');
+  await page.click('#flowNav [data-step="fit"]');await page.selectOption('#printer','bambu-a1-mini');await page.click('#flowNav [data-step="split"]');
   // staged planning progress, then cancel
   await page.click('#autoSplit');
   await page.waitForFunction(() => /^Cut \d+/.test(document.getElementById('busyText').textContent), null, { timeout: 60000 });
@@ -134,7 +134,7 @@ try {
   await p2.screenshot({ path: path.join(out, '05-crash-note.png') });
   await p2.close();
 
-  await page.click('[data-step="join"]');await page.selectOption('#jointStyle','filament');await idle();
+  await page.click('#flowNav [data-step="join"]');await page.selectOption('#jointStyle','filament');await idle();
   // 4. joint editor
   await page.locator('#mapWrap').scrollIntoViewIfNeeded();
   await shot('06-inline-preview');
@@ -206,7 +206,7 @@ try {
   check(await page.evaluate(() => !!document.querySelector('#mapWrap ~ * #seamEditor, #stepJoints #seamEditor') || !!document.querySelector('.side #seamEditor')), 'contact editor returns to the side panel');
 
   // 5. build from the full-detail original
-  await page.click('[data-step="export"]');await page.click('#buildBtn');
+  await page.click('#flowNav [data-step="export"]');await page.click('#buildBtn');
   await page.waitForFunction(() => window.__ps.built, null, { timeout: 900000 });
   await idle();
   const bi = await page.locator('#buildInfo').textContent();
@@ -222,10 +222,10 @@ try {
   await pp.waitForFunction(() => document.querySelectorAll('#printer option').length > 5, null, { timeout: 60000 });
   await pp.click('[data-sample]');
   await pp.waitForFunction(() => window.__ps.model && window.__ps.workerReady && document.getElementById('busy').classList.contains('hidden'), null, { timeout: 300000 });
-  await pp.click('[data-step="fit"]');await pp.selectOption('#printer','bambu-a1-mini');await pp.click('[data-step="split"]');
+  await pp.click('#flowNav [data-step="fit"]');await pp.selectOption('#printer','bambu-a1-mini');await pp.click('#flowNav [data-step="split"]');
   await pp.click('#autoSplit');
   await pp.waitForFunction(() => window.__ps.plan && document.getElementById('busy').classList.contains('hidden'), null, { timeout: 600000 });
-  await pp.click('[data-step="join"]');await pp.click('#precisionMap summary');await pp.locator('#jointMap').scrollIntoViewIfNeeded();
+  await pp.click('#flowNav [data-step="join"]');await pp.click('#precisionMap summary');await pp.locator('#jointMap').scrollIntoViewIfNeeded();
   await pp.screenshot({ path: path.join(out, '11-phone-inline.png') });
   await pp.locator('#jointMap').tap();
   await pp.waitForFunction(() => !document.getElementById('jointDlg').classList.contains('hidden'), null, { timeout: 10000 });

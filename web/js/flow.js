@@ -115,7 +115,7 @@ export class GuidedFlow {
     $('flowBack').disabled=busy||i===0;
     const canAct=i===0?!!S.model:i<=2?!!S.model:i>=3?ready.ok:false;
     $('flowNext').disabled=busy||!canAct;
-    $('flowNext').textContent=i===0?(S.model?'Check printer →':'Choose a model first'):i===1||i===2&&(!S.plan||S.settingsDirty)?`Plan cuts for ${this.printerName()}`:i===2?'Review joints →':!ready.ok?(S.pendingPin?'Apply or discard pin edits':'Resolve warnings first'):S.export?'Download ZIP':S.built?'Prepare downloads':'Build & prepare downloads';
+    $('flowNext').textContent=i===0?(S.model?'Check printer →':'Choose a model first'):i===1||i===2&&(!S.plan||S.settingsDirty)?`Plan cuts for ${this.printerName()}`:i===2?'Review joints →':!ready.ok?(S.pendingPin?'Apply or discard pin edits':'Resolve warnings first'):S.export?'Download ZIP':S.built?'Prepare downloads':S.outputStale?'Rebuild & prepare downloads':'Build & prepare downloads';
     const editing=!$('jointDlg').classList.contains('hidden');
     $('side').inert=busy||editing||!!this.expanded;
     for(const el of document.querySelectorAll('.top, #flowNav, .flow-footer'))el.inert=editing||!!this.expanded;

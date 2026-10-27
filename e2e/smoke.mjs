@@ -36,14 +36,14 @@ try {
   await idle();
   lap(`model ${await page.evaluate(() => window.__ps.model.tris)} triangles`);
   await shot('1_model');
-  await page.click('[data-step="fit"]');await page.selectOption('#printer',printer);await page.click('[data-step="split"]');
+  await page.click('#flowNav [data-step="fit"]');await page.selectOption('#printer',printer);await page.click('#flowNav [data-step="split"]');
   await page.click('#autoSplit');
   await page.waitForFunction(() => window.__ps.plan, null, { timeout: 600000 });
   await idle();
   const pl = await page.evaluate(() => ({ parts: window.__ps.plan.leaves.filter((l) => !l.empty).length, joints: window.__ps.plan.joints.length, fits: window.__ps.plan.leaves.filter((l) => !l.empty).every((l) => l.fits) }));
   lap(`plan ${JSON.stringify(pl)}`);
   await shot('2_plan');
-  await page.click('[data-step="export"]');await page.click('#buildBtn');
+  await page.click('#flowNav [data-step="export"]');await page.click('#buildBtn');
   await page.waitForFunction(() => window.__ps.built, null, { timeout: 900000 });
   await idle();
   const bad = await page.evaluate(() => window.__ps.built.parts.filter((p) => p.status !== 'NoError').length);

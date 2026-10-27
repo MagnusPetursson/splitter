@@ -15,7 +15,7 @@ page.on('pageerror',e=>{errors.push(e.message);console.error(e.message);});
 page.on('console',m=>{if(m.type()==='error'){errors.push(m.text());console.error(m.text());}});
 const idle=()=>page.waitForFunction(()=>document.querySelector('#busy').classList.contains('hidden'),null,{timeout:900000});
 const ready=()=>page.waitForFunction(()=>document.querySelector('#printer').options.length>5,null,{timeout:60000});
-const slider=async w=>{await page.click('[data-step="split"]');await page.locator('#supportWeight').fill(String(w));await page.locator('#supportWeight').dispatchEvent('input');};
+const slider=async w=>{await page.click('#flowNav [data-step="split"]');await page.locator('#supportWeight').fill(String(w));await page.locator('#supportWeight').dispatchEvent('input');};
 const shot=async name=>{await page.screenshot({path:path.join(out,name+'.png')});};
 const results=[];
 const ticker=setInterval(async()=>{try{console.log('progress',await page.locator('#busyText').textContent());}catch{}},30000);
@@ -27,7 +27,7 @@ try {
  await slider(0);await page.reload({waitUntil:'networkidle'});await ready();
  assert.equal(await page.inputValue('#supportWeight'),'0');
  await page.setInputFiles('#fileInput',model);await page.waitForFunction(()=>window.__ps.workerReady&&document.querySelector('#busy').classList.contains('hidden'),null,{timeout:300000});
- await page.click('[data-step="fit"]');await page.click('#resetDefaults');assert.equal(await page.inputValue('#supportWeight'),'0.5');await page.selectOption('#printer',printer);
+ await page.click('#flowNav [data-step="fit"]');await page.click('#resetDefaults');assert.equal(await page.inputValue('#supportWeight'),'0.5');await page.selectOption('#printer',printer);
  await page.waitForFunction(()=>window.__ps.model&&window.__ps.workerReady,null,{timeout:300000});await idle();
  for(const [name,weight] of [['old',0],['new',0.5]]) {
   await slider(weight);
@@ -39,7 +39,7 @@ try {
   assert.equal(plan.settings.supportWeight,weight);assert.equal(plan.fits,true);
   fs.writeFileSync(path.join(out,name+'-plan.json'),JSON.stringify(plan,null,2));
   await shot(name+'-plan');
-  await page.click('[data-step="export"]');await page.click('#buildBtn');await page.waitForFunction(()=>window.__ps.built,null,{timeout:900000});await idle();
+  await page.click('#flowNav [data-step="export"]');await page.click('#buildBtn');await page.waitForFunction(()=>window.__ps.built,null,{timeout:900000});await idle();
   const built=await page.evaluate(()=>({parts:window.__ps.built.parts.map(p=>({id:p.id,status:p.status,triangles:p.tris})),verification:window.__ps.built.verify}));
   assert.ok(built.parts.length>0);assert.ok(built.parts.every(p=>p.status==='NoError'));
   await shot(name+'-built');
@@ -54,7 +54,7 @@ try {
  assert.ok(results[1].supportProxyCM3<results[0].supportProxyCM3);
  assert.ok(results[1].parts>results[0].parts);
  await page.setViewportSize({width:412,height:915});
- await page.click('[data-step="split"]');if(await page.locator('#sheetToggle[aria-expanded=false]').isVisible())await page.click('#sheetToggle');await page.locator('.support-control').scrollIntoViewIfNeeded();
+ await page.click('#flowNav [data-step="split"]');if(await page.locator('#sheetToggle[aria-expanded=false]').isVisible())await page.click('#sheetToggle');await page.locator('.support-control').scrollIntoViewIfNeeded();
  const sliderBox=await page.locator('#supportWeight').boundingBox();
  assert.ok(sliderBox && sliderBox.y>=0 && sliderBox.y+sliderBox.height<=915,'slider is inside phone viewport');
  await page.mouse.click(sliderBox.x+sliderBox.width*0.75,sliderBox.y+sliderBox.height/2);

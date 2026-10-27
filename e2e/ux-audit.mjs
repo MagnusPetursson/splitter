@@ -34,7 +34,7 @@ try {
   await audit(p,device+'-fit');
   await p.selectOption('#printer','prusa-mini');
   await p.click('#expertMode');await audit(p,device+'-fit-expert');await p.click('#expertMode');
-  await p.click('[data-step="split"]');await p.click('#autoSplit');await p.waitForFunction(()=>window.__ps.plan,null,{timeout:600000});await idle(p);
+  await p.click('#flowNav [data-step="split"]');await p.click('#autoSplit');await p.waitForFunction(()=>window.__ps.plan,null,{timeout:600000});await idle(p);
   await audit(p,device+'-split');
   if(device==='phone'){await p.click('#expandView');await audit(p,'phone-expanded');await p.keyboard.press('Escape');}
   // Select a real cut; keyboard offset applies to the same 3D plan.
@@ -55,13 +55,13 @@ try {
   await p.keyboard.press('Tab');assert.notEqual(await p.evaluate(()=>document.activeElement.id),'jdMap');
   await p.keyboard.press('Escape');assert.equal(await p.locator('#jointDlg').getAttribute('aria-hidden'),'true');
   await p.click('#expertMode');await audit(p,device+'-join-expert');await p.click('#expertMode');
-  await p.click('[data-step="export"]');await p.click('#buildBtn');await p.waitForFunction(()=>window.__ps.built,null,{timeout:600000});await idle(p);
+  await p.click('#flowNav [data-step="export"]');await p.click('#buildBtn');await p.waitForFunction(()=>window.__ps.built,null,{timeout:600000});await idle(p);
   await p.click('#exportBtn');await p.waitForFunction(()=>window.__ps.export,null,{timeout:600000});await idle(p);
   await audit(p,device+'-export');
   await p.click('[data-view="plates"]');await audit(p,device+'-plates');
   // Changing a printer must not quietly export an old plan for that printer.
-  await p.click('[data-step="fit"]');await p.selectOption('#printer','prusa-core-one');
-  assert.ok(await p.locator('#planStale').isVisible());assert.ok(await p.locator('[data-step="export"]').isDisabled());
+  await p.click('#flowNav [data-step="fit"]');await p.selectOption('#printer','prusa-core-one');
+  assert.ok(await p.locator('#planStale').isVisible());assert.ok(await p.locator('#flowNav [data-step="export"]').isDisabled());
   await p.emulateMedia({reducedMotion:'reduce'});await p.waitForFunction(()=>window.__viewer.controls.enableDamping===false);assert.equal(await p.evaluate(()=>window.__viewer.controls.enableDamping),false);
   await ctx.close();
  }

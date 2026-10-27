@@ -36,7 +36,7 @@
   <p id="planStale" class="info warnc" role="status" hidden>Printer settings changed. Return to Split and find cuts again before exporting.</p>
   <div id="selectionInspector" class="selection-inspector expert-only" role="region" aria-labelledby="inspectorTitle" hidden><p class="eyebrow">INSPECTOR</p><h2 id="inspectorTitle" tabindex="-1">Nothing selected</h2><p id="inspectorFacts" class="small"></p></div>
   <section class="step" id="stepModel" tabindex="-1" aria-labelledby="loadHeading">
-    <p class="eyebrow">01 / MODEL</p><h1 id="loadHeading">Start with your model.</h1>
+    <p class="eyebrow">STEP 1 · LOAD</p><h1 id="loadHeading">Start with your model.</h1>
     <p class="step-intro">Keep its size. We’ll make the pieces fit your printer.</p>
     <div id="loadedActions" class="btns" hidden><button id="replaceModel">Replace model</button><button id="removeModel" class="danger">Remove model</button></div>
     <label class="drop" id="drop" for="fileInput"><span class="upload-mark" aria-hidden="true">↑</span><b>Choose a model</b><span>or drop it anywhere</span><span class="small mute">STL · OBJ · 3MF / up to 300 MB</span><input type="file" id="fileInput" accept=".stl,.obj,.3mf" aria-label="Choose an STL, OBJ or 3MF model"></label>
@@ -52,7 +52,7 @@
     <a class="context-help" href="guide.html#getting-started" target="_blank" rel="noopener">First time? Start here ↗</a>
   </section>
   <section class="step" id="stepPrinter" tabindex="-1" aria-labelledby="fitHeading" hidden>
-    <p class="eyebrow">02 / PRINTER</p><h1 id="fitHeading">What are you printing on?</h1><p class="step-intro">The blue box is your usable build space. Stripes show what doesn’t fit as placed.</p>
+    <p class="eyebrow">STEP 2 · FIT</p><h1 id="fitHeading">What are you printing on?</h1><p class="step-intro">The blue box is your usable build space. Stripes show what doesn’t fit as placed.</p>
     <label for="printer">Printer</label><select id="printer"></select>
     <p id="fitMeshNote" class="small" hidden></p><div id="fitVerdict" class="fit-card" role="status"></div><div id="fitReadout" class="fit-readout"></div><div id="printerSource" class="mute small"></div>
     <div class="volume-legend fit-legend" aria-label="Viewer legend"><span><i class="volume-key"></i>Blue box: usable printer volume</span><span><i class="stripe-key"></i>Red stripes: outside the usable volume</span></div>
@@ -66,7 +66,7 @@
     <a class="context-help" href="guide.html#fit" target="_blank" rel="noopener">How margins and clearances work ↗</a>
   </section>
   <section class="step" id="stepSplit" tabindex="-1" aria-labelledby="splitHeading" hidden>
-    <p class="eyebrow">03 / CUTS</p><h1 id="splitHeading">Find a good split.</h1><p class="step-intro">Plan first, build later. Review the suggested cuts; drag the highlighted arrow to move one, or use Tilt cut.</p>
+    <p class="eyebrow">STEP 3 · SPLIT</p><h1 id="splitHeading">Find a good split.</h1><p class="step-intro">Plan first, build later. Review the suggested cuts; drag the highlighted arrow to move one, or use Tilt cut.</p>
     <div class="intent" role="group" aria-label="Split preference"><button data-weight="0" aria-pressed="false">Fewer parts</button><button data-weight="0.5" aria-pressed="true">Balanced</button><button data-weight="1" aria-pressed="false">Less support</button></div>
     <p class="small mute">Extra cuts can reduce supports, but mean more assembly. Always check in your slicer.</p>
     <span id="autoSplitHome" hidden></span><button id="autoSplit" class="primary wide" disabled>Plan cuts automatically <span aria-hidden="true">→</span></button>
@@ -79,7 +79,7 @@
     <a class="context-help" href="guide.html#splitting" target="_blank" rel="noopener">Why these cuts? ↗</a>
   </section>
   <section class="step" id="stepJoints" tabindex="-1" aria-labelledby="joinHeading" hidden>
-    <p class="eyebrow">04 / ASSEMBLY</p><h1 id="joinHeading">Make it whole again.</h1><p class="step-intro">Joints align the pieces. Review each cut face before building.</p>
+    <p class="eyebrow">STEP 4 · JOIN</p><h1 id="joinHeading">Make it whole again.</h1><p class="step-intro">Joints align the pieces. Review each cut face before building.</p>
     <label for="jointStyle">Join the pieces with</label><select id="jointStyle"><optgroup label="Glued"><option value="glued">Dowel pins (glue)</option><option value="filament">1.75 mm filament pins</option><option value="pegs">Integrated pegs</option><option value="keyed">Keyed hex pegs</option><option value="finger">Finger / box joints</option><option value="tongue">Tongue and groove</option><option value="lap">Half lap (shells)</option></optgroup><optgroup label="Unglued"><option value="press">Press-fit pins</option><option value="snap">Snap-fit clips</option><option value="magnets">Magnets</option><option value="dovetail">Sliding dovetail</option><option value="screws">Heat-set inserts + screws</option><option value="bolts">Bolts + nut traps</option></optgroup></select>
     <div id="styleNote" class="small mute hidden" role="status"></div><p id="jointHelp" class="small mute">Click a pin to select it. Drag it across the cut face. Use Add pin, then click the face to place another.</p><div id="faceList" class="facelist" role="group" aria-label="Cut faces"></div>
     <p id="readiness" class="readiness" role="status"></p><details id="pinSelector"><summary>Select a pin <span>Keyboard alternative</span></summary><div id="pinList" class="facelist" role="group" aria-label="Pins on selected cut"></div></details>
@@ -90,7 +90,7 @@
     <a class="context-help" href="guide.html#joints" target="_blank" rel="noopener">Choose a joint and calibrate its fit ↗</a>
   </section>
   <section class="step" id="stepExport" tabindex="-1" aria-labelledby="exportHeading" hidden>
-    <p class="eyebrow">05 / PRINT</p><h1 id="exportHeading">From model to parts.</h1><p class="step-intro">Build the actual solids, check the result, then download your print package.</p>
+    <p class="eyebrow">STEP 5 · EXPORT</p><h1 id="exportHeading">From model to parts.</h1><p class="step-intro">Build the actual solids, check the result, then download your print package.</p>
     <p id="outputState" class="output-state" role="status" hidden></p>
     <div id="detailRow" class="detailrow small hidden"></div>
     <button id="buildBtn" class="primary wide" disabled>Build parts <span aria-hidden="true">→</span></button>
