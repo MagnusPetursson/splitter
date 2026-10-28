@@ -27,11 +27,11 @@ export function fitAssess(size,u,upright=false){
   const how=resolve==='turn'?'after a 90° turn':'laid on its side';
   // When a quarter turn fits the whole model, the turn is the answer and the
   // current placement is the detail.
-  if(p)return{over,resolve,rot,how,act:resolve==='turn'?'Turn 90° to fit':'Lay on side to fit',head:`Fits in one piece ${how}`,metric:`Current placement is ${short} (${pair})`,
-    short:`Current placement is ${short}`,next:'The turn keeps the size and changes only the footprint on the bed. You can undo it.'};
+  if(p)return{over,resolve,rot,how,act:resolve==='turn'?'Turn 90°':'Lay on side',head:`Fits in one piece ${how}`,metric:`Current placement is ${short} (${pair})`,
+    short:`Current placement is ${short}`,next:'Turning keeps the size; only the orientation on the bed changes.'};
   const any=upright?'No upright orientation':'No orientation';
   return{over,resolve,head:`Doesn’t fit: ${short}`,metric:`${metric} usable`,short:`${any} fits whole · Plan cuts proposes pieces`,
-    next:`${any} fits it whole. Plan cuts proposes cuts and a print orientation for each piece; you review them before anything is built.`};
+    next:`${any} fits it whole. Plan cuts proposes cuts and a print orientation for each piece.`};
 }
 export class GuidedFlow {
   constructor({S, viewer, setView, split, prepare, onSync}) {
@@ -76,7 +76,7 @@ export class GuidedFlow {
     document.querySelectorAll('details.advanced').forEach(d=>{d.open=on;});
     localStorage.setItem('ps.expert',on?'1':'0');$('pinSelector').open=on;
     document.dispatchEvent(new Event('expertchange'));this.onSync?.();this.sync();
-    if(announce)this.say(on?'Expert mode on. Detailed controls are open in each step.':'Guided mode on. Advanced controls remain available in each step.');
+    if(announce)this.say(on?'Expert mode on. Detailed controls are open in each step.':'Expert mode off.');
   }
   expand(on) {
     this.expanded=on;
@@ -110,7 +110,7 @@ export class GuidedFlow {
     try{await this.split();}finally{this.whole=false;}
     const P=this.S.plan,parts=P?P.leaves.filter(l=>!l.empty):[];
     if(P&&parts.length===1&&P.fits&&readiness(this.S).ok){this.go('export');await this.prepare();}
-    else if(P){this.go(P.fits?'join':'split');this.say(`Plan cuts proposed ${parts.length} parts for your Split preference. Review them, or plan again.`);}
+    else if(P){this.go(P.fits?'join':'split');this.say(`Plan cuts proposed ${parts.length} parts. Review them in Split.`);}
   }
   allowed(step) {return step==='load'||((step==='fit'||step==='split')?!!this.S.model:!!this.S.plan&&!this.S.settingsDirty);}
   go(step,{focus=true,view=true}={}) {
@@ -124,8 +124,8 @@ export class GuidedFlow {
     if(focus)$(panels[steps.indexOf(step)]).focus({preventScroll:true});
     this.say(`Step ${steps.indexOf(step)+1} of 5: ${names[steps.indexOf(step)]}.`);
   }
-  loaded() {this.go('fit',{focus:true});this.say(`Model loaded. Check the dimensions against ${this.printerName()}, then split.`);}
-  planned() {if(this.whole)return;if(this.autoAdvance&&this.S.plan.fits)this.go('join');this.sync();this.say(`Split ready. ${this.S.plan.leaves.filter(l=>!l.empty).length} parts. ${this.S.plan.fits?'All fit.':'Some do not fit; review the warnings.'} Continue to Join.`);}
+  loaded() {this.go('fit',{focus:true});this.say(`Model loaded. Fit checked against ${this.printerName()}.`);}
+  planned() {if(this.whole)return;if(this.autoAdvance&&this.S.plan.fits)this.go('join');this.sync();this.say(`Split ready. ${this.S.plan.leaves.filter(l=>!l.empty).length} parts. ${this.S.plan.fits?'All fit.':'Some do not fit; review the warnings.'}`);}
   say(text) { $('flowStatus').textContent=text; }
   picked(kind) {
     const next=kind==='joint'||kind==='patch'?'join':this.step==='join'&&kind==='cut'?'join':'split';
@@ -143,8 +143,8 @@ export class GuidedFlow {
     $('loadedStrip').hidden=!S.model||this.step==='load';
     $('loadedStripText').textContent=S.model?`${S.model.name} loaded · ${Math.abs((S.model.scale||1)-1)<1e-9?'original scale':`scale ${S.model.scale}×`}`:'';
     document.querySelector('#stepModel .samples').hidden=!!S.model;
-    $('loadHeading').textContent=S.model?`${S.model.name.replace(/\.[^.]+$/,'').replace(/_/g,' ')} loaded`:'Start with your model.';
-    document.querySelector('#stepModel .step-intro').textContent=S.model?`${Math.abs((S.model.scale||1)-1)<1e-9?'Original size retained.':`Scale ${S.model.scale}× applied.`} Replace the file or review its measurements below.`:'Keep its size. We’ll make the pieces fit your printer.';
+    $('loadHeading').textContent=S.model?`${S.model.name.replace(/\.[^.]+$/,'').replace(/_/g,' ')} loaded`:'Model';
+    document.querySelector('#stepModel .step-intro').textContent=S.model?(Math.abs((S.model.scale||1)-1)<1e-9?'Original size.':`Scale ${S.model.scale}× applied.`):'The model keeps its size and is cut into pieces that fit the printer.';
     document.body.dataset.loaded=String(!!S.model);document.body.dataset.exported=String(!!S.export);
     $('exportBtn').disabled=busy||!S.built||!!S.settingsDirty;
     document.querySelectorAll('#flowNav button').forEach((b,j)=>{
@@ -153,7 +153,7 @@ export class GuidedFlow {
       const done=[!!S.model,!!S.plan&&!S.settingsDirty,!!S.plan&&!S.settingsDirty,!!S.built,!!S.export][j];
       const blocked=!this.allowed(steps[j]);
       const state=j===i?'current':done?'done':blocked?'blocked':'upcoming';
-      const why=blocked?(!S.model?'Load a model':S.settingsDirty?'Recalculate split':'Find cuts first'):state==='done'?'Done':state==='current'?'Current':'Available';
+      const why=blocked?(!S.model?'Load a model':S.settingsDirty?'Plan cuts again':'Plan cuts first'):state==='done'?'Done':state==='current'?'Current':'Available';
       b.dataset.state=state;b.title=`${names[j]} · ${why}`;b.removeAttribute('aria-label');b.setAttribute('aria-description',why);
       b.querySelector('small').textContent=why;b.querySelector('small').classList.add('sr-only');b.classList.toggle('done',done);
       {const n=b.querySelector('.step-number'),v=done&&j!==i?'done':String(j+1);if(n.dataset.v!==v){n.dataset.v=v;n.innerHTML=v==='done'?ico('check'):v;}}b.querySelector('.step-number').setAttribute('aria-hidden','true');
@@ -161,7 +161,7 @@ export class GuidedFlow {
     $('flowBack').disabled=busy||i===0;
     const canAct=i===0?!!S.model:i<=2?!!S.model:i>=3?ready.ok:false;
     $('flowNext').disabled=busy||!canAct;
-    {const fz=i===1&&this.fit,nt=i===0?(S.model?'Check printer fit':busy?'Preparing model…':'Load a model to continue'):fz&&fz.rot?fz.act:fz&&!fz.over.length?'Export as one piece':i===1||i===2&&(!S.plan||S.settingsDirty)?`Plan cuts for ${this.printerName()}`:i===2?'Review joints':!ready.ok?(S.pendingPin?'Apply or discard pin edits':'Resolve warnings first'):S.export?'Download ZIP':S.built?'Prepare downloads':S.outputStale?'Rebuild & prepare downloads':'Build & prepare downloads';const m=/^Plan cuts for (.+)$/.exec(nt);if($('flowNext').dataset.t!==nt){$('flowNext').dataset.t=nt;$('flowNext').title=nt==='Export as one piece'?'Plan the print orientation, build the single part and prepare downloads':/to fit$/.test(nt)?'Turn the model on the bed so it fits in one piece (Undo restores)':nt;$('flowNext').textContent=m?'Plan cuts':nt;}}
+    {const fz=i===1&&this.fit,nt=i===0?(S.model?'Check printer fit':busy?'Loading…':'Next'):fz&&fz.rot?fz.act:fz&&!fz.over.length?'Export one piece':i===1||i===2&&(!S.plan||S.settingsDirty)?`Plan cuts for ${this.printerName()}`:i===2?'Review joints':!ready.ok?(S.pendingPin?'Apply pin edits':'Resolve warnings'):S.export?'Download ZIP':S.built?'Export files':S.outputStale?'Rebuild and export':'Build and export';const m=/^Plan cuts for (.+)$/.exec(nt);if($('flowNext').dataset.t!==nt){$('flowNext').dataset.t=nt;$('flowNext').title=nt==='Export one piece'?'Plan the print orientation, build the part and export the files':fz&&fz.rot&&nt===fz.act?'Turn the model on the bed so it fits in one piece (Undo restores)':S.pendingPin&&i>=3&&!ready.ok?'Apply or discard the pin edits first':nt;$('flowNext').textContent=m?'Plan cuts':nt;}}
     const editing=!$('jointDlg').classList.contains('hidden');
     $('side').inert=busy||editing||!!this.expanded;
     for(const el of document.querySelectorAll('.top, #flowNav, .flow-footer'))el.inert=editing||!!this.expanded;
@@ -186,7 +186,7 @@ export class GuidedFlow {
       const turned=turnedNow;
       // The turn itself is the footer's primary; the card offers the
       // alternative (cut anyway) as a secondary action.
-      const fix=f&&f.rot?`<p class="fit-alt"><span>Prefer pieces?</span> <button type="button" class="linkish" data-fit-plan>Plan cuts anyway</button></p>`:'';
+      const fix=f&&f.rot?`<p class="fit-alt"><span>Or split it:</span> <button type="button" class="linkish" data-fit-plan>Plan cuts anyway</button></p>`:'';
       const undo=turned?`<p class="fit-turned">${ico('rotate')}<span>Turned 90° from the file’s orientation</span> <button type="button" class="linkish" data-fit-restore>Undo turn</button></p>`:'';
       $('fitVerdict').innerHTML=!f?'':`${ico(f.rot?'rotate':f.over.length?'alert':'success')}<div><b class="fit-head sr-only">${f.head}</b><p class="fit-metric">${f.metric}${f.resolve==='none'?' on <span class="pn"></span>':''}</p>${undo}${f.next?`<p class="fit-next">${f.next}</p>`:''}${fix}</div>`;
       $('fitVerdict').querySelector('[data-fit-plan]')?.addEventListener('click',()=>this.planAnyway());
@@ -195,9 +195,9 @@ export class GuidedFlow {
     $('fitVerdict').dataset.resolve=f?f.resolve:'';
     // Round 4: the verdict is the step's headline; the printer is a compact
     // subordinate row and the "nothing is scaled" note joins the usable note.
-    {const h=$('fitHeading'),t=f?f.head:'What are you printing on?';if(h.textContent!==t)h.textContent=t;h.dataset.tone=!f?'':f.rot?'turn':f.over.length?'over':'fits';$('fitIntro').hidden=!!f;const pv=$('printerValue'),pn=$('printer').value==='custom'?`Custom ${['bedX','bedY','bedZ'].map(i=>+$(i).value||0).join(' × ')} mm`:this.printerName().replace(/\s+—\s+[\d.×]+$/,'');if(pv.textContent!==pn)pv.textContent=pn;}
+    {const h=$('fitHeading'),t=f?f.head:'Printer fit';if(h.textContent!==t)h.textContent=t;h.dataset.tone=!f?'':f.rot?'turn':f.over.length?'over':'fits';$('fitIntro').hidden=!!f;const pv=$('printerValue'),pn=$('printer').value==='custom'?`Custom ${['bedX','bedY','bedZ'].map(i=>+$(i).value||0).join(' × ')} mm`:this.printerName().replace(/\s+—\s+[\d.×]+$/,'');if(pv.textContent!==pn)pv.textContent=pn;}
     const simp=S.model?.simplified;$('fitMeshNote').hidden=!simp;
-    $('fitMeshNote').textContent=simp?`Simplified for planning: ${simp.inputTris.toLocaleString()} → ${simp.outputTris.toLocaleString()} triangles. Maximum sampled deviation ${simp.maxDev.toFixed(3)} mm. ${S.model.originalKept?'Full-detail original retained for export.':'Export will use this simplified mesh.'} See Load for the complete repair and simplification report.`:'';
+    $('fitMeshNote').textContent=simp?`Simplified for planning: ${simp.inputTris.toLocaleString()} → ${simp.outputTris.toLocaleString()} triangles. Maximum sampled deviation ${simp.maxDev.toFixed(3)} mm. ${S.model.originalKept?'Full-detail original retained for export.':'Export will use this simplified mesh.'} Full report in Load.`:'';
     document.querySelectorAll('[data-weight]').forEach(b=>b.setAttribute('aria-pressed',String(+$('supportWeight').value===+b.dataset.weight)));
     $('viewerHint').textContent=this.step==='split'&&S.plan?'Drag the blue arrow to move · Tilt cut for arcs · Esc cancels':this.step==='join'?'Click or drag pins · Add pin then click a cut face':'Drag to orbit · scroll to zoom · F to fit';
     this.onSync?.();

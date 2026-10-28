@@ -1,0 +1,1719 @@
+source,location,kind,element,current text (before this pass)
+source,web/index.html:7,page-title,title,"Splitter — a model, made printable"
+source,web/index.html:51,link,a,Skip to current step
+source,web/index.html:53,text,span,splitter
+source,web/index.html:54,text,div,"A model, made printable."
+source,web/index.html:56,attr:title,button,Find any command or object (Ctrl K)
+source,web/index.html:56,text,span,Commands
+source,web/index.html:56,key,kbd,Ctrl K
+source,web/index.html:57,attr:title,a,Guide (opens in a new tab)
+source,web/index.html:57,text,span,Guide
+source,web/index.html:57,text,span,(new tab)
+source,web/index.html:58,attr:title,button,Reveal detailed controls without leaving this step
+source,web/index.html:58,button,button,Expert mode
+source,web/index.html:59,attr:aria-label,button,Quick help
+source,web/index.html:59,attr:title,button,Quick help and keyboard controls
+source,web/index.html:59,text,span,Help
+source,web/index.html:61,attr:aria-label,nav,Split a model in five steps
+source,web/index.html:62,text,span,1
+source,web/index.html:62,text,span,Load
+source,web/index.html:62,text,small,Your model
+source,web/index.html:63,text,span,2
+source,web/index.html:63,text,span,Fit
+source,web/index.html:63,text,small,Your printer
+source,web/index.html:64,text,span,3
+source,web/index.html:64,text,span,Split
+source,web/index.html:64,text,small,Find the cuts
+source,web/index.html:65,text,span,4
+source,web/index.html:65,text,span,Join
+source,web/index.html:65,text,small,Make it whole
+source,web/index.html:66,text,span,5
+source,web/index.html:66,text,span,Export
+source,web/index.html:66,text,small,Ready to print
+source,web/index.html:68,attr:aria-label,aside,Workflow controls
+source,web/index.html:69,button,button,Details
+source,web/index.html:70,button,button,Replace
+source,web/index.html:71,button,button,Adjust cuts
+source,web/index.html:72,text,p,Printer settings changed. Return to Split and find cuts again before exporting.
+source,web/index.html:73,text,p,Inspector
+source,web/index.html:73,heading,h2,Nothing selected
+source,web/index.html:75,text,p,Step 1 of 5
+source,web/index.html:75,heading,h1,Start with your model.
+source,web/index.html:76,text,p,Keep its size. We’ll make the pieces fit your printer.
+source,web/index.html:77,button,button,Replace model
+source,web/index.html:77,button,button,Remove model
+source,web/index.html:78,text,b,Choose a model
+source,web/index.html:78,text,span,or drop it anywhere
+source,web/index.html:78,text,span,STL · OBJ · 3MF / up to 300 MB
+source,web/index.html:78,attr:aria-label,input,"Choose an STL, OBJ or 3MF model"
+source,web/index.html:79,text,div,Runs entirely in your browser: your model is never uploaded.
+source,web/index.html:81,text,p,Or try a sample
+source,web/index.html:81,text,span,320 mm bracket
+source,web/index.html:81,text,small,A simple first split
+source,web/index.html:81,disclosure,summary,More sample models
+source,web/index.html:81,button,button,300 mm bowl shell
+source,web/index.html:81,button,button,300 mm cube
+source,web/index.html:81,button,button,Damaged bunny
+source,web/index.html:83,attr:aria-label,div,Model measurements and repair report
+source,web/index.html:84,disclosure,summary,Advanced
+source,web/index.html:84,text,span,Units & scale
+source,web/index.html:85,text,p,STL has no unit metadata. Check the dimensions before splitting; scaling replaces the current plan.
+source,web/index.html:86,label,label,Source units
+source,web/index.html:86,option,option,mm
+source,web/index.html:86,option,option,cm
+source,web/index.html:86,option,option,m
+source,web/index.html:86,option,option,inch → mm
+source,web/index.html:86,label,label,Scale (%)
+source,web/index.html:86,button,button,Apply
+source,web/index.html:88,link,a,First time? Start here
+source,web/index.html:88,text,span,(new tab)
+source,web/index.html:91,text,p,Step 2 of 5
+source,web/index.html:91,heading,h1,What are you printing on?
+source,web/index.html:91,text,p,Checked against usable space. Nothing is scaled.
+source,web/index.html:92,label,label,Printer
+source,web/index.html:92,text,span,Change
+source,web/index.html:94,disclosure,summary,Advanced
+source,web/index.html:94,text,span,Volume & clearances
+source,web/index.html:95,label,label,X (mm)
+source,web/index.html:95,label,label,Y (mm)
+source,web/index.html:95,label,label,Z (mm)
+source,web/index.html:96,label,label,Margin (mm)
+source,web/index.html:96,label,label,Nozzle (mm)
+source,web/index.html:96,option,option,0.4
+source,web/index.html:96,option,option,0.6
+source,web/index.html:96,option,option,0.8
+source,web/index.html:96,option,option,0.25
+source,web/index.html:96,label,label,Min piece (mm)
+source,web/index.html:97,text,p,Margin stays clear at both bed edges and the top. Minimum piece size prevents tiny fragments.
+source,web/index.html:98,disclosure,summary,Fit clearances
+source,web/index.html:98,text,span,mm per side
+source,web/index.html:98,label,label,Press
+source,web/index.html:98,label,label,Glue
+source,web/index.html:98,label,label,Slip
+source,web/index.html:98,label,label,Snap
+source,web/index.html:98,label,label,Seam
+source,web/index.html:98,text,p,"Starting values, not a fit guarantee. Print a coupon from Export to calibrate your printer and material."
+source,web/index.html:100,text,span,Restored your last settings.
+source,web/index.html:100,button,button,Reset defaults
+source,web/index.html:101,link,a,How margins and clearances work
+source,web/index.html:101,text,span,(new tab)
+source,web/index.html:104,text,p,Step 3 of 5
+source,web/index.html:104,heading,h1,Find a good split.
+source,web/index.html:104,text,p,"Plan first, build later. Review the suggested cuts; drag the highlighted arrow to move one, or use Tilt cut."
+source,web/index.html:105,attr:aria-label,div,Split preference
+source,web/index.html:105,button,button,Fewer parts
+source,web/index.html:105,button,button,Balanced
+source,web/index.html:105,button,button,Less support
+source,web/index.html:106,text,p,"Extra cuts can reduce supports, but mean more assembly. Always check in your slicer."
+source,web/index.html:107,button,button,Plan cuts
+source,web/index.html:108,text,div,Preference changed. Plan cuts again to apply it; the current plan is unchanged.
+source,web/index.html:109,disclosure,summary,Advanced
+source,web/index.html:109,text,span,Orientation & preference
+source,web/index.html:110,text,span,Fewer parts ↔ Less support
+source,web/index.html:110,text,output,Balanced
+source,web/index.html:110,text,span,Keep it together
+source,web/index.html:110,text,span,Allow extra cuts
+source,web/index.html:110,text,p,"A geometric support estimate, not filament volume or print time. Plan cuts again after changing it."
+source,web/index.html:111,label,label,Keep all parts upright
+source,web/index.html:111,label,label,Try tilted orientations
+source,web/index.html:114,link,a,Why these cuts?
+source,web/index.html:114,text,span,(new tab)
+source,web/index.html:117,text,p,Step 4 of 5
+source,web/index.html:117,heading,h1,Make it whole again.
+source,web/index.html:117,text,p,Joints align the pieces. Review each cut face before building.
+source,web/index.html:118,label,label,Join the pieces with
+source,web/index.html:118,option,option,Dowel pins (glue)
+source,web/index.html:118,option,option,1.75 mm filament pins
+source,web/index.html:118,option,option,Integrated pegs
+source,web/index.html:118,option,option,Keyed hex pegs
+source,web/index.html:118,option,option,Finger / box joints
+source,web/index.html:118,option,option,Tongue and groove
+source,web/index.html:118,option,option,Half lap (shells)
+source,web/index.html:118,option,option,Press-fit pins
+source,web/index.html:118,option,option,Snap-fit clips
+source,web/index.html:118,option,option,Magnets
+source,web/index.html:118,option,option,Sliding dovetail
+source,web/index.html:118,option,option,Heat-set inserts + screws
+source,web/index.html:118,option,option,Bolts + nut traps
+source,web/index.html:119,text,p,"Click a pin to select it. Drag it across the cut face. Use Add pin, then click the face to place another."
+source,web/index.html:119,attr:aria-label,div,Cut faces
+source,web/index.html:120,disclosure,summary,Select a pin
+source,web/index.html:120,text,span,Keyboard alternative
+source,web/index.html:120,attr:aria-label,div,Pins on selected cut
+source,web/index.html:121,disclosure,summary,Precision map
+source,web/index.html:121,text,span,Optional 2D view
+source,web/index.html:121,attr:aria-label,canvas,Preview of the selected cut face; use Zoom and edit for keyboard controls
+source,web/index.html:121,text,-,Zoom & edit
+source,web/index.html:122,disclosure,summary,Advanced
+source,web/index.html:122,text,span,Contact & joint settings
+source,web/index.html:122,attr:aria-label,div,Contacts on selected cut face
+source,web/index.html:122,text,-,Add joint
+source,web/index.html:122,attr:aria-label,select,Joint type to add
+source,web/index.html:122,label,label,Distance field
+source,web/index.html:124,disclosure,summary,How joints are placed
+source,web/index.html:124,text,p,"Each cut face is divided into contacts between two pieces. Splitter measures room around and behind a joint so holes stay inside the material. Thin walls may need a seam instead of pins; substitutions are explained, not silently accepted."
+source,web/index.html:124,text,p,Pegs go on the piece that doesn’t print on that face. Horizontal holes get teardrop roofs. These geometric checks do not guarantee strength or a physical fit.
+source,web/index.html:125,link,a,Choose a joint and calibrate its fit
+source,web/index.html:125,text,span,(new tab)
+source,web/index.html:128,text,p,Step 5 of 5
+source,web/index.html:128,heading,h1,From model to parts.
+source,web/index.html:128,text,p,"Build the actual solids, check the result, then download your print package."
+source,web/index.html:131,button,button,Build parts
+source,web/index.html:132,attr:aria-label,div,Build verification
+source,web/index.html:133,button,button,Prepare downloads
+source,web/index.html:133,attr:aria-label,div,Download files
+source,web/index.html:134,disclosure,summary,Advanced
+source,web/index.html:134,text,span,Exploded spacing
+source,web/index.html:134,label,label,Distance between parts
+source,web/index.html:135,disclosure,summary,Test the fit first
+source,web/index.html:135,text,span,Joint coupon
+source,web/index.html:135,text,p,Print the peg and sockets with the same nozzle and material. The dimple count identifies each clearance. Enter your measured fit in Fit → Advanced.
+source,web/index.html:135,label,label,Peg Ø (mm)
+source,web/index.html:135,label,label,Start (mm)
+source,web/index.html:135,label,label,Step (mm)
+source,web/index.html:135,button,button,Generate coupon
+source,web/index.html:136,link,a,Open in your slicer & assemble
+source,web/index.html:136,text,span,(new tab)
+source,web/index.html:138,text,span,build __BUILD__
+source,web/index.html:138,text,footer,·
+source,web/index.html:138,link,a,Licenses
+source,web/index.html:141,attr:aria-label,div,Interactive model preview
+source,web/index.html:142,text,span,Model
+source,web/index.html:142,attr:aria-label,nav,3D presentation
+source,web/index.html:142,button,button,Model
+source,web/index.html:142,button,button,Cuts
+source,web/index.html:142,button,button,Parts
+source,web/index.html:142,button,button,Plates
+source,web/index.html:142,attr:title,button,"Objects: cuts, parts, contacts and joints"
+source,web/index.html:142,text,span,Objects
+source,web/index.html:142,attr:title,button,Fit model in view (F)
+source,web/index.html:142,text,span,Fit view
+source,web/index.html:144,attr:aria-label,nav,Objects
+source,web/index.html:144,heading,h2,Objects
+source,web/index.html:144,attr:aria-label,button,Close objects
+source,web/index.html:145,attr:aria-label,div,Viewer legend
+source,web/index.html:145,text,span,Usable build volume
+source,web/index.html:145,text,span,Model outside it
+source,web/index.html:145,text,span,Exceeded side
+source,web/index.html:149,text,-,Move cut
+source,web/index.html:149,text,-,Tilt cut
+source,web/index.html:149,text,-,Add pin
+source,web/index.html:149,attr:title,button,Look straight at this cut face; hide other geometry
+source,web/index.html:149,text,-,Face-on view
+source,web/index.html:149,text,-,Explode
+source,web/index.html:149,attr:title,button,Undo (Ctrl Z)
+source,web/index.html:149,text,span,Undo
+source,web/index.html:149,attr:title,button,Redo (Ctrl Shift Z)
+source,web/index.html:149,text,span,Redo
+source,web/index.html:150,attr:aria-label,section,Selected pin
+source,web/index.html:151,attr:aria-label,div,Selected cut values
+source,web/index.html:151,label,label,Offset · mm
+source,web/index.html:151,text,span,Tilt A · orange ring · °
+source,web/index.html:151,text,span,Tilt B · mint ring · °
+source,web/index.html:151,text,p,Enter applies. Tilt adds to the current plane.
+source,web/index.html:152,attr:title,button,Enlarge the 3D view (Esc returns)
+source,web/index.html:152,text,span,Enlarge view
+source,web/index.html:152,attr:aria-label,select,Camera direction
+source,web/index.html:152,option,option,Perspective
+source,web/index.html:152,option,option,Face-on section
+source,web/index.html:152,option,option,Orbit view
+source,web/index.html:152,option,option,Top
+source,web/index.html:152,option,option,Front
+source,web/index.html:152,option,option,Right
+source,web/index.html:152,button,button,Exploded
+source,web/index.html:153,text,p,Drag to orbit · scroll to zoom · keyboard controls in Help
+source,web/index.html:153,attr:aria-label,button,Dismiss viewer hint
+source,web/index.html:155,button,button,Cancel
+source,web/index.html:155,text,div,Working…
+source,web/index.html:156,heading,h2,Your model appears here
+source,web/index.html:156,text,p,"Drop an STL, OBJ or 3MF anywhere, or choose a file or sample on the left."
+source,web/index.html:156,text,p,Choose a file or the sample below.
+source,web/index.html:158,attr:aria-label,button,Back to previous step
+source,web/index.html:158,text,-,Back
+source,web/index.html:158,button,button,Load a model to continue
+source,web/index.html:159,heading,h2,Joints
+source,web/index.html:159,attr:aria-label,div,Cut faces
+source,web/index.html:159,button,button,Beside 3D
+source,web/index.html:159,attr:aria-label,button,Close joint editor
+source,web/index.html:159,button,button,+ Add joint
+source,web/index.html:159,attr:aria-label,select,Joint type to add
+source,web/index.html:159,attr:aria-label,span,Zoom
+source,web/index.html:159,attr:aria-label,button,Zoom out
+source,web/index.html:159,button,button,−
+source,web/index.html:159,text,output,100 %
+source,web/index.html:159,attr:aria-label,button,Zoom in
+source,web/index.html:159,button,button,+
+source,web/index.html:159,button,button,Fit
+source,web/index.html:159,label,label,Distance field
+source,web/index.html:159,attr:aria-label,canvas,Cut face map. Arrow keys select joints. Shift and arrows move a joint. Alt and arrows pan. Plus and minus zoom. Enter places a joint in add mode. Tab leaves the map.
+source,web/index.html:159,attr:aria-label,div,Joints on this face
+source,web/index.html:159,text,div,Drag a joint to move it · arrows select · Shift+arrows nudge 0.5 mm · Alt+arrows pan · Delete removes · A adds · +/− zoom · 0 fits · Tab leaves map · Esc closes
+source,web/index.html:159,attr:aria-label,aside,Contact and joint settings
+source,web/index.html:160,heading,h2,A short path to printable parts.
+source,web/index.html:160,attr:aria-label,button,Close help
+source,web/index.html:160,text,b,Load → Fit → Split → Join → Export.
+source,web/index.html:160,text,p,"Loading advances to Fit. The bottom action splits, then builds and packages the checked plan. You can revisit earlier steps at any time; Expert mode opens the detailed settings without starting over."
+source,web/index.html:160,heading,h3,Navigate the 3D view
+source,web/index.html:160,text,p,"Drag to orbit, right-drag to pan, scroll to zoom. Focus the view for arrow-key orbit, Shift+arrows pan, +/− zoom, F to fit and 1–4 to change presentation. Select cuts and parts with the labelled buttons in Split; the numeric offset is an alternative to dragging a cut."
+source,web/index.html:160,heading,h3,Edit joints
+source,web/index.html:160,text,p,"Arrows select, Shift+arrows move, Alt+arrows pan, A toggles adding, Enter adds at the view centre, Delete removes. Tab always moves to the next control."
+source,web/index.html:160,heading,h3,Expert workspace
+source,web/index.html:160,text,p,"Expert mode adds an object list (cuts, parts, contacts and joints), one inspector for the selection, and a command search: press"
+source,web/index.html:160,key,kbd,Ctrl
+source,web/index.html:160,key,kbd,K
+source,web/index.html:160,text,p,. Ctrl Z / Ctrl Shift Z undo and redo plan edits; Esc cancels a drag or clears the selection.
+source,web/index.html:160,text,p,Geometric checks are not a physical fit guarantee. Print a test coupon and inspect every plate in your slicer.
+source,web/index.html:160,link,a,Read the complete guide
+source,web/index.html:160,button,button,Close
+source,web/index.html:161,heading,h2,Commands
+source,web/index.html:161,label,label,Find a command or object
+source,web/index.html:161,attr:placeholder,input,"Search commands, cuts, parts and joints"
+source,web/index.html:161,attr:aria-label,ul,Matching commands
+source,web/index.html:161,key,kbd,↑
+source,web/index.html:161,key,kbd,↓
+source,web/index.html:161,text,span,navigate
+source,web/index.html:161,key,kbd,Enter
+source,web/index.html:161,text,span,run
+source,web/index.html:161,key,kbd,Esc
+source,web/index.html:161,text,span,close
+source,web/index.html:161,button,button,Close
+source,web/index.html:162,heading,h2,Licenses
+source,web/index.html:162,attr:aria-label,button,Close licenses
+source,web/index.html:162,text,li,three.js r186 — MIT
+source,web/index.html:162,text,li,Manifold 3.5.4 — Apache-2.0
+source,web/index.html:162,text,li,Go runtime — BSD-3-Clause
+source,web/index.html:162,text,li,"Stanford Bunny — Stanford Computer Graphics Laboratory, research/demo use"
+source,web/index.html:162,text,li,Splitter — MIT ·
+source,web/index.html:162,link,a,Source
+source,web/index.html:162,button,button,Close
+source,web/index.html:163,text,p,Splitter needs JavaScript and WebAssembly to process your model locally.
+source,web/index.html:163,link,a,Read the guide
+source,web/index.html:163,text,p,.
+source,web/guide.html:1,page-title,title,Splitter guide — from one model to printable parts
+source,web/guide.html:3,text,-,splitter
+source,web/guide.html:3,text,span,/ guide
+source,web/guide.html:3,link,a,Open Splitter
+source,web/guide.html:4,attr:aria-label,nav,Guide chapters
+source,web/guide.html:4,text,p,Workshop guide
+source,web/guide.html:4,text,span,01
+source,web/guide.html:4,link,a,Your first split
+source,web/guide.html:4,text,span,02
+source,web/guide.html:4,link,a,Printer & fit
+source,web/guide.html:4,text,span,03
+source,web/guide.html:4,link,a,How splitting works
+source,web/guide.html:4,text,span,04
+source,web/guide.html:4,link,a,Choosing joints
+source,web/guide.html:4,text,span,05
+source,web/guide.html:4,link,a,Printing & assembly
+source,web/guide.html:4,text,span,06
+source,web/guide.html:4,link,a,Large meshes
+source,web/guide.html:4,text,span,07
+source,web/guide.html:4,link,a,Keyboard controls
+source,web/guide.html:4,text,span,08
+source,web/guide.html:4,link,a,Questions & limits
+source,web/guide.html:5,text,p,Keep the model. Change how you print it.
+source,web/guide.html:5,heading,h1,A big model.
+source,web/guide.html:5,heading,h1,A smaller printer.
+source,web/guide.html:5,heading,h1,A clear way through.
+source,web/guide.html:5,text,p,"Splitter turns a model into pieces that fit your printer, adds connections between them, and packages the result for your slicer. It runs locally in your browser. There is no model upload in browser mode."
+source,web/guide.html:6,text,span,01
+source,web/guide.html:6,heading,h2,Your first split
+source,web/guide.html:6,text,p,Try the
+source,web/guide.html:6,text,b,320 mm bracket
+source,web/guide.html:6,text,p,"sample before using your own model. It’s large enough to need cuts on a Prusa MINI, and simple enough to see what each step does."
+source,web/guide.html:6,text,b,Load.
+source,web/guide.html:6,text,li,"Choose an STL, OBJ or 3MF file, or drop it anywhere. Loading advances to Fit. Return to Load for the loaded-model summary, repair report, Replace or Remove."
+source,web/guide.html:6,text,b,Fit.
+source,web/guide.html:6,text,li,"Check the named printer, exact size comparison and reserved margins. The blue box is usable build space; red stripes mark geometry outside it. Choose"
+source,web/guide.html:6,text,b,Plan cuts
+source,web/guide.html:6,text,li,.
+source,web/guide.html:6,text,b,Split.
+source,web/guide.html:6,text,li,The primary action finds cuts and advances to Join when all parts fit. Open Split to inspect or edit the cuts. Balanced is the starting preference.
+source,web/guide.html:6,text,b,Join.
+source,web/guide.html:6,text,li,"Start with glued dowel pins. Select a cut face, read warnings, and edit pins in 3D. Use"
+source,web/guide.html:6,text,b,Face-on view
+source,web/guide.html:6,text,li,to isolate the section. The precision map is optional.
+source,web/guide.html:6,text,b,Export.
+source,web/guide.html:6,text,li,Choose
+source,web/guide.html:6,text,b,Build & prepare downloads
+source,web/guide.html:6,text,li,"at Join, then save the ZIP. The separate Build and Prepare controls remain available in Export. Open the plates in a slicer before printing."
+source,web/guide.html:6,text,p,The bottom action does the next meaningful job; there are no empty Continue confirmations on the simple path. The numbered steps let you jump back. Done/current/upcoming/blocked states explain what is available.
+source,web/guide.html:6,text,b,Expert mode
+source,web/guide.html:6,text,p,opens the detailed controls in every step without discarding your work. You can also open one Advanced section at a time.
+source,web/guide.html:6,heading,h3,The view comes first
+source,web/guide.html:6,text,p,The 3D view fills the screen; the steps sit beside it on a desktop and below it on a phone.
+source,web/guide.html:6,text,b,Fit view
+source,web/guide.html:6,text,p,"reframes the model, and the X/Y/Z triad beside it shows which way the camera faces (X width, Y depth, Z height). The gesture hint at the bottom of the view can be dismissed and stays dismissed. On a phone, each step starts as one summary line, such as “76.0 mm too wide”, with the next action underneath. Choose"
+source,web/guide.html:6,text,b,Why?
+source,web/guide.html:6,text,p,or
+source,web/guide.html:6,text,b,Details
+source,web/guide.html:6,text,p,for the full explanation and settings; your choice is remembered.
+source,web/guide.html:6,attr:alt,img,"Actual Splitter screen: the bracket has three coloured pieces, all fitting the selected printer, with direct cut-editing tools and an optional precise-values inspector."
+source,web/guide.html:6,text,figcaption,"The real bracket sample, planned for a Prusa MINI. Coloured pieces and labelled cuts are the plan, not yet the built solids."
+source,web/guide.html:7,text,span,02
+source,web/guide.html:7,heading,h2,Printer & fit
+source,web/guide.html:7,text,b,Build volume and joint clearance are different.
+source,web/guide.html:7,text,p,Build volume decides whether a piece fits on your printer. Clearance decides whether two printed connections fit together.
+source,web/guide.html:7,term,dt,Margin
+source,web/guide.html:7,text,dd,Space kept free at both X and Y edges and above the model. A 180 × 180 × 180 mm printer with a 3 mm margin has 174 × 174 × 177 mm of usable space.
+source,web/guide.html:7,term,dt,Nozzle
+source,web/guide.html:7,text,dd,"Used when estimating minimum walls and initial clearances. Choose your actual nozzle, not just the printer’s default."
+source,web/guide.html:7,term,dt,Minimum piece size
+source,web/guide.html:7,text,dd,A lower bound intended to avoid tiny fragments. It is not a promise that every thin feature will print reliably.
+source,web/guide.html:7,term,dt,Radial clearance
+source,web/guide.html:7,text,dd,Clearance is
+source,web/guide.html:7,text,em,per side
+source,web/guide.html:7,text,dd,. A 5 mm peg with 0.15 mm radial clearance needs a nominal 5.30 mm round socket. Printing can still change the fit.
+source,web/guide.html:7,text,p,"For an unlisted printer choose Custom volume, then enter its X, Y and Z. Changing printer dimensions or fit settings makes the old plan stale: find cuts again before exporting."
+source,web/guide.html:7,text,b,"Measure, don’t guess."
+source,web/guide.html:7,text,aside,"Print a joint coupon from Export using the intended filament, layer settings and nozzle. Put your measured clearances in Fit → Advanced → Fit clearances."
+source,web/guide.html:8,text,span,03
+source,web/guide.html:8,heading,h2,How splitting works
+source,web/guide.html:8,text,p,"The planner checks print orientations and looks for planar cuts that turn the model into fitting pieces. It measures the actual contact areas between touching pieces, then puts suitable joints inside those areas."
+source,web/guide.html:8,text,b,Fewer parts
+source,web/guide.html:8,text,p,prioritises a simpler assembly.
+source,web/guide.html:8,text,b,Less support
+source,web/guide.html:8,text,p,allows extra cuts if they reduce the support estimate.
+source,web/guide.html:8,text,b,Balanced
+source,web/guide.html:8,text,p,"is a starting point, not a universal optimum. Changing the preference does not replace a plan until you find cuts again."
+source,web/guide.html:8,text,p,The
+source,web/guide.html:8,text,b,support proxy
+source,web/guide.html:8,text,p,"estimates downward surfaces steeper than 45° multiplied by their height above the bed. It excludes bridges, joint geometry and slicer support density. It is not measured filament consumption or print time."
+source,web/guide.html:8,heading,h3,"Move the cut, not a pile of sliders"
+source,web/guide.html:8,text,p,Select a cut directly in 3D or use its labelled button in Split. Drag the arrow along the cut’s normal. Choose
+source,web/guide.html:8,text,b,Tilt cut
+source,web/guide.html:8,text,p,"and drag a rotation arc to tilt it. The outlined translucent plane extends beyond the model; its centre marker and normal arrow show what moves. The nearby readout names the offset axis or signed rotation axis (degrees during a drag are a change from its starting pose). Release to commit, or Esc to cancel. For keyboard editing, open"
+source,web/guide.html:8,text,b,Precise values
+source,web/guide.html:8,text,p,", change offset or Tilt A/B, and Apply. Tilt A/B rotates around the face’s local axes; the X/Y/Z buttons align the plane with a model axis."
+source,web/guide.html:8,text,p,"Select a part to add a cut through its centre. Delete a cut to merge its descendants. If a manual change leaves an oversized part, use Auto-complete. Running automatic splitting again replaces manual cuts; use the manual controls when you want to preserve them."
+source,web/guide.html:8,text,p,"After an automatic split, a result card states the parts, cuts, pins and any joint warnings."
+source,web/guide.html:8,text,b,Adjust cuts
+source,web/guide.html:8,text,p,selects the first cut in the view;
+source,web/guide.html:8,text,b,Regenerate
+source,web/guide.html:8,text,p,"plans again with the current settings. While a cut is selected on a desktop, its"
+source,web/guide.html:8,text,b,Offset
+source,web/guide.html:8,text,p,","
+source,web/guide.html:8,text,b,Tilt A
+source,web/guide.html:8,text,p,and
+source,web/guide.html:8,text,b,Tilt B
+source,web/guide.html:8,text,p,fields sit in the corner of the view. Tilt A belongs to the orange ring and Tilt B to the mint ring; type an angle and press Enter to add that tilt to the current plane. Drags snap to 1 mm and 5°; hold Shift for 0.1 mm and 1°.
+source,web/guide.html:8,attr:alt,img,"Selected cut in the real app, showing the 3D movement arrow and numeric offset, tilt and delete controls."
+source,web/guide.html:8,text,figcaption,Drag for exploration. Use the numeric offset for a reproducible position.
+source,web/guide.html:9,text,span,04
+source,web/guide.html:9,heading,h2,Choosing joints
+source,web/guide.html:9,text,p,"Start with the assembly method, then check whether the model has enough material for it. A thin shell and a solid bracket need different connections."
+source,web/guide.html:9,table,caption,Joint families and trade-offs
+source,web/guide.html:9,table,th,Choose
+source,web/guide.html:9,table,th,When it helps
+source,web/guide.html:9,table,th,Watch for
+source,web/guide.html:9,table,td,Glued dowels or filament pins
+source,web/guide.html:9,table,td,Simple alignment; replaceable separate pins
+source,web/guide.html:9,table,td,Glue access and available hole depth
+source,web/guide.html:9,table,td,Integrated or keyed pegs
+source,web/guide.html:9,table,td,Fewer loose pieces; keyed shapes resist rotation
+source,web/guide.html:9,table,td,"Peg print orientation, thin roots and fit"
+source,web/guide.html:9,table,td,"Finger, tongue or lap seams"
+source,web/guide.html:9,table,td,Distributed contact along thin walls
+source,web/guide.html:9,table,td,Wall thickness and assembly direction
+source,web/guide.html:9,table,td,Press or snap fit
+source,web/guide.html:9,table,td,Assembly without glue
+source,web/guide.html:9,table,td,"Material stiffness, tolerances and repeated flexing"
+source,web/guide.html:9,table,td,Magnets
+source,web/guide.html:9,table,td,Removable connections
+source,web/guide.html:9,table,td,"Actual magnet size, polarity and retention"
+source,web/guide.html:9,table,td,Dovetail
+source,web/guide.html:9,table,td,A sliding mechanical connection
+source,web/guide.html:9,table,td,Enough room to slide pieces together
+source,web/guide.html:9,table,td,"Inserts, screws or bolts"
+source,web/guide.html:9,table,td,Serviceable mechanical fastening
+source,web/guide.html:9,table,td,Fastener dimensions and access for tools
+source,web/guide.html:9,text,p,"The style selector re-places automatic joints on the current cuts; manually locked joints stay. If the chosen joint cannot fit safely, the planner may substitute another style. Read the warning and reason. “Use here anyway” relaxes geometric limits; it does not make the connection physically proven."
+source,web/guide.html:9,heading,h3,Place joints on the model
+source,web/guide.html:9,text,p,The selected pin’s card reports
+source,web/guide.html:9,text,b,edge room
+source,web/guide.html:9,text,p,": the measured distance from the pin to the nearest edge or hole, against what this joint needs. If it is too close, drag the pin toward the middle of the face or choose a smaller diameter."
+source,web/guide.html:9,text,p,"Select a cut, then"
+source,web/guide.html:9,text,b,Add pin
+source,web/guide.html:9,text,p,"and click its material surface. Drag pins across that face; a red ring and explicit warning reject positions outside the material, in a hole, too close to an edge, or too close to another pin. These are live planar checks; the planner checks drilling depth after release."
+source,web/guide.html:9,text,p,"Click a pin for its diameter, depth and individual radial clearance. Apply or discard field changes before building. Selecting a different Fit or joint type in Advanced restores its preset clearance. In Join, unlit discs show true-size pin footprints. A gold selection ring and number match the inspector and Select a pin list. The side-section diagram shows accepted hole depth into both mating pieces; dowel/press holes include a 0.3 mm end allowance. Orbit out of Face-on view to see translucent depth envelopes in 3D. These cylinders illustrate depth, not the full hardware or seam shape; use Explode to inspect the actual built solids. Apply is disabled when nothing changed. When fields are edited, “Not applied” means the preview still represents accepted geometry, not the draft. On a phone, the inspector scrolls between its fixed heading and always-visible Apply/Delete row. The popover hides while dragging so it cannot cover the target."
+source,web/guide.html:9,text,b,Undo / Redo
+source,web/guide.html:9,text,p,restores up to 20 accepted cut/joint plans and invalidates built/downloaded artifacts. It does not undo file loading or printer/style setting changes; those start a new history. History is not a saved session.
+source,web/guide.html:9,heading,h3,Optional precision map
+source,web/guide.html:9,text,p,Expand
+source,web/guide.html:9,text,b,Precision map
+source,web/guide.html:9,text,p,", then choose"
+source,web/guide.html:9,text,b,Zoom & edit
+source,web/guide.html:9,text,p,". Coloured areas are contacts between two parts. The distance field shows room to the boundary. In Add mode, green means enough surrounding wall for the selected type; depth still needs checking. Drag a joint to reposition it, or select it and use Shift+arrows."
+source,web/guide.html:9,text,p,"Use the contact inspector to adjust seam depth, finger width, clearance and male side. Select a point joint to edit type, fit, diameter and depth—or fastener size and screw length. Manual changes keep that contact’s other joints in place."
+source,web/guide.html:9,attr:alt,img,"Join step in the actual app: a selected dowel pin with its diameter, depth and clearance fields, measured edge room and a side-section of the accepted hole depths."
+source,web/guide.html:9,text,figcaption,The larger map is the precision workspace. Beside 3D docks it on desktop; on a phone it uses the whole screen.
+source,web/guide.html:10,text,span,05
+source,web/guide.html:10,heading,h2,Printing & assembly
+source,web/guide.html:10,text,b,Build parts
+source,web/guide.html:10,text,p,"performs the solid-geometry cuts and booleans. A coloured plan is not the final mesh. Review the manifold and mating checks before exporting. A successful geometric check does not establish strength, manufacturability or physical fit."
+source,web/guide.html:10,text,p,"Export shows one output status. If you change the plan after building, it says"
+source,web/guide.html:10,text,b,Changes since last build
+source,web/guide.html:10,text,p,", the Export step reads “Rebuild needed”, and the button becomes"
+source,web/guide.html:10,text,b,Rebuild parts
+source,web/guide.html:10,text,p,; older parts and downloads are never presented as current.
+source,web/guide.html:10,text,p,The combined
+source,web/guide.html:10,text,b,Build & prepare downloads
+source,web/guide.html:10,text,p,action performs both jobs; independent controls are also available.
+source,web/guide.html:10,text,b,Prepare downloads
+source,web/guide.html:10,text,p,"creates a ZIP with individual STL files, 3MF files for parts and packed plates, and an HTML assembly sheet. The package download is a separate action, so you choose when to save it."
+source,web/guide.html:10,text,li,"Open each plate in your slicer. Check supports, bed adhesion, overhangs, small features and orientation."
+source,web/guide.html:10,text,li,Print the joint coupon before a long job. Dimple count identifies the clearance step; the download report lists each value.
+source,web/guide.html:10,text,li,"Dry-fit the assembly before glue. Confirm labels, pin lengths and the order of assembly."
+source,web/guide.html:10,text,li,Check magnets and fasteners against the actual hardware. Plan access before closing an assembly.
+source,web/guide.html:10,attr:alt,img,Actual built bracket parts and pins arranged on printable plates in Splitter.
+source,web/guide.html:10,text,figcaption,Plate previews help inspect packing. Your slicer remains the final check for printing.
+source,web/guide.html:11,text,span,06
+source,web/guide.html:11,heading,h2,"Large meshes, without surprises"
+source,web/guide.html:11,text,p,"Large files can exhaust a browser tab’s memory. Splitter estimates the work before loading, shows the current stage and elapsed time, and may simplify the mesh for planning. Time and memory figures are estimates, not progress percentages or guarantees."
+source,web/guide.html:11,text,li,The Load report says whether simplification happened and gives measured maximum/mean deviation over sampled points. A sampled deviation is not an exhaustive bound on every surface point.
+source,web/guide.html:11,text,li,"If the original was retained, Export defaults to cutting the full-detail original with the same planes and joints. The source checkbox lets you choose the simplified mesh instead."
+source,web/guide.html:11,text,li,"If the original was too large to retain, the export uses the simplified mesh and says so."
+source,web/guide.html:11,text,li,Use full detail is available when the memory estimate permits it. It reloads the model and can take much longer.
+source,web/guide.html:11,text,li,Cancel during loading or planning stops the planner worker. Cancelling planning may first restore the model; wait for restoration before editing.
+source,web/guide.html:11,text,li,"A broken mesh can fail because it is not a closed solid, even if memory is available. Read the defect report. Repair it externally if automatic repair cannot resolve it."
+source,web/guide.html:11,text,p,"For a file refused by the browser, reduce it in a mesh tool or use the repository’s command-line planner. Closing other tabs can free resources, but does not remove the browser’s own limits."
+source,web/guide.html:12,text,span,07
+source,web/guide.html:12,heading,h2,Keyboard controls
+source,web/guide.html:12,text,p,"Tab and Shift+Tab move between controls; Enter or Space activates buttons. Automatic loading and the primary action move focus to the next meaningful step. File selection, all settings, cut editing, joint editing and downloads are available without a mouse."
+source,web/guide.html:12,term,dt,3D view (focus the canvas)
+source,web/guide.html:12,text,dd,"Arrows orbit; Shift+arrows pan; +/− zoom; F fits. 1/2/3/4 selects Model/Cuts/Parts/Plates when available. Use cut/part buttons in Split for object selection and Precise values for offset/tilt. In Join, [ and ] select pins; Shift+arrows nudges the selected pin by 0.5 mm. Ctrl/Cmd+Z undoes an accepted edit; Shift+Ctrl/Cmd+Z redoes it. Esc cancels a viewport drag without submitting."
+source,web/guide.html:12,term,dt,Joint map
+source,web/guide.html:12,text,dd,"Arrows select joints; Shift+arrows nudge the selected joint by 0.5 mm; Alt+arrows pan; +/− zoom; 0 fits. A toggles Add, Enter places at the view centre, Delete removes the selected joint. Tab leaves the map. Escape closes the editor and returns focus."
+source,web/guide.html:12,term,dt,Commands and objects (Expert mode)
+source,web/guide.html:12,key,kbd,Ctrl
+source,web/guide.html:12,text,dd,+
+source,web/guide.html:12,key,kbd,K
+source,web/guide.html:12,text,dd,(
+source,web/guide.html:12,key,kbd,Cmd
+source,web/guide.html:12,text,dd,+
+source,web/guide.html:12,key,kbd,K
+source,web/guide.html:12,text,dd,"on macOS) opens the command search: type part of a step, action, cut, part or joint name; arrows choose; Enter runs it. Commands that are unavailable stay listed with the reason, for example “Build parts first”. In the Objects list, Up/Down/Home/End move, Enter selects, and Esc closes the list."
+source,web/guide.html:12,term,dt,Reduced motion
+source,web/guide.html:12,text,dd,The system reduced-motion preference disables camera damping and progress animation. Work continues with text updates.
+source,web/guide.html:12,attr:alt,img,"Actual Splitter screen in Expert mode: the Objects list on the left of the 3D view, an Inspector naming the selected cut, and the cut’s offset and tilt fields in the corner of the view."
+source,web/guide.html:12,text,figcaption,"Expert mode keeps the same five steps and adds the Objects list, Inspector and command search."
+source,web/guide.html:13,text,span,08
+source,web/guide.html:13,heading,h2,Questions & limits
+source,web/guide.html:13,disclosure,summary,Why does the model look the wrong size?
+source,web/guide.html:13,text,p,STL files do not store units. Use Load → Advanced to set source units or scale. All working dimensions are in millimetres. Confirm a known dimension before splitting.
+source,web/guide.html:13,disclosure,summary,The whole model is striped. Did the split fail?
+source,web/guide.html:13,text,p,The Fit/Model view shows the unsplit model in its current pose. The split result reports whether each piece fits in its chosen print orientation. Those are separate checks.
+source,web/guide.html:13,disclosure,summary,Why is a joint different from the style I chose?
+source,web/guide.html:13,text,p,"The face may be too thin or shallow. Read the substitution warning. Select that contact to choose a seam, a keyed connection, a forced attempt, or a return to automatic placement."
+source,web/guide.html:13,disclosure,summary,Can I save and reopen the editing session?
+source,web/guide.html:13,text,p,"Printer and preference settings persist locally. The loaded mesh, cut tree and joint edits do not persist across reloads. Keep your source file and download the completed package before closing the page."
+source,web/guide.html:13,disclosure,summary,Does “manifold” mean safe to manufacture?
+source,web/guide.html:13,text,p,"No. It means the mesh passed geometric checks for a closed solid. It says nothing definitive about material strength, dimensional accuracy, loads, slicer behaviour or assembly access. Verify critical parts independently."
+source,web/guide.html:13,disclosure,summary,What stays private?
+source,web/guide.html:13,text,p,"In the static browser app, model processing happens in local Web Workers. A separately hosted server-mode instance processes models on that server; the Load privacy statement identifies the mode. External manufacturer/source links open external sites."
+source,web/guide.html:13,disclosure,summary,What does Expert mode change?
+source,web/guide.html:13,text,p,"Only the amount of detail shown, and the tools for reaching it. Every Advanced section opens. An"
+source,web/guide.html:13,text,b,Objects
+source,web/guide.html:13,text,p,"list (model, cuts, parts, contacts and joints) sits over the left of the view, an"
+source,web/guide.html:13,text,b,Inspector
+source,web/guide.html:13,text,p,"heading names the current selection above its editor, and"
+source,web/guide.html:13,text,b,Commands
+source,web/guide.html:13,text,p,"(Ctrl K) finds any action. It does not change the algorithm, replace the model, or create a separate set of settings. The five-step workflow remains, and switching keeps your step and plan."
+source,web/guide.html:13,disclosure,summary,Which accessibility checks have been done?
+source,web/guide.html:13,text,p,"This redesign includes named native controls, visible focus, status announcements, keyboard alternatives and reduced motion. Automated axe checks and keyboard walkthroughs are part of development. They are not a substitute for a full screen-reader and assistive-technology conformance audit."
+source,web/guide.html:14,link,a,Back to Splitter
+source,web/guide.html:14,text,p,"Measurements in millimetres unless noted. Screenshots are from the working application, not mock-ups."
+source,web/js/app.js:31,js-literal,,${ico(err ? 'error' : 'info')}
+source,web/js/app.js:78,js-literal,,building joints
+source,web/js/app.js:78,js-literal,,assembling parts
+source,web/js/app.js:79,js-literal,,Geometry kernel: ${lbl} ${m.total > 1 ?
+source,web/js/app.js:80,js-literal,,Building in your browser (Manifold WASM): ${lbl} ${m.total > 1 ?
+source,web/js/app.js:132,js-literal,,Runs entirely in your browser: your model is never uploaded.
+source,web/js/app.js:133,js-literal,,Server mode: models are processed by this print-splitter server.
+source,web/js/app.js:145,js-literal,,${p.name} — ${p.x}×${p.y}×${p.z}
+source,web/js/app.js:150,js-literal,,Custom volume…
+source,web/js/app.js:156,js-literal,,dev build
+source,web/js/app.js:175,js-literal,,NoError
+source,web/js/app.js:191,js-literal,,"Defaults restored: ${styleLabel(DEFAULTS.style)}, ${$('printer').selectedOptions[0].textContent}"
+source,web/js/app.js:194,js-literal,,Parts first
+source,web/js/app.js:194,js-literal,,Support first
+source,web/js/app.js:194,js-literal,,Balanced
+source,web/js/app.js:194,js-literal,,Support weight ${w.toFixed(2)}
+source,web/js/app.js:205,js-literal,,Joints re-placed as ${styleLabel($('jointStyle').value)} on the current cuts${n ?
+source,web/js/app.js:215,js-literal,,Volume per manufacturer spec ${p.note ? ' · ' + esc(p.note) : ''}
+source,web/js/app.js:271,js-literal,,Escape
+source,web/js/app.js:272,js-literal,,"input, select, textarea"
+source,web/js/app.js:275,js-literal,,Escape
+source,web/js/app.js:276,js-literal,,Delete
+source,web/js/app.js:276,js-literal,,Backspace
+source,web/js/app.js:277,js-literal,,Delete
+source,web/js/app.js:300,js-literal,,File too large
+source,web/js/app.js:300,js-literal,,"${esc(file.name)} is ${fmt(file.size / 1e6, 0)} MB; the limit is 300 MB."
+source,web/js/app.js:309,js-literal,,${esc(file.name)} is too large for this browser tab
+source,web/js/app.js:310,js-literal,,"${est.exact ? '' : 'About '}${fmtTris(est.tris)} triangles (${est.format}, ${fmt(file.size / 1e6, 0)} MB). ${simplify ? 'Even simplified, loading' : 'Planning it at full detail'} needs an estimated ${fmtMem(mem)} of memory; a tab gets ~${fmtMem(LIMITS.refuseMB)} reliably, and running out would stop the tab without a word."
+source,web/js/app.js:311,js-literal,,Simplified for planning it needs ≈
+source,web/js/app.js:311,js-literal,,"Reduce it first (e.g. Blender Decimate, Meshmixer Reduce) or use the command-line planner ( print-splitter plan ), which has no browser memory limit."
+source,web/js/app.js:312,js-literal,,Simplify and load
+source,web/js/app.js:317,js-literal,,Restoring ${file.name}
+source,web/js/app.js:317,js-literal,,Loading ${file.name}
+source,web/js/app.js:322,js-literal,,${est.exact ? '' : '~'}${fmtTris(est.tris)} triangles${simplify ?
+source,web/js/app.js:322,js-literal,,: ''}${local && mem > LIMITS.warnMB ?
+source,web/js/app.js:347,js-literal,,Loading ${file.name} cancelled
+source,web/js/app.js:352,js-literal,,${esc(file.name)} is not a closed solid
+source,web/js/app.js:352,js-literal,,"${esc(cap1(err.message))}. Splitting needs a watertight mesh: close the holes in your modelling tool, or try its “make solid” repair."
+source,web/js/app.js:357,js-literal,,Out of memory while loading ${esc(file.name)}
+source,web/js/app.js:357,js-literal,,"${esc(err.message)} (${fmtTris(est.tris)} triangles${simplified ? ', simplified' : ', full detail'})."
+source,web/js/app.js:358,js-literal,,Simplify and load
+source,web/js/app.js:363,js-literal,,Couldn’t load ${esc(file.name)}
+source,web/js/app.js:363,js-literal,,"${esc(cap1(err.message))}. Re-export it from your modelling tool as STL, OBJ or 3MF, then choose it again."
+source,web/js/app.js:387,js-literal,,Choose a file
+source,web/js/app.js:389,js-literal,,${i === 0 && actions.length ? 'primary' : ''}
+source,web/js/app.js:389,js-literal,,).join('')} How to fix a model${ico('external')} (new tab)
+source,web/js/app.js:400,js-literal,,The last ${what} of ${esc(c.name)} stopped the tab
+source,web/js/app.js:401,js-literal,,"It was ${what} ${fmtTris(c.tris)} triangles${c.full ? ' at full detail' : ''} and the tab ended before it finished. That is almost always the browser running out of memory; a file problem would have shown an explanation instead. ${c.full ? 'Load it again with simplification (the default above ' + fmtTris(LIMITS.threshold) + ' triangles).' : 'Close other tabs, or plan it with the command-line tool."
+source,web/js/app.js:404,js-literal,,Fetching sample ${name}
+source,web/js/app.js:418,js-literal,,Loading the simplified mesh into the 3D view
+source,web/js/app.js:418,js-literal,,Loading repaired mesh
+source,web/js/app.js:428,js-literal,,Loading model into the geometry kernel
+source,web/js/app.js:432,js-literal,,Geometry kernel rejected the mesh:
+source,web/js/app.js:443,js-literal,,Model restored after cancellation. You can try the split again.
+source,web/js/app.js:459,js-literal,,"Simplified for planning: ${fmtTris(sm.inputTris)} → ${fmtTris(sm.outputTris)} triangles Measured deviation from your file: max ${fmt(sm.maxDev, 3)} mm , mean ${fmt(sm.meanDev, 4)} mm over ${fmtTris(sm.samples)} sample points${sm.maxDev < 0.1 ?"
+source,web/js/app.js:460,js-literal,,: ''}. ${sm.limited ?
+source,web/js/app.js:460,js-literal,,": ''}Cuts and joints are planned on the simplified mesh; ${m.originalKept ? 'parts are cut from your full-detail original with the same planes and joints (step 5).' : 'the original is too large to keep, so exports are cut from the simplified mesh .'} Took ${fmtDur(sm.seconds)}. Auto split ≈ ${fmtDur(planEst)} now; at full detail ≈ ${fmtDur(fullPlan)} and ≈ ${fmtMem(fullMem)} of memory."
+source,web/js/app.js:462,js-literal,,Use full detail
+source,web/js/app.js:462,js-literal,,"Plan on all ${fmtTris(sm.inputTris)} triangles?\n\nLoading and planning will take about ${fmtDur(estimateLoadSec(sm.inputTris, false) + fullPlan)} and need about ${fmtMem(fullMem)} of memory. If the browser runs out, the tab stops and you will have to reload the page."
+source,web/js/app.js:462,js-literal,,"≈ ${fmtDur(fullPlan)} to plan, ≈ ${fmtMem(fullMem)}"
+source,web/js/app.js:463,js-literal,,Use full detail
+source,web/js/app.js:463,js-literal,,needs ≈ ${fmtMem(fullMem)}: more than a tab can reliably get
+source,web/js/app.js:466,js-literal,,"Large mesh: ${fmtTris(m.tris)} triangles, not simplified Simplification could not keep the mesh closed (${esc(sm.failed)}), so the planner uses every triangle. Auto split ≈ ${fmtDur(planEst)}; you can cancel it."
+source,web/js/app.js:469,js-literal,,"Full detail: ${fmtTris(m.tris)} triangles Auto split ≈ ${fmtDur(planEst)} and ≈ ${fmtMem(estimateMemMB(m.tris, S.file.size, false))} of memory. Simplifying first keeps the deviation to a few hundredths of a mm and plans much faster."
+source,web/js/app.js:470,js-literal,,Simplify for planning
+source,web/js/app.js:472,js-literal,,Large mesh: ${fmtTris(m.tris)} triangles Auto split takes ≈ ${fmtDur(planEst)} in this browser; progress is shown step by step and you can cancel it.
+source,web/js/app.js:474,js-literal,,meshnote
+source,web/js/app.js:475,js-literal,,${esc(b[2])}
+source,web/js/app.js:484,js-literal,,"Cut parts from the full-detail original (${fmtTris(sm.inputTris)} triangles) Same planes and joints as planned. ${sm.inputTris > 1500000 ? 'Building takes longer and needs more memory than the simplified mesh.' : ''} Unticked: parts come from the simplified mesh (max deviation ${fmt(sm.maxDev, 3)} mm)."
+source,web/js/app.js:488,js-literal,,"Exports are cut from the simplified mesh (${fmtTris(m.tris)} triangles, max deviation ${fmt(sm.maxDev, 3)} mm): the original was too large to keep in this tab."
+source,web/js/app.js:498,js-literal,,Loading the full-detail original (${fmtTris(S.model.simplified.inputTris)} triangles) into the geometry kernel
+source,web/js/app.js:506,js-literal,,Loading the planning mesh into the geometry kernel
+source,web/js/app.js:514,js-literal,,${m.name} · ${fmt(m.size[0])} × ${fmt(m.size[1])} × ${fmt(m.size[2])} mm
+source,web/js/app.js:517,js-literal,,watertight
+source,web/js/app.js:517,js-literal,,not closed
+source,web/js/app.js:518,js-literal,,${r.weldedVertices.toLocaleString()} vertices welded
+source,web/js/app.js:519,js-literal,,${plural(r.holesFilled + ' hole(s)')} capped
+source,web/js/app.js:520,js-literal,,${r.flippedFaces.toLocaleString()} faces re-oriented
+source,web/js/app.js:521,js-literal,,${plural(r.invertedShells + ' inside-out shell(s)')} fixed
+source,web/js/app.js:522,js-literal,,${r.duplicateRemoved} duplicate faces removed
+source,web/js/app.js:523,js-literal,,${r.degenerateRemoved} degenerate faces removed
+source,web/js/app.js:524,js-literal,,${plural(r.debrisRemoved + ' debris shell(s)')} dropped
+source,web/js/app.js:525,js-literal,,${r.nonManifoldResolved} non-manifold edges split
+source,web/js/app.js:526,js-literal,,${r.shells} shells
+source,web/js/app.js:527,js-literal,,"Size ${fmt(m.size[0])} × ${fmt(m.size[1])} × ${fmt(m.size[2])} mm Volume ${fmt(m.volume / 1000)} cm³ (≈ ${fmt(m.volume / 1000 * 1.24, 0)} g PLA solid) Mesh ${m.simplified && !m.simplified.failed ?"
+source,web/js/app.js:531,js-literal,,small warnc
+source,web/js/app.js:531,js-literal,,).join('')} ${m.unitHint ?
+source,web/js/app.js:532,js-literal,,small warnc
+source,web/js/app.js:548,js-literal,,Turning the model
+source,web/js/app.js:559,js-literal,,Restored the file’s orientation.
+source,web/js/app.js:568,js-literal,,Rescaling
+source,web/js/app.js:571,js-literal,,Scaled to ${fmt(f * 100)} %
+source,web/js/app.js:581,js-literal,,Custom printer
+source,web/js/app.js:582,js-literal,,Usable printer volume · ${esc(printer)} Outside usable build volume
+source,web/js/app.js:600,js-literal,,use seam here
+source,web/js/app.js:600,js-literal,,use dowels anyway
+source,web/js/app.js:620,js-literal,,The margin leaves no usable build space. Reduce it or increase the volume.
+source,web/js/app.js:635,js-literal,,Planning cuts
+source,web/js/app.js:635,js-literal,,Completing the split
+source,web/js/app.js:635,js-literal,,Updating joints
+source,web/js/app.js:639,js-literal,,${fmtTris(tris)} triangles${S.model.simplified && !S.model.simplified.failed ? ' (simplified)' : ''} · estimate ≈ ${fmtDur(estimatePlanSec(tris))}
+source,web/js/app.js:649,js-literal,,Edit applied · select a pin to inspect its diameter and depth into both pieces.
+source,web/js/app.js:656,js-literal,,Out of memory while planning ${esc(S.model.name)}
+source,web/js/app.js:656,js-literal,,${esc(err.message)} The model is being reloaded${S.model.simplified ? '' : ' simplified'}.
+source,web/js/app.js:657,js-literal,,Planning cancelled · restoring the model
+source,web/js/app.js:713,js-literal,,"Previous auto plan (${esc(supportPreference(S.comparison.weight))}): ${S.comparison.parts} part${S.comparison.parts === 1 ? '' : 's'} · proxy ≈ ${fmt(S.comparison.volume / 1000, 0)} cm³"
+source,web/js/app.js:716,js-literal,,"${l.label} ${ico(l.fits?'check':'error')} ${l.fits?'Fits':'Too large'}, H ${fmt(l.extent[2], 0)} mm"
+source,web/js/app.js:718,js-literal,,"${cutName(n.id)} ${axisName(n.cut.n)} ${fmt(n.cut.d, 0)}"
+source,web/js/app.js:720,js-literal,,fbitem ${x.fallback ? '' : 'single'}
+source,web/js/app.js:720,js-literal,,${esc(x.fallback ? x.fallback.why : (x.notes || []).join('; '))}
+source,web/js/app.js:721,js-literal,,${fallbackNote} ${leaves.length} part${leaves.length === 1 ? '' : 's'} · ${bad.length ?
+source,web/js/app.js:735,js-literal,,${fb.want} → ${fb.got}: ${fb.reason}
+source,web/js/app.js:736,js-literal,,only one
+source,web/js/app.js:736,js-literal,,only one joint fits
+source,web/js/app.js:737,js-literal,,Cut ${id}
+source,web/js/app.js:737,js-literal,,Cut ${i+1}
+source,web/js/app.js:738,js-literal,,Joint J${j.id}
+source,web/js/app.js:744,js-literal,,${direction==='undo'?'Undid':'Redid'} edit. Built parts must be regenerated.
+source,web/js/app.js:779,js-literal,,That point is not on the cut face
+source,web/js/app.js:801,js-literal,,"${cutName(n.id)} ${n.locked ? ' manual ' : ' auto '} ${esc(plural(n.reason || 'placed by you'))} Normal ${axisName(n.cut.n)} · section ${fmt(f ? f.area : 0, 0)} mm² · ${patches.length} contact ${patches.length === 1 ? 'patch' : 'patches'} Precise values Offset &amp; tilt Offset along normal (mm) Offset Tilt A · orange ring (°) Tilt B · mint ring (°) ⟂ X ⟂ Y ⟂ Z Apply Delete cut Drag the blue arrow"
+source,web/js/app.js:858,js-literal,,moved by you
+source,web/js/app.js:879,js-literal,,small warnc
+source,web/js/app.js:879,js-literal,,).join('')} Add a cut through its centre: X Y Z ${l.fits ? '' : ' Auto-split this part '}
+source,web/js/app.js:890,js-literal,,added by you
+source,web/js/app.js:902,js-literal,,No cuts — nothing to join.
+source,web/js/app.js:907,js-literal,,${warn ? ico('alert') : ''}${cutName(f.node)} · ${js ? js + ' pins' : ''}${js && sm ? ' + ' : ''}${sm ? sm + ' seam' : ''}${!js && !sm ? 'butt' : ''}
+source,web/js/app.js:921,js-literal,,${document.body.dataset.expert==='true'?
+source,web/js/app.js:975,js-literal,,${f.want} could not fit: ${f.reason}. Using ${f.got}.
+source,web/js/app.js:975,js-literal,,Only one pin fits here; the pieces may rotate before glue cures.
+source,web/js/app.js:975,js-literal,,${esc(text)} Review contact ${i+1}
+source,web/js/app.js:976,js-literal,,mapWrap details.advanced
+source,web/js/app.js:978,js-literal,,${esc(jointName(j))}
+source,web/js/app.js:999,js-literal,,small warnc
+source,web/js/app.js:999,js-literal,,").join('')} ${seamWallWarn(p, sm)} Seam joint ${opts} Depth (mm) Finger width Clearance Male side ${ln(p.negLeaf)} ${ln(p.posLeaf)} Apply seam"
+source,web/js/app.js:1015,js-literal,,${k.label}
+source,web/js/app.js:1018,js-literal,,).join('')} Screw length
+source,web/js/app.js:1019,js-literal,,Ø (mm) ${j.kind === 'magnet' ? 'Thickness' : j.kind === 'snap' ? 'Beam length' : 'Depth'}
+source,web/js/app.js:1022,js-literal,,").join('')} ${sizeField} ${['peg', 'keyed', 'insert', 'bolt', 'snap'].includes(j.kind) ?"
+source,web/js/app.js:1024,js-literal,,row two
+source,web/js/app.js:1024,js-literal,,Insert in
+source,web/js/app.js:1024,js-literal,,Nut in
+source,web/js/app.js:1024,js-literal,,Male on
+source,web/js/app.js:1024,js-literal,,Shape hex D
+source,web/js/app.js:1026,js-literal,,small badc
+source,web/js/app.js:1026,js-literal,,).join('')} Apply Delete joint Drag the joint on the map to move it.
+source,web/js/app.js:1050,js-literal,,Back to automatic (${esc(styleLabel($('jointStyle').value))})
+source,web/js/app.js:1053,js-literal,,Forcing ${esc(fb.want.toLowerCase())} does not work here either.
+source,web/js/app.js:1054,js-literal,,Use ${esc(fb.want.toLowerCase())} here anyway
+source,web/js/app.js:1055,js-literal,,${ico('alert')}${esc(fbText(fb))} ${esc(fb.why)} ${btn}${own}
+source,web/js/app.js:1058,js-literal,,${ico('alert')}${esc(singleNote(p))} One pin is a pivot: the parts can rotate about it. Keyed pegs or a seam stop that. Use seam here Use keyed peg here ${own}
+source,web/js/app.js:1061,js-literal,,${own}
+source,web/js/app.js:1066,js-literal,,${ico('alert')}${sm.kind === 'tongue' ? 'Tongue and groove' : 'Half lap'} wants a wall ≥ ${fmt(need * minWall())} mm; this one is ${fmt(p.thickness)} mm.
+source,web/js/app.js:1089,js-literal,,Joint must stay on the cut face
+source,web/js/app.js:1134,js-literal,,Building parts in your browser (Manifold WASM)
+source,web/js/app.js:1138,js-literal,,Building parts in your browser (Manifold WASM)
+source,web/js/app.js:1147,js-literal,,Build failed:
+source,web/js/app.js:1151,js-literal,,"Parts built. Review the geometry checks, then prepare downloads."
+source,web/js/app.js:1156,js-literal,,NoError
+source,web/js/app.js:1158,js-literal,,${p.label} ${fmt(p.volume / 1000)} cm³ ${p.status === 'NoError' ?
+source,web/js/app.js:1158,js-literal,,: ' ' + p.status + ' '} ${p.genus}
+source,web/js/app.js:1160,js-literal,,${ok ?
+source,web/js/app.js:1160,js-literal,,"} checked in ${fmt(ms / 1000, 1)} s ${res.fromFull ?"
+source,web/js/app.js:1161,js-literal,,: S.model.simplified && !S.model.simplified.failed ?
+source,web/js/app.js:1161,js-literal,,": ''} Part Volume Solid Holes ${rows} ${pins} Mating checks: max interference ${fmt(maxInt, 3)} mm³ ${maxInt < 0.05 ?"
+source,web/js/app.js:1163,js-literal,,}${res.light ?
+source,web/js/app.js:1187,js-literal,,"<a href=""${res.href(f)}"" ${dl ?"
+source,web/js/app.js:1187,js-literal,,": ''} ${f.endsWith('.html') ? 'target=""_blank"" rel=""noopener""' : ''}>${esc(label || nice(f))}"
+source,web/js/app.js:1193,js-literal,,NoError
+source,web/js/app.js:1193,js-literal,,Resolve geometry warnings and build before exporting.
+source,web/js/app.js:1195,js-literal,,"Packaging: orienting parts, packing plates, writing 3MF/STL and the assembly sheet"
+source,web/js/app.js:1205,js-literal,,"pin_d${fmt(p.d, 2)}_L${fmt(p.len)}"
+source,web/js/app.js:1208,js-literal,,"${res.parts.length} ${res.parts.length === 1 ? 'print file' : 'print files'} on ${res.plates} ${res.plates === 1 ? 'plate' : 'plates'} ${res.warnings && res.warnings.length ? ' · ' + esc(res.warnings.join('; ')) + ' ' : ' · all closed, all fit '} ${linkList(res)}"
+source,web/js/app.js:1210,js-literal,,Export ready
+source,web/js/app.js:1211,js-literal,,Export failed:
+source,web/js/app.js:1215,js-literal,,"Downloads ready. The package contains parts, plates and an assembly sheet."
+source,web/js/app.js:1221,js-literal,,Building joint coupon
+source,web/js/app.js:1227,js-literal,,).join(' · ')} ${linkList(res)}
+source,web/js/app.js:1229,js-literal,,Coupon failed:
+source,web/js/app.js:1233,js-literal,,Startup failed:
+source,web/js/backend.js:4,js-literal,,print-splitter serve
+source,web/js/backend.js:13,js-literal,,"${r.status} ${t.slice(0, 200)}"
+source,web/js/backend.js:41,js-literal,,Uploading ${file.name}: ${(e.loaded / 1e6).toFixed(1)} / ${(e.total / 1e6).toFixed(1)} MB
+source,web/js/backend.js:49,js-literal,,Upload failed
+source,web/js/backend.js:54,js-literal,,Content-Type
+source,web/js/backend.js:55,js-literal,,Content-Type
+source,web/js/backend.js:57,js-literal,,Content-Type
+source,web/js/backend.js:98,js-literal,,planner worker failed
+source,web/js/backend.js:121,js-literal,,Cancelled
+source,web/js/backend.js:128,js-literal,,Reading ${file.name}
+source,web/js/builder.js:149,js-literal,,Round
+source,web/js/builder.js:269,js-literal,,Miter
+source,web/js/builder.js:278,js-literal,,"s cell, but not by this cut"
+source,web/js/builder.js:284,js-literal,,neg male
+source,web/js/builder.js:295,js-literal,,Round
+source,web/js/builder.js:295,js-literal,,Round
+source,web/js/builder.js:311,js-literal,,Round
+source,web/js/builder.js:315,js-literal,,Round
+source,web/js/builder.js:323,js-literal,,Miter
+source,web/js/builder.js:363,js-literal,,NoError
+source,web/js/builder.js:363,js-literal,,input mesh rejected by Manifold:
+source,web/js/direct-editor.js:16,js-literal,,Drag a coloured arc to tilt · release to apply · Esc cancels
+source,web/js/direct-editor.js:16,js-literal,,Drag the blue arrow along the cut normal · release to apply · Esc cancels
+source,web/js/direct-editor.js:18,js-literal,,Section view · true-size holes; gold ring marks your selection
+source,web/js/direct-editor.js:22,js-literal,,Exploded inspection · choose Face-on view to edit again
+source,web/js/direct-editor.js:30,js-literal,,Escape
+source,web/js/direct-editor.js:31,js-literal,,Edit cancelled. Nothing changed.
+source,web/js/direct-editor.js:41,js-literal,,Arrow
+source,web/js/direct-editor.js:48,js-literal,,Release to apply · Esc cancels
+source,web/js/direct-editor.js:62,js-literal,,Stop adding
+source,web/js/direct-editor.js:62,js-literal,,Add pin
+source,web/js/direct-editor.js:65,js-literal,,Back to joints
+source,web/js/direct-editor.js:65,js-literal,,Explode
+source,web/js/direct-editor.js:85,js-literal,,).join('')} Applied · preview shows accepted geometry Apply pin Delete pin
+source,web/js/direct-editor.js:90,js-literal,,Not applied · preview still shows accepted geometry
+source,web/js/direct-editor.js:90,js-literal,,Applied · preview shows accepted geometry
+source,web/js/direct-editor.js:105,js-literal,,Edge room ${dist.toFixed(1)} mm measured · ${need.toFixed(1)} mm required. ${ok?'Enough material around this pin.':'Too close to an edge or hole: drag it toward the middle of the face or use a smaller diameter.'}
+source,web/js/direct-editor.js:123,js-literal,,Outside the cut face or inside a hole — not placed
+source,web/js/direct-editor.js:123,js-literal,,Too close to an edge or hole: ${dist.toFixed(1)} mm available; ${need.toFixed(1)} mm needed
+source,web/js/direct-editor.js:123,js-literal,,Too close to another pin — move it farther away
+source,web/js/direct-editor.js:123,js-literal,,"${q[0].toFixed(1)}, ${q[1].toFixed(1)} mm · edge room ${dist.toFixed(1)} / ${need.toFixed(1)} mm needed · release to apply"
+source,web/js/flow.js:7,js-literal,,Load
+source,web/js/flow.js:7,js-literal,,Fit
+source,web/js/flow.js:7,js-literal,,Split
+source,web/js/flow.js:7,js-literal,,Join
+source,web/js/flow.js:7,js-literal,,Export
+source,web/js/flow.js:8,js-literal,,Width
+source,web/js/flow.js:8,js-literal,,Depth
+source,web/js/flow.js:8,js-literal,,Height
+source,web/js/flow.js:23,js-literal,,Fits in one piece
+source,web/js/flow.js:23,js-literal,,Within usable: W ${mm(size[0])} · D ${mm(size[1])} · H ${mm(size[2])} mm
+source,web/js/flow.js:24,js-literal,,"W, D and H all within usable · no cut needed"
+source,web/js/flow.js:25,js-literal,,${mm(size[k]-u[k])} mm too ${AXIS[k]}
+source,web/js/flow.js:26,js-literal,,${AXN[k]} ${mm(size[k])} / ${mm(u[k])} mm
+source,web/js/flow.js:26,js-literal,,${mm(size[k])} / ${mm(u[k])} mm
+source,web/js/flow.js:27,js-literal,,after a 90° turn
+source,web/js/flow.js:27,js-literal,,laid on its side
+source,web/js/flow.js:30,js-literal,,Turn 90° to fit
+source,web/js/flow.js:30,js-literal,,Lay on side to fit
+source,web/js/flow.js:30,js-literal,,Fits in one piece ${how}
+source,web/js/flow.js:30,js-literal,,Current placement is ${short} (${pair})
+source,web/js/flow.js:31,js-literal,,Current placement is ${short}
+source,web/js/flow.js:31,js-literal,,The turn keeps the size and changes only the footprint on the bed. You can undo it.
+source,web/js/flow.js:32,js-literal,,No upright orientation
+source,web/js/flow.js:32,js-literal,,No orientation
+source,web/js/flow.js:33,js-literal,,Doesn’t fit: ${short}
+source,web/js/flow.js:33,js-literal,,${metric} usable
+source,web/js/flow.js:33,js-literal,,${any} fits whole · Plan cuts proposes pieces
+source,web/js/flow.js:34,js-literal,,${any} fits it whole. Plan cuts proposes cuts and a print orientation for each piece; you review them before anything is built.
+source,web/js/flow.js:57,js-literal,,Escape
+source,web/js/flow.js:58,js-literal,,Tab
+source,web/js/flow.js:79,js-literal,,Expert mode on. Detailed controls are open in each step.
+source,web/js/flow.js:79,js-literal,,Guided mode on. Advanced controls remain available in each step.
+source,web/js/flow.js:86,js-literal,,Close view
+source,web/js/flow.js:86,js-literal,,Enlarge view
+source,web/js/flow.js:89,js-literal,,custom printer
+source,web/js/flow.js:103,js-literal,,Turned 90°. It fits in one piece.
+source,web/js/flow.js:113,js-literal,,"Plan cuts proposed ${parts.length} parts for your Split preference. Review them, or plan again."
+source,web/js/flow.js:125,js-literal,,Step ${steps.indexOf(step)+1} of 5: ${names[steps.indexOf(step)]}.
+source,web/js/flow.js:127,js-literal,,"Model loaded. Check the dimensions against ${this.printerName()}, then split."
+source,web/js/flow.js:144,js-literal,,${S.model.name} loaded · ${Math.abs((S.model.scale||1)-1)<1e-9?'original scale':
+source,web/js/flow.js:146,js-literal,,"${S.model.name.replace(/\.[^.]+$/,'').replace(/_/g,' ')} loaded"
+source,web/js/flow.js:146,js-literal,,Start with your model.
+source,web/js/flow.js:147,js-literal,,${Math.abs((S.model.scale||1)-1)<1e-9?'Original size retained.':
+source,web/js/flow.js:147,js-literal,,} Replace the file or review its measurements below.
+source,web/js/flow.js:147,js-literal,,Keep its size. We’ll make the pieces fit your printer.
+source,web/js/flow.js:156,js-literal,,Load a model
+source,web/js/flow.js:156,js-literal,,Recalculate split
+source,web/js/flow.js:156,js-literal,,Find cuts first
+source,web/js/flow.js:156,js-literal,,Done
+source,web/js/flow.js:156,js-literal,,Current
+source,web/js/flow.js:156,js-literal,,Available
+source,web/js/flow.js:157,js-literal,,${names[j]} · ${why}
+source,web/js/flow.js:164,js-literal,,Check printer fit
+source,web/js/flow.js:164,js-literal,,Preparing model…
+source,web/js/flow.js:164,js-literal,,Load a model to continue
+source,web/js/flow.js:164,js-literal,,Export as one piece
+source,web/js/flow.js:164,js-literal,,Plan cuts for ${this.printerName()}
+source,web/js/flow.js:164,js-literal,,Review joints
+source,web/js/flow.js:164,js-literal,,Apply or discard pin edits
+source,web/js/flow.js:164,js-literal,,Resolve warnings first
+source,web/js/flow.js:164,js-literal,,Download ZIP
+source,web/js/flow.js:164,js-literal,,Prepare downloads
+source,web/js/flow.js:164,js-literal,,Rebuild & prepare downloads
+source,web/js/flow.js:164,js-literal,,Build & prepare downloads
+source,web/js/flow.js:164,js-literal,,Export as one piece
+source,web/js/flow.js:164,js-literal,,"Plan the print orientation, build the single part and prepare downloads"
+source,web/js/flow.js:164,js-literal,,Turn the model on the bed so it fits in one piece (Undo restores)
+source,web/js/flow.js:164,js-literal,,Plan cuts
+source,web/js/flow.js:172,js-literal,,Printer fit · current placement
+source,web/js/flow.js:172,js-literal,,Model
+source,web/js/flow.js:172,js-literal,,Printer fit
+source,web/js/flow.js:172,js-literal,,Cuts
+source,web/js/flow.js:172,js-literal,,Joints
+source,web/js/flow.js:172,js-literal,,Built parts
+source,web/js/flow.js:179,js-literal,,Exploded
+source,web/js/flow.js:179,js-literal,,Assembled
+source,web/js/flow.js:182,js-literal,,Printer fit · current placement
+source,web/js/flow.js:182,js-literal,,Printer fit
+source,web/js/flow.js:183,js-literal,,${S.model.size[k].toFixed(1)} of ${u[k].toFixed(1)}
+source,web/js/flow.js:183,js-literal,,).join('')} Usable = bed ${x} × ${y} × ${z} mm less ${m} mm at each side and the top. Nothing is scaled.
+source,web/js/flow.js:189,js-literal,,Prefer pieces? Plan cuts anyway
+source,web/js/flow.js:190,js-literal,,${ico('rotate')} Turned 90° from the file’s orientation Undo turn
+source,web/js/flow.js:191,js-literal,,${ico(f.rot?'rotate':f.over.length?'alert':'success')} ${f.head} ${f.metric}${f.resolve==='none'?' on ':''} ${undo}${f.next?
+source,web/js/flow.js:197,js-literal,,nothing is scaled
+source,web/js/flow.js:198,js-literal,,What are you printing on?
+source,web/js/flow.js:200,js-literal,,Simplified for planning: ${simp.inputTris.toLocaleString()} → ${simp.outputTris.toLocaleString()} triangles. Maximum sampled deviation ${simp.maxDev.toFixed(3)} mm. ${S.model.originalKept?'Full-detail original retained for export.':'Export will use this simplified mesh.'} See Load for the complete repair and simplification report.
+source,web/js/flow.js:202,js-literal,,Drag the blue arrow to move · Tilt cut for arcs · Esc cancels
+source,web/js/flow.js:202,js-literal,,Click or drag pins · Add pin then click a cut face
+source,web/js/flow.js:202,js-literal,,Drag to orbit · scroll to zoom · F to fit
+source,web/js/gowork.js:6,js-literal,,out of memory
+source,web/js/gowork.js:30,js-literal,,planner WebAssembly did not start
+source,web/js/gowork.js:41,js-literal,,"The planner ran out of memory (the browser gives one tab only a few GB). The file itself may be fine: let it simplify the mesh, or plan it with the command-line tool."
+source,web/js/gowork.js:42,js-literal,,The planner stopped unexpectedly: ${(err && err.message) || log.split('\n').slice(-3).join(' ') || 'no message'}
+source,web/js/icons.js:4,js-literal,,"${n} ${w}${+n.replace(/,/g, '') === 1 ? '' : 's'}"
+source,web/js/jointeditor.js:23,js-literal,,That point is outside the cut face: click inside the coloured area.
+source,web/js/jointeditor.js:24,js-literal,,${Math.round(z * 100)} %
+source,web/js/jointeditor.js:39,js-literal,,(max-width: 760px)
+source,web/js/jointeditor.js:41,js-literal,,Beside 3D
+source,web/js/jointeditor.js:55,js-literal,,Full view
+source,web/js/jointeditor.js:55,js-literal,,Beside 3D
+source,web/js/jointeditor.js:56,js-literal,,Use the whole window for the editor
+source,web/js/jointeditor.js:56,js-literal,,Show the 3D view beside the editor (changes appear there live)
+source,web/js/jointeditor.js:72,js-literal,,joint editors return here
+source,web/js/jointeditor.js:117,js-literal,,Joints · ${this.app.cutName(f.node)}
+source,web/js/jointeditor.js:120,js-literal,,${esc(this.app.cutName(x.node))}
+source,web/js/jointeditor.js:126,js-literal,,Adding… Esc to stop
+source,web/js/jointeditor.js:131,js-literal,,J${j.id} ${esc(j.kind)}
+source,web/js/jointeditor.js:132,js-literal,,No point joints on this face.
+source,web/js/jointeditor.js:145,js-literal,,Click a green spot to place a ${esc(kind.toLowerCase())} : green = enough wall around the joint centre (a spot ≥ ${(2 * pr.rreq).toFixed(1)} mm across) · Enter places it at the view centre · Esc stops
+source,web/js/jointeditor.js:146,js-literal,,No room for a ${esc(kind.toLowerCase())} on this face : it needs a spot ≥ ${(2 * pr.rreq).toFixed(1)} mm across. Try a smaller joint type or a seam.
+source,web/js/jointeditor.js:186,js-literal,,A joint must stay on the cut face
+source,web/js/jointeditor.js:192,js-literal,,"input, select, textarea"
+source,web/js/jointeditor.js:195,js-literal,,Escape
+source,web/js/jointeditor.js:200,js-literal,,Tab
+source,web/js/jointeditor.js:202,js-literal,,"button:not([disabled]), select, input, canvas[tabindex], [tabindex=""0""]"
+source,web/js/jointeditor.js:214,js-literal,,Delete
+source,web/js/jointeditor.js:214,js-literal,,Backspace
+source,web/js/jointeditor.js:217,js-literal,,Enter
+source,web/js/jointeditor.js:223,js-literal,,The centre of the view is not on the cut face: pan first.
+source,web/js/jointeditor.js:229,js-literal,,Arrow
+source,web/js/jointmap.js:16,js-literal,,distance to the wall = thr
+source,web/js/jointmap.js:17,js-literal,,room for this joint
+source,web/js/jointmap.js:310,js-literal,,Contact ${this.face.patches.indexOf(pid)+1}
+source,web/js/jointmap.js:343,js-literal,,click to add a joint · green = room for this type
+source,web/js/jointmap.js:349,js-literal,,(pointer: coarse)
+source,web/js/merge.js:35,js-literal,,Shift
+source,web/js/merge.js:36,js-literal,,Shift
+source,web/js/merge.js:66,js-literal,,${name}
+source,web/js/merge.js:67,js-literal,,${letter}
+source,web/js/merge.js:76,js-literal,,More below
+source,web/js/merge.js:90,js-literal,,Load a model to begin.
+source,web/js/merge.js:92,js-literal,,Fits as placed.
+source,web/js/merge.js:94,js-literal,,Ready to plan cuts.
+source,web/js/merge.js:97,js-literal,,"${this.a.jointName(j)} · Ø${fmt(j.d || 0, 2)} mm"
+source,web/js/merge.js:98,js-literal,,${this.a.cutName(S.sel.cut)} selected · drag it in the view
+source,web/js/merge.js:99,js-literal,,${parts.length} parts · ${bad ? bad + ' do not fit' : 'all fit'} · ${S.plan.joints.length} pins
+source,web/js/merge.js:101,js-literal,,Downloads ready.
+source,web/js/merge.js:101,js-literal,,Parts built. Prepare downloads.
+source,web/js/merge.js:101,js-literal,,Changes since last build. Rebuild.
+source,web/js/merge.js:101,js-literal,,"Build parts, then download."
+source,web/js/merge.js:110,js-literal,,Drag the blue arrow to move this cut · Tilt cut for the A/B rings · Esc cancels
+source,web/js/merge.js:125,js-literal,,Plan cuts
+source,web/js/merge.js:128,js-literal,,Regenerate
+source,web/js/merge.js:128,js-literal,,Plan cuts again
+source,web/js/merge.js:128,js-literal,,Plan cuts
+source,web/js/merge.js:133,js-literal,,No cut needed: it prints in one piece in the orientation shown. Add a cut only if you want one; otherwise continue.
+source,web/js/merge.js:133,js-literal,,"Plan first, build later. Review the suggested cuts; drag the highlighted arrow to move one, or use Tilt cut."
+source,web/js/merge.js:133,js-literal,,Settings changed since these cuts were planned. Plan cuts again to apply them.
+source,web/js/merge.js:133,js-literal,,"Choose what matters more, then Plan cuts. You review the proposed cuts here before anything is built."
+source,web/js/merge.js:135,js-literal,,Why these cuts?
+source,web/js/merge.js:135,js-literal,,How cuts are chosen
+source,web/js/merge.js:141,js-literal,,Auto split: ${parts.length} part${parts.length === 1 ? '' : 's'}${bad ?
+source,web/js/merge.js:141,js-literal,,": ', all fit'}"
+source,web/js/merge.js:142,js-literal,,${cuts} cut${cuts === 1 ? '' : 's'} · ${S.plan.joints.length} pins${seams ?
+source,web/js/merge.js:142,js-literal,,: ''}${warn ?
+source,web/js/merge.js:142,js-literal,,": ''}. Adjust a cut in the view, or regenerate with the current settings."
+source,web/js/merge.js:156,js-literal,,Enter
+source,web/js/merge.js:156,js-literal,,Escape
+source,web/js/merge.js:183,js-literal,,Escape
+source,web/js/merge.js:191,js-literal,,Model
+source,web/js/merge.js:193,js-literal,,Cuts
+source,web/js/merge.js:193,js-literal,,"${n.locked ? 'manual' : 'auto'} · ${fmt(n.cut.d, 1)} mm"
+source,web/js/merge.js:194,js-literal,,Parts
+source,web/js/merge.js:194,js-literal,,Part ${l.label}
+source,web/js/merge.js:197,js-literal,,Contacts & joints
+source,web/js/merge.js:197,js-literal,,${this.a.cutName(p.node)} · ${this.a.contactName(p)}
+source,web/js/merge.js:197,js-literal,,${js.length} pin${js.length === 1 ? '' : 's'}${p.seam && p.seam.kind !== 'none' ? ' · ' + p.seam.kind + ' seam' : ''}
+source,web/js/merge.js:198,js-literal,,Contacts & joints
+source,web/js/merge.js:198,js-literal,,"${j.kind} · Ø${fmt(j.d || 0, 2)}"
+source,web/js/merge.js:208,js-literal,,"class=""nested"""
+source,web/js/merge.js:208,js-literal,,${i.bad ? 'warn' : ''}
+source,web/js/merge.js:228,js-literal,,Nothing selected
+source,web/js/merge.js:228,js-literal,,"Select a cut, part, contact or joint in the view, the Objects list or with Ctrl K."
+source,web/js/merge.js:229,js-literal,,"${j.kind} · Ø${fmt(j.d || 0, 2)} mm · depth ${fmt(j.holeNeg || 0, 1)} / ${fmt(j.holePos || 0, 1)} mm into each part · clearance ${fmt(j.clear || 0, 2)} mm. Edit it in the pin card below."
+source,web/js/merge.js:230,js-literal,,Part ${l.label}
+source,web/js/merge.js:231,js-literal,,Contact ${this.a.contactName(p)}
+source,web/js/merge.js:232,js-literal,,"${n.locked ? 'Manual' : 'Automatic'} · offset ${fmt(n.cut.d, 1)} mm · ${n.reason || 'placed by you'}. Precise values are below; drag it in the view."
+source,web/js/merge.js:245,js-literal,,Print package ready. Downloads match the current plan.
+source,web/js/merge.js:245,js-literal,,Parts are built from the current plan. Downloads are not prepared yet.
+source,web/js/merge.js:245,js-literal,,Changes since last build. Rebuild to update the parts and downloads.
+source,web/js/merge.js:247,js-literal,,Rebuild parts
+source,web/js/merge.js:247,js-literal,,Build parts
+source,web/js/merge.js:250,js-literal,,Rebuild needed
+source,web/js/merge.js:259,js-literal,,ArrowDown
+source,web/js/merge.js:259,js-literal,,ArrowUp
+source,web/js/merge.js:259,js-literal,,ArrowDown
+source,web/js/merge.js:260,js-literal,,Home
+source,web/js/merge.js:261,js-literal,,End
+source,web/js/merge.js:262,js-literal,,Enter
+source,web/js/merge.js:275,js-literal,,Busy
+source,web/js/merge.js:276,js-literal,,Load
+source,web/js/merge.js:276,js-literal,,Fit
+source,web/js/merge.js:276,js-literal,,Split
+source,web/js/merge.js:276,js-literal,,Join
+source,web/js/merge.js:276,js-literal,,Export
+source,web/js/merge.js:277,js-literal,,Go to step ${i + 1}: ${name}
+source,web/js/merge.js:277,js-literal,,Find cuts first
+source,web/js/merge.js:277,js-literal,,Load a model first
+source,web/js/merge.js:277,js-literal,,Step
+source,web/js/merge.js:278,js-literal,,Open a model file…
+source,web/js/merge.js:278,js-literal,,Load
+source,web/js/merge.js:279,js-literal,,"Load sample: ${b.dataset.sample.replace(/_/g, ' ').replace(/\.stl$/, '')}"
+source,web/js/merge.js:279,js-literal,,Load
+source,web/js/merge.js:280,js-literal,,Plan cuts for ${FLOW.printerName()}
+source,web/js/merge.js:280,js-literal,,Load a model first
+source,web/js/merge.js:280,js-literal,,Split
+source,web/js/merge.js:281,js-literal,,Auto-complete the remaining oversized parts
+source,web/js/merge.js:281,js-literal,,All parts already fit
+source,web/js/merge.js:281,js-literal,,Split
+source,web/js/merge.js:282,js-literal,,Rebuild parts
+source,web/js/merge.js:282,js-literal,,Build parts
+source,web/js/merge.js:282,js-literal,,Find cuts first
+source,web/js/merge.js:282,js-literal,,Export
+source,web/js/merge.js:283,js-literal,,Prepare downloads
+source,web/js/merge.js:283,js-literal,,Build parts first
+source,web/js/merge.js:283,js-literal,,Export
+source,web/js/merge.js:284,js-literal,,Download ZIP package
+source,web/js/merge.js:284,js-literal,,Prepare downloads first
+source,web/js/merge.js:284,js-literal,,Export
+source,web/js/merge.js:285,js-literal,,Generate joint test coupon
+source,web/js/merge.js:285,js-literal,,Geometry engine still loading
+source,web/js/merge.js:285,js-literal,,Export
+source,web/js/merge.js:286,js-literal,,Undo plan edit
+source,web/js/merge.js:286,js-literal,,Nothing to undo
+source,web/js/merge.js:286,js-literal,,Ctrl Z
+source,web/js/merge.js:287,js-literal,,Redo plan edit
+source,web/js/merge.js:287,js-literal,,Nothing to redo
+source,web/js/merge.js:287,js-literal,,Ctrl Shift Z
+source,web/js/merge.js:288,js-literal,,Fit model in view
+source,web/js/merge.js:288,js-literal,,Load a model first
+source,web/js/merge.js:289,js-literal,,Model
+source,web/js/merge.js:289,js-literal,,Cuts
+source,web/js/merge.js:289,js-literal,,Parts
+source,web/js/merge.js:289,js-literal,,Plates
+source,web/js/merge.js:289,js-literal,,Show ${name} presentation
+source,web/js/merge.js:289,js-literal,,Find cuts first
+source,web/js/merge.js:289,js-literal,,Build parts first
+source,web/js/merge.js:289,js-literal,,Load a model first
+source,web/js/merge.js:290,js-literal,,Switch to guided mode
+source,web/js/merge.js:290,js-literal,,Switch to expert mode
+source,web/js/merge.js:290,js-literal,,Mode
+source,web/js/merge.js:291,js-literal,,Show object list
+source,web/js/merge.js:291,js-literal,,Load a model first
+source,web/js/merge.js:291,js-literal,,Objects
+source,web/js/merge.js:292,js-literal,,Delete ${this.a.cutName(S.sel.cut)}
+source,web/js/merge.js:292,js-literal,,Delete
+source,web/js/merge.js:293,js-literal,,Delete ${this.a.jointName(j)}
+source,web/js/merge.js:293,js-literal,,Delete
+source,web/js/merge.js:294,js-literal,,Add a pin on the selected cut face
+source,web/js/merge.js:294,js-literal,,Find cuts first
+source,web/js/merge.js:295,js-literal,,Printer and clearances
+source,web/js/merge.js:295,js-literal,,Load a model first
+source,web/js/merge.js:295,js-literal,,Fit
+source,web/js/merge.js:296,js-literal,,Joint style for all contacts
+source,web/js/merge.js:296,js-literal,,Find cuts first
+source,web/js/merge.js:296,js-literal,,Join
+source,web/js/merge.js:297,js-literal,,Open the large joint editor
+source,web/js/merge.js:297,js-literal,,Find cuts first
+source,web/js/merge.js:297,js-literal,,Join
+source,web/js/merge.js:298,js-literal,,Reset settings to defaults
+source,web/js/merge.js:298,js-literal,,Settings
+source,web/js/merge.js:299,js-literal,,Quick help
+source,web/js/merge.js:299,js-literal,,Help
+source,web/js/merge.js:300,js-literal,,Open the guide
+source,web/js/merge.js:300,js-literal,,Help
+source,web/js/merge.js:301,js-literal,,Select ${o.label}
+source,web/js/merge.js:314,js-literal,,${esc(c.label)} ${esc(c.why || c.hint)}
+source,web/js/merge.js:314,js-literal,,No matching command
+source,web/js/merge.js:317,js-literal,,${this.paletteItems.length} command${this.paletteItems.length === 1 ? '' : 's'}
+source,web/js/merge.js:321,js-literal,,${c.label} is unavailable: ${c.why}.
+source,web/js/merge.js:342,js-literal,,Less
+source,web/js/merge.js:342,js-literal,,Why?
+source,web/js/merge.js:342,js-literal,,Details
+source,web/js/merge.js:355,js-literal,,Drag the blue arrow to move a cut · two fingers pan
+source,web/js/merge.js:355,js-literal,,Tap a pin to edit · drag to move it
+source,web/js/merge.js:355,js-literal,,Drag to orbit · pinch to zoom · two fingers pan
+source,web/js/progress.js:39,js-literal,,binary STL
+source,web/js/progress.js:40,js-literal,,ASCII STL
+source,web/js/progress.js:67,js-literal,,${(n / 1e6).toFixed(n >= 1e7 ? 0 : 2)} M
+source,web/js/progress.js:68,js-literal,,${Math.round(n / 1e3)} k
+source,web/js/progress.js:75,js-literal,,"${m}:${String(r).padStart(2, '0')} min"
+source,web/js/progress.js:77,js-literal,,${(mb / 1024).toFixed(1)} GB
+source,web/js/progress.js:77,js-literal,,${Math.round(mb)} MB
+source,web/js/progress.js:83,js-literal,,Read
+source,web/js/progress.js:83,js-literal,,Parse
+source,web/js/progress.js:83,js-literal,,Repair
+source,web/js/progress.js:83,js-literal,,Simplify
+source,web/js/progress.js:83,js-literal,,Measure
+source,web/js/progress.js:83,js-literal,,Prepare
+source,web/js/progress.js:83,js-literal,,Build solid
+source,web/js/progress.js:85,js-literal,,Find cuts
+source,web/js/progress.js:85,js-literal,,Analyse cut faces
+source,web/js/progress.js:85,js-literal,,Place joints
+source,web/js/progress.js:95,js-literal,,Cancelling…
+source,web/js/progress.js:114,js-literal,,${m[1]} model
+source,web/js/progress.js:119,js-literal,,Cancel
+source,web/js/progress.js:158,js-literal,,cut planes ${m.done}/${m.total}
+source,web/js/progress.js:158,js-literal,,support check ${m.done}/${m.total}
+source,web/js/progress.js:168,js-literal,,(more than estimated)
+source,web/js/progress.js:168,js-literal,,of ~${n}
+source,web/js/progress.js:169,js-literal,,Cut ${this.cut.k}${of}${this.cut.what ? ' · evaluating ' + this.cut.what : ''}
+source,web/js/progress.js:172,js-literal,,Analysing the cut faces
+source,web/js/progress.js:175,js-literal,,"Placing joints · contact ${Math.min(m.done + 1, m.total)}/${m.total}"
+source,web/js/progress.js:175,js-literal,,Placing joints
+source,web/js/progress.js:181,js-literal,,· ${Math.round(100 * m.done / m.total)} %
+source,web/js/progress.js:190,js-literal,,· about ${fmtDur(el * (1 - this.frac) / this.frac)} left
+source,web/js/progress.js:191,js-literal,,· estimate ≈ ${fmtDur(this.est)}
+source,web/js/progress.js:191,js-literal,,· taking longer than estimated
+source,web/js/progress.js:192,js-literal,,elapsed ${fmtDur(el)}${left}
+source,web/js/readiness.js:3,js-literal,,Apply or discard the pin changes before building.
+source,web/js/readiness.js:4,js-literal,,Find cuts first.
+source,web/js/readiness.js:5,js-literal,,Printer settings changed. Recalculate the split.
+source,web/js/readiness.js:10,js-literal,,${cuts} cut${cuts===1?'':'s'} checked · ${p.joints.length-badPins} pin${p.joints.length-badPins===1?'':'s'} valid
+source,web/js/readiness.js:11,js-literal,,${summary} · ${badParts?
+source,web/js/readiness.js:11,js-literal,,pin needs
+source,web/js/readiness.js:11,js-literal,,pins need
+source,web/js/readiness.js:11,js-literal,,}. Review before building.
+source,web/js/readiness.js:12,js-literal,,:''} · Ready to build & export.
+source,web/js/scene-context.js:45,js-literal,,"M${p.x},${p.y} L${end.x},${mobile?bottom-12:end.y} L${end.x},${end.y}"
+source,web/js/scene-context.js:85,js-literal,,"${['W','D','H'][i]} ${val} mm"
+source,web/js/scene-context.js:85,js-literal,,· limit ${+usable[i].toFixed(1)} mm
+source,web/js/scene-context.js:86,js-literal,,${over?620:400} 13px ${getComputedStyle(document.body).fontFamily}
+source,web/js/scene-context.js:107,js-literal,,${label}
+source,web/js/scene-context.js:117,js-literal,,"Accepted hole depths · side section${['dowel','press'].includes(j.kind)?' · includes 0.3 mm end allowance':''} − side ${neg.toFixed(1)} mm + side ${pos.toFixed(1)} mm cut plane · lengths to scale"
+source,web/js/viewer.js:78,js-literal,,"varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }"
+source,web/js/viewer.js:79,js-literal,,"uniform vec3 uColor; uniform vec3 uCenter; uniform float uR, uNear, uFar; varying vec3 vW; void main(){ vec3 d = normalize(uCenter - cameraPosition); float t = smoothstep(-uR, uR, dot(vW - uCenter, d)); gl_FragColor = vec4(uColor, mix(uNear, uFar, t));\n#include \n}"
+source,web/js/viewer.js:131,js-literal,,"bold 34px system-ui, sans-serif"
+source,web/js/viewer.js:155,js-literal,,(prefers-reduced-motion: reduce)
+source,web/js/viewer.js:156,js-literal,,(prefers-reduced-motion: reduce)
+source,web/js/viewer.js:230,js-literal,,"Interactive 3D model. Arrow keys orbit, Shift and arrows pan, plus and minus zoom, F fits. Cut and part buttons in Split provide an accessible selection alternative."
+source,web/js/viewer.js:270,js-literal,,Offset ${axis} ${this.dragD.toFixed(1)} mm
+source,web/js/viewer.js:310,js-literal,,Arrow
+source,web/js/viewer.js:312,js-literal,,ArrowRight
+source,web/js/viewer.js:312,js-literal,,ArrowLeft
+source,web/js/viewer.js:312,js-literal,,ArrowUp
+source,web/js/viewer.js:312,js-literal,,ArrowDown
+source,web/js/viewer.js:580,js-literal,,Cut ${plan.faces.indexOf(f)+1}
+source,web/js/viewer.js:807,js-literal,,local ${this.tc.axis}
+source,web/js/viewer.js:809,js-literal,,Tilt about ${label} ${signed>=0?'+':''}${signed.toFixed(1)}°
+source,web/js/viewer.js:817,js-literal,,${this.cutDescription()} · ${delta>=0?'+':''}${delta.toFixed(1)} mm
+source,web/js/worker.js:30,js-literal,,no model loaded in the worker
+source,README.md:1,doc-heading,,# splitter
+source,README.md:3,doc-text,,"**Split a 3D model that is too big for your printer into parts that fit, with joints on every cut face, and export print-ready plates and an assembly sheet.**"
+source,README.md:5,doc-text,,**Live:** <https://magnusp.is/splitter/>. It runs entirely in your browser. Your model is never uploaded.
+source,README.md:7,doc-text,,"![Exploded view of a 300 mm bowl split into four parts for a 180 mm printer, joined by finger seams](docs/built.png)"
+source,README.md:9,doc-heading,,## What it does
+source,README.md:11,doc-text,,"1. **Load** an STL (binary or ASCII), OBJ or 3MF up to 300 MB. The mesh is welded and repaired: holes are capped, flipped and inside-out faces are fixed, duplicate and degenerate faces are removed, non-manifold edges are split and debris is dropped. Each repair is counted in the UI. Meshes above 600k triangles are simplified for planning (closed shells kept, measured deviation shown) and parts are"
+source,README.md:12,doc-text,,"2. **Choose a printer** (Prusa, Bambu Lab, Creality, Voron presets, or a custom volume) and a safety margin."
+source,README.md:13,doc-text,,"3. **Auto split.** A BSP search over cut planes trades part count against estimated support demand. The **Fewer parts ↔ Less support** slider defaults to Balanced; move it fully left for the legacy parts-first objective. You can move, tilt, delete or add cuts. **Auto-complete** then splits only the parts that still do not fit."
+source,README.md:14,doc-text,,"4. **Joints.** Every cut face is analysed, and joints are placed where the wall can hold them. You can edit them on a 2D joint map, which opens as a large zoomable editor (wheel/pinch, keyboard, phone layout) with the 3D view optionally beside it."
+source,README.md:15,doc-text,,5. **Build** every part as a closed manifold solid with the [Manifold](https://github.com/elalish/manifold) kernel. The interference between mating parts is checked.
+source,README.md:16,doc-text,,"6. **Export** a zip: oriented STLs, one 3MF per print plate, an all-plates 3MF, an assembled preview, an HTML assembly sheet, `plan.json` and a per-part report."
+source,README.md:18,doc-text,,![Cut planning: the bowl with its cut planes and the joint map for a ring-shaped section](docs/plan.png)
+source,README.md:20,doc-heading,,## Joint placement
+source,README.md:22,doc-text,,"- Each cut face is rasterised and split into **contact patches**, one for each pair of parts that touch there."
+source,README.md:23,doc-text,,"- A Euclidean distance transform of each patch gives the largest inscribed circle at every point. Its ridge is the medial axis, and the typical ridge value gives the wall thickness."
+source,README.md:24,doc-text,,- A point joint may sit only where the distance is at least joint radius + clearance + minimum wall. The minimum wall is 2 × nozzle × 1.05 and never below 1.2 mm. This stops a joint from breaking through a visible surface.
+source,README.md:25,doc-text,,"- **Depth** comes from ray casts into both parts from the centre and 8 rim points. Pins get shorter (down to 4 mm per side), or move elsewhere."
+source,README.md:26,doc-text,,"- Joints are spread by farthest-point sampling: at least 2 per patch so parts cannot rotate, and 3–4 on large faces."
+source,README.md:27,doc-text,,"- **Your joint style wins.** The chosen point joint is placed wherever at least two fit, even on thin shells (in thicker spots such as rims). If only one fits, you get that one plus a warning, because a single pin lets the parts rotate; one click switches that contact to a seam or a keyed peg."
+source,README.md:28,doc-text,,"- **Substitutions are never silent.** Only when the chosen style cannot be placed at all does a contact get a seam picked by wall thickness: tongue and groove if the wall is ≥ 3 × the minimum wall, half lap if ≥ 2 ×, else finger joint (dovetails only when you choose them). Each one shows a badge such as ""Dowels → lap seam: wall 2.3 mm"" in the plan summary and on the joint map, with the exact reaso"
+source,README.md:29,doc-text,,- Changing the **Joints** selector re-places the automatic joints on the current cuts at once; cuts and manual joints are kept. The last settings are restored from browser storage (the page says so); **Reset to defaults** goes back to Dowel pins (glue).
+source,README.md:30,doc-text,,"- Integrated pegs and seams go on the part that does **not** print on that face, so the face stays flat on the bed. Horizontal holes get teardrop roofs, and horizontal pegs get a flat underside."
+source,README.md:32,doc-text,,| | Glued | Unglued |
+source,README.md:33,doc-text,,|---|---|---|
+source,README.md:34,doc-text,,| **Point joints** | dowel pin (printed separately; glue groove; vented flat) · Ø1.75 mm filament pin · integrated peg · keyed hex/D peg | press-fit pin · magnet pockets (Ø5/6/8/10 × 2–3 mm) · heat-set insert + screw (M2.5–M5) · bolt + hex nut trap · cantilever snap clip |
+source,README.md:35,doc-text,,| **Seam joints** | finger/box joint · tongue & groove · half lap | sliding dovetail |
+source,README.md:37,doc-text,,"Clearances are radial, per side, and editable. The defaults for a 0.4 mm nozzle are: press 0.05, glue 0.15, slip 0.20, snap 0.25, seam 0.15 mm. A 0.6 mm nozzle adds 0.05 mm."
+source,README.md:39,doc-heading,,## Limits and caveats
+source,README.md:41,doc-text,,"- **Physical fit is untested until you print the coupon.** The clearances are geometric. Your printer, filament and slicer decide the real fit. Step 5 generates a **joint test coupon** with six graded clearances. Print it first, then enter the loosest step that still holds."
+source,README.md:42,doc-text,,"- **Support is a geometric proxy, not slicer material or print time.** It ignores bridging, support density, supports resting on the model, tree supports, and joint geometry. The coarse raster can miss small features. ""Allow tilted"" can save parts but usually adds support. Always inspect the exported orientation and supports in your slicer."
+source,README.md:43,doc-text,,"- No STEP import. The 3MF files contain geometry only, with no slicer profiles."
+source,README.md:44,doc-text,,- Very large meshes (millions of triangles) are slow in the browser and use a lot of memory.
+source,README.md:45,doc-text,,"- Cut planning is a heuristic search. It does not guarantee the global optimum, and on strongly curved shells it may need a manual cut."
+source,README.md:47,doc-heading,,## Support-aware cost
+source,README.md:49,doc-text,,"Each signed print orientation is scored using a 40 × 40 raster over the part's projected footprint. Only downward-facing surfaces steeper than 45° count. A covered pixel contributes its height above the bed, multiplied by its estimated **surface** area (projected pixel area divided by the normal's cosine). Overlapping columns take the maximum rather than being counted twice. Bed contact within 0.6"
+source,README.md:51,doc-text,,"This produces `supportVolume` in **mm³ of geometric proxy**, shown as cm³ in the UI. It is deliberately not named support grams. The cost added to both cut selection and print orientation is:"
+source,README.md:53,doc-text,,```
+source,README.md:54,doc-text,,supportCost = supportVolume_mm3 × 0.004 × supportWeight²
+source,README.md:55,doc-text,,partCost = 100 per estimated part (plus the existing seam/geometry penalties)
+source,README.md:56,doc-text,,```
+source,README.md:58,doc-text,,"`supportWeight` is 0–1, defaults to 0.5 when omitted, and is clamped at the API boundary. At Balanced, saving about 100 cm³ of proxy pays for one extra part before seam penalties; at the far right, about 25 cm³. Part cost never becomes zero. At zero, support does not affect the old cut/orientation objective, but the estimate is still reported."
+source,README.md:60,doc-text,,"The planner makes required fit cuts first. On a fresh **Auto split**, it then considers extra cuts even when a piece already fits, accepting them only when their predicted savings exceed the added part/seam cost and both children fit. It considers at most five offset bands per cut normal (up to 30 shortlisted cuts per search), not every possible split. This is a bounded greedy search, **not** a gl"
+source,README.md:62,doc-text,,"Changing the slider does not silently replace manual cuts: press Auto split to apply it. The UI retains the preference (including zero), shows a pending-change notice, and compares successive auto plans when other settings are unchanged. Reset to defaults restores Balanced."
+source,README.md:64,doc-text,,```sh
+source,README.md:65,doc-text,,bin/splitter plan -support-weight 0.5 model.stl > plan.json
+source,README.md:66,doc-heading,,"# Real browser planning, builds, oriented export, screenshots, persistence:"
+source,README.md:67,doc-text,,node e2e/support.mjs http://localhost:8000/ model.stl support-out
+source,README.md:68,doc-text,,```
+source,README.md:70,doc-heading,,## How it works
+source,README.md:72,doc-text,,```
+source,README.md:73,doc-text,,"model file ─► Go (WebAssembly, Web Worker): parse, weld, repair ─► plan cuts ─► analyse cut faces, place joints, orient parts"
+source,README.md:74,doc-text,,│ plan JSON
+source,README.md:75,doc-text,,"Manifold (WebAssembly, second Web Worker): build every part ◄─┘"
+source,README.md:76,doc-text,,│ part meshes
+source,README.md:77,doc-text,,"Go (WebAssembly): orient + pack plates, write STL / 3MF / assembly sheet / zip ◄─┘"
+source,README.md:78,doc-text,,```
+source,README.md:80,doc-text,,The planner is plain Go with no third-party modules. It is compiled with the standard toolchain (`GOOS=js GOARCH=wasm`). The same code also runs as a normal HTTP server (`splitter serve`) if you prefer to self-host the processing.
+source,README.md:82,doc-heading,,## Build and run
+source,README.md:84,doc-text,,Requires Go 1.27 or newer (see `go.mod`).
+source,README.md:86,doc-text,,```sh
+source,README.md:87,doc-heading,,"# static, fully client-side site → ./site (serve it from any static host, sub-paths work)"
+source,README.md:88,doc-text,,scripts/build-static.sh site
+source,README.md:89,doc-text,,python3 -m http.server -d site 8000        # http://localhost:8000/
+source,README.md:91,doc-heading,,"# or: server mode (same UI, processing on the server)"
+source,README.md:92,doc-text,,go build -o bin/splitter ./cmd/print-splitter
+source,README.md:93,doc-text,,bin/splitter serve -addr 127.0.0.1:8097    # http://127.0.0.1:8097/
+source,README.md:95,doc-heading,,# CLI planning only
+source,README.md:96,doc-text,,bin/splitter plan -printer prusa-mini -style glued model.stl > plan.json
+source,README.md:97,doc-text,,```
+source,README.md:99,doc-text,,"The static site serves `.wasm` files. Most hosts send them as `application/wasm`, and the loader falls back if they do not."
+source,README.md:101,doc-text,,Tests: `go test ./...`. Browser smoke test (Playwright): `node e2e/smoke.mjs http://localhost:8000/ bracket_320mm.stl prusa-mini`.
+source,README.md:103,doc-text,,Sample models in `web/samples/`:
+source,README.md:104,doc-text,,- the bracket and bowl are generated by `tools/make_samples.mjs`;
+source,README.md:105,doc-text,,- the cube is generated;
+source,README.md:106,doc-text,,"- `bunny_damaged.stl` is the Stanford Bunny scaled to 260 mm with holes, flipped, duplicate and degenerate faces added, to exercise mesh repair."
+source,README.md:108,doc-heading,,## Licence
+source,README.md:110,doc-text,,"MIT, see [LICENSE](LICENSE). Third-party components (Manifold, three.js, Go's `wasm_exec.js`, Stanford Bunny) are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)."
+source,docs/large-meshes.md:1,doc-heading,,# Large meshes
+source,docs/large-meshes.md:3,doc-text,,splitter runs entirely in the browser: the planner is Go compiled to
+source,docs/large-meshes.md:4,doc-text,,WebAssembly and the solids are cut by Manifold (also WebAssembly). Both
+source,docs/large-meshes.md:5,doc-text,,"share one tab, and a tab gets a few gigabytes at most. This page lists"
+source,docs/large-meshes.md:6,doc-text,,"what that means for big models, what the app does about it, and the"
+source,docs/large-meshes.md:7,doc-text,,numbers behind the choices. All figures were measured on a desktop PC
+source,docs/large-meshes.md:8,doc-text,,"(Chrome headless and Node, the same `.wasm` file) with a 226k-triangle"
+source,docs/large-meshes.md:9,doc-text,,"helmet, its 4× and 16× subdivisions (905k and 3.6M triangles) and two"
+source,docs/large-meshes.md:10,doc-text,,copies of the 905k mesh (1.8M).
+source,docs/large-meshes.md:12,doc-heading,,## Limits
+source,docs/large-meshes.md:14,doc-text,,| | |
+source,docs/large-meshes.md:15,doc-text,,|---|---|
+source,docs/large-meshes.md:16,doc-text,,| File size | 300 MB (any format) |
+source,docs/large-meshes.md:17,doc-text,,| Planned on directly | up to 600k triangles |
+source,docs/large-meshes.md:18,doc-text,,"| Simplified for planning | above 600k triangles, to ≤ 400k |"
+source,docs/large-meshes.md:19,doc-text,,| Exports cut from the full-detail original | up to 1.5M triangles |
+source,docs/large-meshes.md:20,doc-text,,| Refused before loading | estimated peak memory above 3 GB |
+source,docs/large-meshes.md:22,doc-text,,Before reading a file the app estimates its triangle count (exact for
+source,docs/large-meshes.md:23,doc-text,,"binary STL, from the header) and the memory it will need. If that is more"
+source,docs/large-meshes.md:24,doc-text,,"than a tab can reliably get, it says so and offers to simplify instead of"
+source,docs/large-meshes.md:25,doc-text,,starting work that would end with a dead tab. All limits can be
+source,docs/large-meshes.md:26,doc-text,,overridden for testing with
+source,docs/large-meshes.md:27,doc-text,,"`localStorage['ps.limits'] = '{""threshold"": 300000}'` (keys: `threshold`,"
+source,docs/large-meshes.md:28,doc-text,,"`target`, `maxError`, `keepOriginal`, `warnMB`, `refuseMB`)."
+source,docs/large-meshes.md:30,doc-heading,,## Why memory ran out
+source,docs/large-meshes.md:32,doc-text,,On WebAssembly the Go runtime has a single thread. While a call from
+source,docs/large-meshes.md:33,doc-text,,"JavaScript runs (loading, planning), the collector's background workers"
+source,docs/large-meshes.md:34,doc-text,,"never get scheduled, so garbage collection cycles do not finish and the"
+source,docs/large-meshes.md:35,doc-text,,heap grows until the call returns. Measured before the fix:
+source,docs/large-meshes.md:37,doc-text,,| | wasm memory |
+source,docs/large-meshes.md:38,doc-text,,|---|---|
+source,docs/large-meshes.md:39,doc-text,,| plan 226k triangles | 1.8 GB (live data ≈ 0.2 GB) |
+source,docs/large-meshes.md:40,doc-text,,"| load 3.6M triangles | 3.7 GB, then the tab died |"
+source,docs/large-meshes.md:41,doc-text,,| plan 1.8M triangles | the tab died during Auto split |
+source,docs/large-meshes.md:43,doc-text,,The planner now runs a blocking collection at checkpoints (every progress
+source,docs/large-meshes.md:44,doc-text,,"step, at most every 0.75 s, and between repair stages). It also keeps"
+source,docs/large-meshes.md:45,doc-text,,less: per-normal slice caches hold one value per vertex instead of three
+source,docs/large-meshes.md:46,doc-text,,"per triangle and are bounded (64 MB, least recently used), and the"
+source,docs/large-meshes.md:47,doc-text,,support estimate refers to unclipped triangles by index instead of
+source,docs/large-meshes.md:48,doc-text,,copying them. After:
+source,docs/large-meshes.md:50,doc-text,,| | wasm memory | time |
+source,docs/large-meshes.md:51,doc-text,,|---|---|---|
+source,docs/large-meshes.md:52,doc-text,,| plan 226k (full detail) | 232 MB | 43 s |
+source,docs/large-meshes.md:53,doc-text,,| load 905k (full detail) | 881 MB | 6 s |
+source,docs/large-meshes.md:54,doc-text,,| plan 905k (full detail) | 396 MB peak | 117 s |
+source,docs/large-meshes.md:55,doc-text,,| load 3.6M → simplify to 400k | 1.07 GB | 66 s |
+source,docs/large-meshes.md:56,doc-text,,| plan that 400k mesh | 1.07 GB (no growth) | 65 s |
+source,docs/large-meshes.md:57,doc-text,,"| 1.8M (two 905k helmets) → 400k, plan, build | 1.0 GB planner; 3.95 GB whole tab when building from the 1.8M original (why that limit is now 1.5M) | 36 s load, 114 s plan (8 parts), 18 s build |"
+source,docs/large-meshes.md:59,doc-text,,Native (`print-splitter plan`) on the 905k helmet went from 763 MB to
+source,docs/large-meshes.md:60,doc-text,,"401 MB peak RSS and from 82 s to 63 s, with an identical plan."
+source,docs/large-meshes.md:62,doc-heading,,## Simplification
+source,docs/large-meshes.md:64,doc-text,,Meshes above the threshold are simplified before planning with quadric
+source,docs/large-meshes.md:65,doc-text,,edge collapse (Garland–Heckbert). A collapse is only made if it keeps the
+source,docs/large-meshes.md:66,doc-text,,surface a closed 2-manifold (its endpoints share exactly two neighbours)
+source,docs/large-meshes.md:67,doc-text,,"and flips no triangle, so the result stays watertight and keeps every"
+source,docs/large-meshes.md:68,doc-text,,"shell; if it somehow does not, the full mesh is kept and the app says so."
+source,docs/large-meshes.md:69,doc-text,,Collapses stop at the target triangle count or when the next one would
+source,docs/large-meshes.md:70,doc-text,,"move the surface by more than 0.05 mm (quadric estimate), whichever comes"
+source,docs/large-meshes.md:71,doc-text,,first.
+source,docs/large-meshes.md:73,doc-text,,"The deviation is then measured, not estimated: up to 100,000 vertices of"
+source,docs/large-meshes.md:74,doc-text,,each mesh are projected onto the nearest point of the other (both
+source,docs/large-meshes.md:75,doc-text,,"directions) and the maximum, mean and RMS distances are reported in the"
+source,docs/large-meshes.md:76,doc-text,,banner. Vertex sampling can miss the exact maximum inside a large
+source,docs/large-meshes.md:77,doc-text,,"triangle, so the maximum is a measurement, not a bound."
+source,docs/large-meshes.md:79,doc-text,,| model | triangles | max deviation | mean | time (browser) |
+source,docs/large-meshes.md:80,doc-text,,|---|---|---|---|---|
+source,docs/large-meshes.md:81,doc-text,,| helmet ×16 | 3.62M → 400k | 0.035 mm | 0.0005 mm | 39 s |
+source,docs/large-meshes.md:82,doc-text,,| two helmets ×4 | 1.81M → 400k | 0.086 mm | 0.0015 mm | 20 s |
+source,docs/large-meshes.md:83,doc-text,,| bumpy torus (e2e) | 720k → 400k | 0.003 mm | 0.0006 mm | 8 s |
+source,docs/large-meshes.md:84,doc-text,,| helmet ×4 (native) | 905k → 400k | 0.033 mm | 0.0003 mm | 1.4 s |
+source,docs/large-meshes.md:86,doc-text,,"For comparison, a 0.4 mm nozzle lays 0.4–0.45 mm lines at 0.1–0.3 mm"
+source,docs/large-meshes.md:87,doc-text,,layers; printers position to about ±0.05 mm.
+source,docs/large-meshes.md:89,doc-heading,,### What uses which mesh
+source,docs/large-meshes.md:91,doc-text,,"* **Planning** (cut search, cut faces, joint placement) uses the"
+source,docs/large-meshes.md:92,doc-text,,simplified mesh.
+source,docs/large-meshes.md:93,doc-text,,* **The 3D view** shows the simplified mesh.
+source,docs/large-meshes.md:94,doc-text,,* **Building and export** (step 5) cut the **full-detail original** with
+source,docs/large-meshes.md:95,doc-text,,"the same planes and joints when it has at most 1.5M triangles (""Cut parts"
+source,docs/large-meshes.md:96,doc-text,,"from the full-detail original"", on by default). Above that the original"
+source,docs/large-meshes.md:97,doc-text,,"is not kept, and the app states that exports come from the simplified"
+source,docs/large-meshes.md:98,doc-text,,mesh. Manifold needs about 1 kB per triangle to cut a mesh: cutting the
+source,docs/large-meshes.md:99,doc-text,,"3.6M original took 3.7 GB on top of the planner (1.8M: 2.9 GB), which is"
+source,docs/large-meshes.md:100,doc-text,,why the limit is 1.5M.
+source,docs/large-meshes.md:101,doc-text,,"* Above 1.2M triangles in the geometry kernel, the post-build checks look"
+source,docs/large-meshes.md:102,doc-text,,for interference only within 40 mm of each cut (where the joints are)
+source,docs/large-meshes.md:103,doc-text,,"and skip the whole-model void/outside volumes, which took more than"
+source,docs/large-meshes.md:104,doc-text,,seven minutes and 5 GB at 3.6M triangles.
+source,docs/large-meshes.md:106,doc-text,,**Use full detail** reloads the file without simplification after
+source,docs/large-meshes.md:107,doc-text,,confirming the estimated time and memory. If the browser runs out
+source,docs/large-meshes.md:108,doc-text,,"anyway, the tab dies; the app leaves a note before heavy steps, so the"
+source,docs/large-meshes.md:109,doc-text,,next visit explains that the tab stopped during loading or planning and
+source,docs/large-meshes.md:110,doc-text,,"that this was almost certainly memory, not the file."
+source,docs/large-meshes.md:112,doc-heading,,"## Progress, time estimates and cancel"
+source,docs/large-meshes.md:114,doc-text,,"Loading shows its stages (read, parse, repair, simplify, measure, index,"
+source,docs/large-meshes.md:115,doc-text,,"geometry kernel); Auto split shows the cut being searched (""Cut 2 of ~3""),"
+source,docs/large-meshes.md:116,doc-text,,"the candidate planes evaluated and support checks done for that cut, then"
+source,docs/large-meshes.md:117,doc-text,,"cut-face analysis and joint placement, with elapsed and estimated"
+source,docs/large-meshes.md:118,doc-text,,remaining time. Estimates come from the measurements above (≈ 0.1 ms per
+source,docs/large-meshes.md:119,doc-text,,"triangle per plan in the browser plus ~15 s), and the remaining time"
+source,docs/large-meshes.md:120,doc-text,,from progress so far.
+source,docs/large-meshes.md:122,doc-text,,**Cancel** ends the planner's worker (the Go runtime cannot be interrupted
+source,docs/large-meshes.md:123,doc-text,,"from inside a call); the model is then reloaded from the file you chose,"
+source,docs/large-meshes.md:124,doc-text,,so you can change settings and try again. The same happens if the planner
+source,docs/large-meshes.md:125,doc-text,,runs out of memory.
+source,docs/large-meshes.md:127,doc-heading,,## Two different refusals
+source,docs/large-meshes.md:129,doc-text,,"* **""… is not a closed solid""**: the file's surface has holes that could"
+source,docs/large-meshes.md:130,doc-text,,"not be capped, edges shared by more than two faces, or inconsistent"
+source,docs/large-meshes.md:131,doc-text,,winding. The message gives the counts and what the repair already did.
+source,docs/large-meshes.md:132,doc-text,,This is a problem with the file; fix it in a modeller or slicer.
+source,docs/large-meshes.md:133,doc-text,,"* **""Out of memory"" / ""… is too large for this browser tab""**: the file"
+source,docs/large-meshes.md:134,doc-text,,"may be fine. Simplify it (the default), reduce it beforehand, or use the"
+source,docs/large-meshes.md:135,doc-text,,"command-line planner, which has no browser limit:"
+source,docs/large-meshes.md:136,doc-text,,`print-splitter plan -printer bambu-a1-mini model.stl > plan.json`.
+source,docs/large-meshes.md:138,doc-heading,,## Reproducing the measurements
+source,docs/large-meshes.md:140,doc-text,,GOOS=js GOARCH=wasm go build -o web/wasm/splitter.wasm ./cmd/splitter-wasm
+source,docs/large-meshes.md:141,doc-text,,"node tools/wasm-mem.mjs model.stl '{""simplify"":""off""}' plan"
+source,docs/large-meshes.md:142,doc-text,,"node tools/wasm-mem.mjs model.stl '{""simplify"":""auto"",""threshold"":600000,""target"":400000,""maxError"":0.05}'"
+source,docs/large-meshes.md:143,doc-text,,node e2e/large-mesh.mjs http://127.0.0.1:8765/
+source,docs/support-cost-evaluation.md:1,doc-heading,,# Support-aware splitting — evaluation
+source,docs/support-cost-evaluation.md:4,doc-heading,,## Result
+source,docs/support-cost-evaluation.md:6,doc-text,,The real TF2 shell now chooses **three fitting parts rather than one** at the Balanced default. Independent slicing—not a conversion from the geometric proxy—predicts **56% less total filament and 39% less printing time** for this case.
+source,docs/support-cost-evaluation.md:8,doc-text,,"| Same shell, CORE One | Parts-first / legacy | Balanced / new default |"
+source,docs/support-cost-evaluation.md:9,doc-text,,|---|---:|---:|
+source,docs/support-cost-evaluation.md:10,doc-text,,| Shell parts | 1 | 3 |
+source,docs/support-cost-evaluation.md:11,doc-text,,| Loose pins | 0 | 2 |
+source,docs/support-cost-evaluation.md:12,doc-text,,"| Geometric support proxy | 2,402.8 cm³ | 133.0 cm³ |"
+source,docs/support-cost-evaluation.md:13,doc-text,,"| PrusaSlicer time, summed per object | 22 h 51 min 56 s | 13 h 58 min 29 s |"
+source,docs/support-cost-evaluation.md:14,doc-text,,"| PrusaSlicer total filament, pins included | 627.53 g | 275.49 g |"
+source,docs/support-cost-evaluation.md:15,doc-text,,| Exported parts fit | yes | yes |
+source,docs/support-cost-evaluation.md:16,doc-text,,| Closed-manifold shell parts | 1/1 | 3/3 |
+source,docs/support-cost-evaluation.md:17,doc-text,,| Packed export plates | 1 | 2 |
+source,docs/support-cost-evaluation.md:19,doc-text,,"**Conditions:** PrusaSlicer 2.9.6; Prusa CORE One 0.4 nozzle; `0.20mm STRUCTURAL @COREONE 0.4`; `Generic PLA @COREONE`; automatic supports enabled, allowed on both build plate and model. Both runs use the same resolved vendor presets. Each exported, print-oriented STL was sliced independently; the new total includes two instances of the loose pin. These are **summed object estimates**, not a timin"
+source,docs/support-cost-evaluation.md:21,doc-text,,The historical 17.5 h / 369 g three-part MINI-derived plan was a different cut/joint layout. It is not relabelled as the new plan here. The old one-piece result was freshly reproduced.
+source,docs/support-cost-evaluation.md:23,doc-text,,"Fixture SHA-256: `c22e015cb086555b34517031b00082e829c389cf16018a98b39ce16bb8c05db6` (`hat_tf2_v2.stl`, 214,596 triangles). The zero-weight plan's orientation, extents and part count also match the actual baseline executable, not merely a renamed configuration of the new algorithm."
+source,docs/support-cost-evaluation.md:25,doc-heading,,## What changed
+source,docs/support-cost-evaluation.md:27,doc-text,,"- A 40 × 40 support raster for each signed orientation: downward faces steeper than 45°, weighted by face area and height above the bed. It clips original triangles to the BSP cell, includes cut caps with holes, unions overlapping columns, and excludes bed contact within 0.6 mm."
+source,docs/support-cost-evaluation.md:28,doc-text,,- Both cut ranking and print-orientation selection use the proxy. Fit is a separate gate. Required fit cuts precede optional support cuts; a fitting piece can now be split when savings outweigh the extra part/seam cost.
+source,docs/support-cost-evaluation.md:29,doc-text,,"- Bounded candidate search: up to five offset bands per normal, at most 30 shortlisted cuts. Representative hulls rank orientations, then exact hulls confirm feasibility."
+source,docs/support-cost-evaluation.md:30,doc-text,,"- **Fewer parts ↔ Less support** slider, Balanced default `0.5`. Zero retains the original parts-first objective; the far-right endpoint still charges for additional parts. The API clamps the weight, and the CLI supports `-support-weight`."
+source,docs/support-cost-evaluation.md:31,doc-text,,"- Per-part `supportVolume` in mm³; UI aggregate in cm³, explicitly labelled a **proxy**. Consecutive auto plans show the previous part count/proxy when the other settings are unchanged."
+source,docs/support-cost-evaluation.md:32,doc-text,,"- Preference persists, including zero. Reset restores Balanced. Changing the slider does not replace cuts silently; a pending notice asks for Auto split. Manual trees and Auto-complete do not gain support-only cuts. Keep upright remains authoritative."
+source,docs/support-cost-evaluation.md:34,doc-text,,"The default's proxy penalty is 100 score units per 100 cm³ saved, versus 100 per extra estimated part, before seam penalties. The weight enters quadratically. This calibration is inspectable in `supportCost`, not trained on invented material data."
+source,docs/support-cost-evaluation.md:36,doc-heading,,## Verification
+source,docs/support-cost-evaluation.md:38,doc-heading,,### Tests-first and analytic geometry
+source,docs/support-cost-evaluation.md:40,doc-text,,The committed regression (`cfd5065`) failed before implementation because the fitting shell remained in one support-heavy piece. Cube and bracket tests also exposed the absent per-part proxy. That original regression file is unchanged after the red commit.
+source,docs/support-cost-evaluation.md:42,doc-text,,- **Behaviour protected:** a fitting but support-heavy shell can split; support-light cubes/brackets stay whole; exports keep fitting.
+source,docs/support-cost-evaluation.md:43,doc-text,,- **Plausible regression:** restoring the unconditional `if fits { continue }` or dropping the support term turns the shell regression red.
+source,docs/support-cost-evaluation.md:44,doc-text,,"- **Why prior tests missed it:** existing tests exercised bed-fit splitting and orientation sanity, not support savings on an already-fitting part."
+source,docs/support-cost-evaluation.md:45,doc-text,,- **Production seam:** request JSON and normal planner entry point; no test-only production flag/export.
+source,docs/support-cost-evaluation.md:47,doc-text,,"Additional independent tests cover known ceiling area × height, clipping big triangles, angled cap contributions, cap holes, strict 45°, bed contact, signed normals, translation, cubic scale, overlapping-column union, default/invalid weights, manual-tree preservation, upright and part limit. A correctly wound cavity fixture is built independently: the existing repair helper reorients disconnected "
+source,docs/support-cost-evaluation.md:49,doc-text,,Fresh checks:
+source,docs/support-cost-evaluation.md:51,doc-text,,- `go test -count=1 ./...` — pass.
+source,docs/support-cost-evaluation.md:52,doc-text,,- `go test -race -count=1 ./...` — pass.
+source,docs/support-cost-evaluation.md:53,doc-text,,"- `go vet ./...`, JS syntax, `git diff --check` — pass."
+source,docs/support-cost-evaluation.md:54,doc-text,,- `e2e/wasm-plan.mjs` — actual dense-mesh worker returns complete plans at zero and default weight.
+source,docs/support-cost-evaluation.md:55,doc-text,,"- `e2e/support.mjs` — passed locally and again against the deployed HTTPS preview: load, settings restore/reset, old/new planning, manifold builds, ZIP exports, desktop screenshots, real phone-sized slider pointer action and pending notice, no page/console errors."
+source,docs/support-cost-evaluation.md:56,doc-text,,- Existing bracket build/export smoke — pass.
+source,docs/support-cost-evaluation.md:57,doc-text,,"- Existing joint-selection smoke — pass with `supportWeight=0` to preserve its original contact geometry. The new default deliberately changes the bowl cuts; the old test's “force this specific dowel” assumption did not apply to a different, shallow contact. Its assertion was not weakened. The new default has separate full-stack coverage."
+source,docs/support-cost-evaluation.md:58,doc-text,,"- Deployment readback — index, JS and WASM hashes match local static output; HTTPS index matches byte-for-byte."
+source,docs/support-cost-evaluation.md:60,doc-heading,,### Secondary geometry checks
+source,docs/support-cost-evaluation.md:62,doc-text,,"- Analytic cavity: default produces two fitting open halves with zero proxy; original intact ceiling is 576,000 mm³ by independent area × height calculation."
+source,docs/support-cost-evaluation.md:63,doc-text,,"- Small bracket and 100 mm cube: stay one part at weights 0, 0.5 and 1."
+source,docs/support-cost-evaluation.md:64,doc-text,,"- Shipped bowl, CORE One: remains three parts, ≈13.0 cm³ proxy at both endpoints tested."
+source,docs/support-cost-evaluation.md:65,doc-text,,"- Shipped bowl, MINI: four parts / 433.1 cm³ at zero → six parts / 88.0 cm³ at Balanced. More assembly is an intentional tradeoff, not a universal improvement claim."
+source,docs/support-cost-evaluation.md:67,doc-heading,,### Runtime
+source,docs/support-cost-evaluation.md:69,doc-text,,"On this host, the real shell's native default plan took about 21 s; deployed Chromium/WASM took 44.0 s. The zero-weight browser plan took 1.2 s. The support-aware search runs in a worker, but it is materially more expensive. The exact-hull shortlist roughly halved the initial native implementation's runtime without changing the selected plan."
+source,docs/support-cost-evaluation.md:71,doc-heading,,## Evidence and reproduction
+source,docs/support-cost-evaluation.md:73,doc-text,,Task workspace record (not committed because it includes local fixture/export/G-code data): `evidence/support-cost/`.
+source,docs/support-cost-evaluation.md:75,doc-text,,"- `red.log`, `green.log`, `support-tests.log`, `final-tests.log`, `final-race.log`."
+source,docs/support-cost-evaluation.md:76,doc-text,,"- `hat-baseline.json`, `hat-old.json`, `hat-new.json`; `wasm-worker.log`."
+source,docs/support-cost-evaluation.md:77,doc-text,,"- `tailnet/results.json`, `tailnet.log`; desktop `old/new-plan`, `old/new-built`, `old/new-plates` PNGs; `phone-control.png` shows an actual click changing weight to 0.75 while the plan stays unchanged."
+source,docs/support-cost-evaluation.md:78,doc-text,,"- `sliced-old/hat_tf2_v2/slice/results.json` and `sliced-new/hat_tf2_v2/slice/results.json`: raw slicer time/mass fields, input hashes and vendor preset hash. G-code and process logs are alongside them."
+source,docs/support-cost-evaluation.md:79,doc-text,,- `comparison.png` and `comparison-data.json`: human-readable comparison and underlying measured data.
+source,docs/support-cost-evaluation.md:81,doc-text,,```sh
+source,docs/support-cost-evaluation.md:82,doc-text,,go test -count=1 ./...
+source,docs/support-cost-evaluation.md:83,doc-text,,scripts/build-static.sh site
+source,docs/support-cost-evaluation.md:84,doc-heading,,"# Serve site locally, then:"
+source,docs/support-cost-evaluation.md:85,doc-text,,node e2e/wasm-plan.mjs http://localhost:8000/ path/to/hat_tf2_v2.stl
+source,docs/support-cost-evaluation.md:86,doc-text,,node e2e/support.mjs http://localhost:8000/ path/to/hat_tf2_v2.stl support-out
+source,docs/support-cost-evaluation.md:87,doc-heading,,"# Extract each exported ZIP, then slice with the SAME vendor file:"
+source,docs/support-cost-evaluation.md:88,doc-text,,python3 e2e/slice-support.py extracted/hat_tf2_v2 path/to/PrusaResearch.ini
+source,docs/support-cost-evaluation.md:89,doc-text,,```
+source,docs/support-cost-evaluation.md:91,doc-text,,Local MagicDNS resolution failed during this run; the tested HTTPS browser used an explicit host mapping to the observed tailnet IP. This is not evidence of recipient-side DNS failure.
+source,docs/support-cost-evaluation.md:93,doc-heading,,## Remaining work and limits
+source,docs/support-cost-evaluation.md:95,doc-text,,- Print a joint coupon and inspect supports in the slicer before fabricating. Two interfaces fall back from requested dowels to lap seams; the UI shows the reasons.
+source,docs/support-cost-evaluation.md:96,doc-text,,"- The proxy ignores bridges, support density, support resting on the model, tree supports and joint surfaces. A coarse raster can miss narrow features. It is not a global optimum or an estimate of grams."
+source,docs/support-cost-evaluation.md:97,doc-text,,"- Vision QA found pre-existing phone navbar clipping and overlapping joint-map labels on small contacts. The new support slider is reachable and was exercised at 412 × 915, but the rest of the mobile UI should not be called polished. These follow-ups are in the review card rather than silently broadening this implementation."
+source,docs/support-cost-evaluation.md:98,doc-text,,"- An early unoptimized browser prototype emitted an undefined-JSON error after export/replanning. Its cause was not established; the final isolated-worker test, full local flow and deployed repeat all pass. The review handoff flags this rather than claiming a causal fix proved by the optimization."
+rendered,desktop/01-load-empty a.skip,link,,Skip to current step
+rendered,desktop/01-load-empty header.top > a.guide-link,link,,Guide
+rendered,desktop/01-load-empty header.top > a.guide-link,tooltip,,Guide (opens in a new tab)
+rendered,desktop/01-load-empty header.top > #expertMode,button,,Expert mode
+rendered,desktop/01-load-empty header.top > #expertMode,tooltip,,Reveal detailed controls without leaving this step
+rendered,desktop/01-load-empty header.top > #helpBtn,button,,Help
+rendered,desktop/01-load-empty header.top > #helpBtn,aria-label,,Quick help
+rendered,desktop/01-load-empty header.top > #helpBtn,tooltip,,Quick help and keyboard controls
+rendered,desktop/01-load-empty #flowNav > button,button,,1Load
+rendered,desktop/01-load-empty #flowNav > button,tooltip,,Load · Current
+rendered,desktop/01-load-empty #flowNav > button,button,,2Fit
+rendered,desktop/01-load-empty #flowNav > button,tooltip,,Fit · Load a model
+rendered,desktop/01-load-empty #flowNav > button,button,,3Split
+rendered,desktop/01-load-empty #flowNav > button,tooltip,,Split · Load a model
+rendered,desktop/01-load-empty #flowNav > button,button,,4Join
+rendered,desktop/01-load-empty #flowNav > button,tooltip,,Join · Load a model
+rendered,desktop/01-load-empty #flowNav > button,button,,5Export
+rendered,desktop/01-load-empty #flowNav > button,tooltip,,Export · Load a model
+rendered,desktop/01-load-empty #stepModel > #drop > b,button,,Choose a model
+rendered,desktop/01-load-empty #stepModel > div.samples > button.sample-primary,button,,320 mm bracket
+rendered,desktop/01-load-empty div.samples > details > summary,disclosure,,More sample models
+rendered,desktop/01-load-empty #stepModel > details.advanced > summary,disclosure,,Advanced
+rendered,desktop/01-load-empty #side > #stepModel > a.context-help,link,,First time? Start here
+rendered,desktop/01-load-empty #side > footer.credits > #licLink,link,,Licenses
+rendered,desktop/01-load-empty footer.flow-footer > #flowBack,button,,Back
+rendered,desktop/01-load-empty footer.flow-footer > #flowBack,aria-label,,Back to previous step
+rendered,desktop/01-load-empty footer.flow-footer > #flowNext,button,,Load a model to continue
+rendered,desktop/01-load-empty footer.flow-footer > #flowNext,tooltip,,Load a model to continue
+rendered,desktop/01-load-empty #side > #stepModel > p.eyebrow,heading,,Step 1 of 5
+rendered,desktop/01-load-empty #side > #stepModel > #loadHeading,heading,,Start with your model.
+rendered,desktop/01-load-empty #stepModel > div.samples > p.eyebrow,heading,,Or try a sample
+rendered,desktop/01-load-empty #empty > div.empty-card > h2,heading,,Your model appears here
+rendered,desktop/01-load-empty #side > #stepModel > p.eyebrow,text,,Step 1 of 5
+rendered,desktop/01-load-empty #side > #stepModel > p.step-intro,text,,Keep its size. We’ll make the pieces fit your printer.
+rendered,desktop/01-load-empty #side > #stepModel > #drop,text,,Choose a modelor drop it anywhereSTL · OBJ · 3MF / up to 300 MB
+rendered,desktop/01-load-empty #stepModel > #drop > span.small,text,,STL · OBJ · 3MF / up to 300 MB
+rendered,desktop/01-load-empty #side > #stepModel > #privacy,text,,Runs entirely in your browser: your model is never uploaded.
+rendered,desktop/01-load-empty #stepModel > div.samples > p.eyebrow,text,,Or try a sample
+rendered,desktop/01-load-empty #side > #stepModel > a.context-help,text,,First time? Start here (new tab)
+rendered,desktop/01-load-empty #side > footer.credits,text,,build 59e3b4e · Licenses
+rendered,desktop/01-load-empty #empty > div.empty-card > p.empty-desk,text,,"Drop an STL, OBJ or 3MF anywhere, or choose a file or sample on the left."
+rendered,desktop/02-help div.dialog-head > form > button.icon-btn,aria-label,,Close help
+rendered,desktop/02-help #helpDlg > a,link,,Read the complete guide
+rendered,desktop/02-help #helpDlg > form > button,button,,Close
+rendered,desktop/02-help #helpDlg > div.dialog-head > #helpTitle,heading,,A short path to printable parts.
+rendered,desktop/02-help #helpDlg > h3,heading,,Navigate the 3D view
+rendered,desktop/02-help #helpDlg > h3,heading,,Edit joints
+rendered,desktop/02-help #helpDlg > h3,heading,,Expert workspace
+rendered,desktop/02-help #helpDlg > p,text,,"Load → Fit → Split → Join → Export. Loading advances to Fit. The bottom action splits, then builds and packages the checked plan. You can revisit earlier steps at any time; Expert mode opens the detailed settings without starting over."
+rendered,desktop/02-help #helpDlg > p,text,,"Drag to orbit, right-drag to pan, scroll to zoom. Focus the view for arrow-key orbit, Shift+arrows pan, +/− zoom, F to fit and 1–4 to change presentation. Select cuts and parts with the labelled buttons in Split; the numeric offset is an alternative to dragging a cut."
+rendered,desktop/02-help #helpDlg > p,text,,"Arrows select, Shift+arrows move, Alt+arrows pan, A toggles adding, Enter adds at the view centre, Delete removes. Tab always moves to the next control."
+rendered,desktop/02-help #helpDlg > p,text,,"Expert mode adds an object list (cuts, parts, contacts and joints), one inspector for the selection, and a command search: press Ctrl K. Ctrl Z / Ctrl Shift Z undo and redo plan edits; Esc cancels a drag or clears the selection."
+rendered,desktop/02-help #helpDlg > p,text,,Geometric checks are not a physical fit guarantee. Print a test coupon and inspect every plate in your slicer.
+rendered,desktop/03-load-error #loadNote > div.btns > button,button,,Choose a file
+rendered,desktop/03-load-error #loadNote > div.btns > a.context-help,link,,How to fix a model
+rendered,desktop/03-load-error #loadNote > div.note-head > h4,heading,,Couldn’t load notes.stl
+rendered,desktop/03-load-error #stepModel > #loadNote > p,text,,"Not a valid STL file. Re-export it from your modelling tool as STL, OBJ or 3MF, then choose it again."
+rendered,desktop/03-load-error #loadNote > div.btns > a.context-help,text,,How to fix a model (new tab)
+rendered,desktop/04-fit-over #flowNav > button.done,button,,Load
+rendered,desktop/04-fit-over #flowNav > button.done,tooltip,,Load · Done
+rendered,desktop/04-fit-over #flowNav > button,tooltip,,Fit · Current
+rendered,desktop/04-fit-over #flowNav > button,tooltip,,Split · Available
+rendered,desktop/04-fit-over #flowNav > button,tooltip,,Join · Find cuts first
+rendered,desktop/04-fit-over #flowNav > button,tooltip,,Export · Find cuts first
+rendered,desktop/04-fit-over #stepPrinter > #printerSource > a,link,,manufacturer spec
+rendered,desktop/04-fit-over #stepPrinter > div.settings-note > #resetDefaults,button,,Reset defaults
+rendered,desktop/04-fit-over #side > #stepPrinter > a.context-help,link,,How margins and clearances work
+rendered,desktop/04-fit-over div.stage-top > div.view-corner > #frameModel,button,,Fit view
+rendered,desktop/04-fit-over div.stage-top > div.view-corner > #frameModel,tooltip,,Fit model in view (F)
+rendered,desktop/04-fit-over div.stage > #gestureHint > #dismissGesture,aria-label,,Dismiss viewer hint
+rendered,desktop/04-fit-over footer.flow-footer > #flowNext,button,,Plan cuts
+rendered,desktop/04-fit-over footer.flow-footer > #flowNext,tooltip,,Plan cuts for Prusa CORE One / One+
+rendered,desktop/04-fit-over #side > #stepPrinter > p.eyebrow,heading,,Step 2 of 5
+rendered,desktop/04-fit-over #side > #stepPrinter > #fitHeading,heading,,Doesn’t fit: 76.0 mm too wide
+rendered,desktop/04-fit-over #side > #stepPrinter > p.eyebrow,text,,Step 2 of 5
+rendered,desktop/04-fit-over #stepPrinter > div.printer-row > label,text,,Printer
+rendered,desktop/04-fit-over #fitVerdict > div > p.fit-metric,text,,Width 320.0 / 244.0 mm usable on Prusa CORE One / One+
+rendered,desktop/04-fit-over #fitVerdict > div > p.fit-next,text,,No orientation fits it whole. Plan cuts proposes cuts and a print orientation for each piece; you review them before anything is built.
+rendered,desktop/04-fit-over dl.metrics > div.over > dt,text,,Width
+rendered,desktop/04-fit-over dl.metrics > div.over > dd,text,,320.0of 244.0
+rendered,desktop/04-fit-over dl.metrics > div > dt,text,,Depth
+rendered,desktop/04-fit-over dl.metrics > div > dd,text,,60.0of 214.0
+rendered,desktop/04-fit-over dl.metrics > div > dt,text,,Height
+rendered,desktop/04-fit-over dl.metrics > div > dd,text,,220.0of 267.0
+rendered,desktop/04-fit-over #stepPrinter > #fitReadout > p,text,,Usable = bed 250 × 220 × 270 mm less 3 mm at each side and the top. Nothing is scaled.
+rendered,desktop/04-fit-over #side > #stepPrinter > #printerSource,text,,Volume per manufacturer spec
+rendered,desktop/04-fit-over #side > #stepPrinter > a.context-help,text,,How margins and clearances work (new tab)
+rendered,desktop/04-fit-over div.stage > #gestureHint > #viewerHint,text,,Drag to orbit · scroll to zoom · F to fit
+rendered,desktop/06-fit-turn div > p.fit-alt > button.linkish,button,,Plan cuts anyway
+rendered,desktop/06-fit-turn #printerAdvanced > details.fits > summary,disclosure,,Fit clearances
+rendered,desktop/06-fit-turn footer.flow-footer > #flowNext,button,,Turn 90° to fit
+rendered,desktop/06-fit-turn footer.flow-footer > #flowNext,tooltip,,Turn the model on the bed so it fits in one piece (Undo restores)
+rendered,desktop/06-fit-turn #side > #stepPrinter > #fitHeading,heading,,Fits in one piece after a 90° turn
+rendered,desktop/06-fit-turn #fitVerdict > div > p.fit-metric,text,,Current placement is 256.0 mm too wide (320.0 / 64.0 mm)
+rendered,desktop/06-fit-turn #fitVerdict > div > p.fit-next,text,,The turn keeps the size and changes only the footprint on the bed. You can undo it.
+rendered,desktop/06-fit-turn #fitVerdict > div > p.fit-alt,text,,Prefer pieces? Plan cuts anyway
+rendered,desktop/06-fit-turn dl.metrics > div.over > dd,text,,320.0of 64.0
+rendered,desktop/06-fit-turn dl.metrics > div > dd,text,,60.0of 324.0
+rendered,desktop/06-fit-turn dl.metrics > div > dd,text,,220.0of 227.0
+rendered,desktop/06-fit-turn #stepPrinter > #fitReadout > p,text,,Usable = bed 70 × 330 × 230 mm less 3 mm at each side and the top. Nothing is scaled.
+rendered,desktop/06-fit-turn #printerAdvanced > div.row > label,text,,X (mm)
+rendered,desktop/06-fit-turn #printerAdvanced > div.row > label,text,,Y (mm)
+rendered,desktop/06-fit-turn #printerAdvanced > div.row > label,text,,Z (mm)
+rendered,desktop/06-fit-turn #printerAdvanced > div.row > label,text,,Margin (mm)
+rendered,desktop/06-fit-turn #printerAdvanced > div.row > label,text,,Nozzle (mm)0.40.60.80.25
+rendered,desktop/06-fit-turn #printerAdvanced > div.row > label,text,,Min piece (mm)
+rendered,desktop/06-fit-turn #stepPrinter > #printerAdvanced > p.small,text,,Margin stays clear at both bed edges and the top. Minimum piece size prevents tiny fragments.
+rendered,desktop/07-fit-turned div > p.fit-turned > button.linkish,button,,Undo turn
+rendered,desktop/07-fit-turned footer.flow-footer > #flowNext,button,,Export as one piece
+rendered,desktop/07-fit-turned footer.flow-footer > #flowNext,tooltip,,"Plan the print orientation, build the single part and prepare downloads"
+rendered,desktop/07-fit-turned #side > #stepPrinter > #fitHeading,heading,,Fits in one piece
+rendered,desktop/07-fit-turned #fitVerdict > div > p.fit-metric,text,,Within usable: W 60.0 · D 320.0 · H 220.0 mm
+rendered,desktop/07-fit-turned #fitVerdict > div > p.fit-turned,text,,Turned 90° from the file’s orientation Undo turn
+rendered,desktop/07-fit-turned dl.metrics > div > dd,text,,60.0of 64.0
+rendered,desktop/07-fit-turned dl.metrics > div > dd,text,,320.0of 324.0
+rendered,desktop/08-join #flowNav > button.done,button,,Fit
+rendered,desktop/08-join #flowNav > button.done,tooltip,,Fit · Done
+rendered,desktop/08-join #flowNav > button.done,button,,Split
+rendered,desktop/08-join #flowNav > button.done,tooltip,,Split · Done
+rendered,desktop/08-join #flowNav > button,tooltip,,Join · Current
+rendered,desktop/08-join #flowNav > button,tooltip,,Export · Available
+rendered,desktop/08-join #resultCard > #resultActions > #adjustPlan,button,,Adjust cuts
+rendered,desktop/08-join #resultCard > #resultActions > #autoSplit,button,,Regenerate
+rendered,desktop/08-join #stepJoints > #faceList > button.sel,button,,Cut 1 · 2 pins
+rendered,desktop/08-join #stepJoints > #pinSelector > summary,disclosure,,Select a pin
+rendered,desktop/08-join #mapWrap > #precisionMap > summary,disclosure,,Precision map
+rendered,desktop/08-join #stepJoints > details.explain > summary,disclosure,,How joints are placed
+rendered,desktop/08-join #side > #stepJoints > a.context-help,link,,Choose a joint and calibrate its fit
+rendered,desktop/08-join #directTools > div.tool-row > #viewAddJoint,button,,Add pin
+rendered,desktop/08-join #directTools > div.tool-row > #viewFace,button,,Face-on view
+rendered,desktop/08-join #directTools > div.tool-row > #viewFace,tooltip,,Look straight at this cut face; hide other geometry
+rendered,desktop/08-join #directTools > div.tool-row > #joinExplode,button,,Explode
+rendered,desktop/08-join footer.flow-footer > #flowNext,button,,Build & prepare downloads
+rendered,desktop/08-join footer.flow-footer > #flowNext,tooltip,,Build & prepare downloads
+rendered,desktop/08-join #side > #resultCard > #resultTitle,heading,,"Auto split: 2 parts, all fit"
+rendered,desktop/08-join #side > #stepJoints > p.eyebrow,heading,,Step 4 of 5
+rendered,desktop/08-join #side > #stepJoints > #joinHeading,heading,,Make it whole again.
+rendered,desktop/08-join #side > #resultCard > #resultText,text,,"1 cut · 2 pins. Adjust a cut in the view, or regenerate with the current settings."
+rendered,desktop/08-join #side > #stepJoints > p.eyebrow,text,,Step 4 of 5
+rendered,desktop/08-join #side > #stepJoints > p.step-intro,text,,Joints align the pieces. Review each cut face before building.
+rendered,desktop/08-join #side > #stepJoints > label,text,,Join the pieces with
+rendered,desktop/08-join #side > #stepJoints > #jointHelp,text,,"Click a pin to select it. Drag it across the cut face. Use Add pin, then click the face to place another."
+rendered,desktop/08-join #side > #stepJoints > #readiness,text,,1 cut checked · 2 pins valid · Ready to build & export.
+rendered,desktop/08-join #side > #stepJoints > a.context-help,text,,Choose a joint and calibrate its fit (new tab)
+rendered,desktop/08-join div.stage > #gestureHint > #viewerHint,text,,Click or drag pins · Add pin then click a cut face
+rendered,desktop/09-split-result #flowNav > button.done,tooltip,,Split · Current
+rendered,desktop/09-split-result #flowNav > button,tooltip,,Join · Available
+rendered,desktop/09-split-result #stepSplit > div.intent > button,button,,Fewer parts
+rendered,desktop/09-split-result #stepSplit > div.intent > button,button,,Balanced
+rendered,desktop/09-split-result #stepSplit > div.intent > button,button,,Less support
+rendered,desktop/09-split-result #planSummary > div.partlist > button.chip,button,,P1
+rendered,desktop/09-split-result #planSummary > div.partlist > button.chip,tooltip,,flat face down · support proxy ≈ 21 cm³ · 211.2×181.2×160 mm
+rendered,desktop/09-split-result #planSummary > div.partlist > button.chip,button,,P2
+rendered,desktop/09-split-result #planSummary > div.partlist > button.chip,tooltip,,flat face down · support proxy ≈ 0 cm³ · 160×60×12 mm
+rendered,desktop/09-split-result #planSummary > div.partlist > button.chip,button,,Cut 1
+rendered,desktop/09-split-result #planSummary > div.partlist > button.chip,tooltip,,"estimated 2 part(s) on this branch; section 720 mm², wall ~10.0 mm, 1 loop(s), 0% grazing; support proxy ~21 cm³"
+rendered,desktop/09-split-result #side > #stepSplit > a.context-help,link,,Why these cuts?
+rendered,desktop/09-split-result footer.flow-footer > #flowNext,button,,Review joints
+rendered,desktop/09-split-result footer.flow-footer > #flowNext,tooltip,,Review joints
+rendered,desktop/09-split-result #side > #stepSplit > p.eyebrow,heading,,Step 3 of 5
+rendered,desktop/09-split-result #side > #stepSplit > #splitHeading,heading,,Find a good split.
+rendered,desktop/09-split-result #side > #stepSplit > p.eyebrow,text,,Step 3 of 5
+rendered,desktop/09-split-result #side > #stepSplit > p.step-intro,text,,"Plan first, build later. Review the suggested cuts; drag the highlighted arrow to move one, or use Tilt cut."
+rendered,desktop/09-split-result #side > #stepSplit > p.small,text,,"Extra cuts can reduce supports, but mean more assembly. Always check in your slicer."
+rendered,desktop/09-split-result #planSummary > div.support-estimate > span.small,text,,Downward faces steeper than 45° × height to bed. Before joints; excludes bridges and support density.Balanced · verify in your slicer.
+rendered,desktop/09-split-result #stepSplit > #planSummary > div.small,text,,"Parts (click to select, then add a cut through it)"
+rendered,desktop/09-split-result #stepSplit > #planSummary > div.small,text,,"Cuts (click, then drag the arrow in the 3D view or edit below)"
+rendered,desktop/09-split-result #side > #stepSplit > a.context-help,text,,Why these cuts? (new tab)
+rendered,desktop/09-split-result div.stage > #gestureHint > #viewerHint,text,,Drag the blue arrow to move · Tilt cut for arcs · Esc cancels
+rendered,desktop/10-split-cut-selected #side > #stepSplit > #autoSplit,button,,Plan cuts again
+rendered,desktop/10-split-cut-selected #cutEditor > details.precise-values > summary,disclosure,,Precise values
+rendered,desktop/10-split-cut-selected #directTools > div.tool-row > #cutMove,button,,Move cut
+rendered,desktop/10-split-cut-selected #directTools > div.tool-row > #cutTilt,button,,Tilt cut
+rendered,desktop/10-split-cut-selected #stepSplit > #cutEditor > h2,heading,,Cut 1 auto
+rendered,desktop/10-split-cut-selected #stepSplit > #cutEditor > div.reason,text,,"estimated 2 parts on this branch; section 720 mm², wall ~10.0 mm, 1 loop, 0% grazing; support proxy ~21 cm³"
+rendered,desktop/10-split-cut-selected #stepSplit > #cutEditor > div.small,text,,Normal X · section 720 mm² · 1 contact patch
+rendered,desktop/10-split-cut-selected #stepSplit > #cutEditor > p.small,text,,Drag the blue arrow in 3D to slide. Choose Tilt cut for rotation arcs. Release to apply; Esc cancels. Precise values provides the keyboard alternative.
+rendered,desktop/10-split-cut-selected div.stage > #cutReadout,text,,Offset X 160.0 mm
+rendered,desktop/10-split-cut-selected div.stage > #cutFields > label,text,,Offset · mm
+rendered,desktop/10-split-cut-selected div.stage > #cutFields > label.ring-a,text,,Tilt A · orange ring · °
+rendered,desktop/10-split-cut-selected div.stage > #cutFields > label.ring-b,text,,Tilt B · mint ring · °
+rendered,desktop/10-split-cut-selected div.stage > #cutFields > p.small,text,,Enter applies. Tilt adds to the current plane.
+rendered,desktop/11-split-expert header.top > #commandBtn,button,,Commands
+rendered,desktop/11-split-expert header.top > #commandBtn,tooltip,,Find any command or object (Ctrl K)
+rendered,desktop/11-split-expert #planSummary > div.partlist > button.chip,button,,C1
+rendered,desktop/11-split-expert details.precise-values > div.btns > button.small,button,,⟂ X
+rendered,desktop/11-split-expert details.precise-values > div.btns > button.small,button,,⟂ Y
+rendered,desktop/11-split-expert details.precise-values > div.btns > button.small,button,,⟂ Z
+rendered,desktop/11-split-expert details.precise-values > div.btns > #cutApply,button,,Apply
+rendered,desktop/11-split-expert details.precise-values > div.btns > #cutDelete,button,,Delete cut
+rendered,desktop/11-split-expert div.stage-top > #views > button,button,,Model
+rendered,desktop/11-split-expert div.stage-top > #views > button.on,button,,Cuts
+rendered,desktop/11-split-expert div.stage-top > #views > button,button,,Parts
+rendered,desktop/11-split-expert div.stage-top > #views > button,button,,Plates
+rendered,desktop/11-split-expert div.stage-top > div.view-corner > #objectsBtn,button,,Objects
+rendered,desktop/11-split-expert div.stage-top > div.view-corner > #objectsBtn,tooltip,,"Objects: cuts, parts, contacts and joints"
+rendered,desktop/11-split-expert #outliner > div.outliner-head > #outlinerClose,aria-label,,Close objects
+rendered,desktop/11-split-expert ul > li > button,button,,bracket_320mm.stl
+rendered,desktop/11-split-expert ul > li > button,button,,Part P1
+rendered,desktop/11-split-expert ul > li > button,button,,Part P2
+rendered,desktop/11-split-expert ul > li > button,button,,C1 · P1↔P2
+rendered,desktop/11-split-expert ul > li.nested > button,button,,Joint J1
+rendered,desktop/11-split-expert ul > li.nested > button,button,,Joint J2
+rendered,desktop/11-split-expert #directTools > div.tool-row > #editUndo,button,,Undo
+rendered,desktop/11-split-expert #directTools > div.tool-row > #editUndo,tooltip,,Undo (Ctrl Z)
+rendered,desktop/11-split-expert #directTools > div.tool-row > #editRedo,button,,Redo
+rendered,desktop/11-split-expert #directTools > div.tool-row > #editRedo,tooltip,,Redo (Ctrl Shift Z)
+rendered,desktop/11-split-expert #side > #selectionInspector > p.eyebrow,heading,,Inspector
+rendered,desktop/11-split-expert #side > #selectionInspector > #inspectorTitle,heading,,C1
+rendered,desktop/11-split-expert #stepSplit > #cutEditor > h2,heading,,C1 auto
+rendered,desktop/11-split-expert #outliner > div.outliner-head > h2,heading,,Objects
+rendered,desktop/11-split-expert #outlinerTree > section > h3,heading,,Model
+rendered,desktop/11-split-expert #outlinerTree > section > h3,heading,,Cuts
+rendered,desktop/11-split-expert #outlinerTree > section > h3,heading,,Parts
+rendered,desktop/11-split-expert #outlinerTree > section > h3,heading,,Contacts & joints
+rendered,desktop/11-split-expert #side > #selectionInspector > p.eyebrow,text,,Inspector
+rendered,desktop/11-split-expert #side > #selectionInspector > #inspectorFacts,text,,"Automatic · offset 160 mm · estimated 2 parts on this branch; section 720 mm², wall ~10.0 mm, 1 loop, 0% grazing; support proxy ~21 cm³. Precise values are below; drag it in the view."
+rendered,desktop/11-split-expert details.advanced > div.support-control > label.support-label,text,,Fewer parts ↔ Less supportBalanced
+rendered,desktop/11-split-expert div.support-control > label.support-label > #supportValue,text,,Balanced
+rendered,desktop/11-split-expert details.advanced > div.support-control > div.support-ends,text,,Keep it togetherAllow extra cuts
+rendered,desktop/11-split-expert details.advanced > div.support-control > #supportHelp,text,,"A geometric support estimate, not filament volume or print time. Plan cuts again after changing it."
+rendered,desktop/11-split-expert #stepSplit > details.advanced > label.row,text,,Keep all parts upright
+rendered,desktop/11-split-expert #stepSplit > details.advanced > label.row,text,,Try tilted orientations
+rendered,desktop/11-split-expert #cutEditor > details.precise-values > label,text,,Offset along normal (mm)
+rendered,desktop/11-split-expert details.precise-values > div.row > label,text,,Offset
+rendered,desktop/11-split-expert details.precise-values > div.row > label.ring-a,text,,Tilt A · orange ring (°)
+rendered,desktop/11-split-expert details.precise-values > div.row > label.ring-b,text,,Tilt B · mint ring (°)
+rendered,desktop/11-split-expert section > ul > li,text,,bracket_320mm.stl320 × 60 × 220 mm
+rendered,desktop/11-split-expert section > ul > li,text,,C1auto · 160 mm
+rendered,desktop/11-split-expert section > ul > li,text,,Part P1fits · 211×181×160
+rendered,desktop/11-split-expert section > ul > li,text,,Part P2fits · 160×60×12
+rendered,desktop/11-split-expert section > ul > li,text,,C1 · P1↔P22 pins
+rendered,desktop/11-split-expert section > ul > li.nested,text,,Joint J1dowel · Ø8
+rendered,desktop/11-split-expert section > ul > li.nested,text,,Joint J2dowel · Ø8
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-0,menu-item,,Go to step 1: Load
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-1,menu-item,,Go to step 2: Fit
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-2,menu-item,,Go to step 3: Split
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-3,menu-item,,Go to step 4: Join
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-4,menu-item,,Go to step 5: Export
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-5,menu-item,,Open a model file…
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-6,menu-item,,Load sample: bracket 320mm
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-7,menu-item,,Load sample: bowl shell 300mm
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-8,menu-item,,Load sample: cube300
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-9,menu-item,,Load sample: bunny damaged
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-10,menu-item,,Plan cuts for Prusa CORE One / One+
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-11,menu-item,,Auto-complete the remaining oversized parts
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-12,menu-item,,Build parts
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-13,menu-item,,Prepare downloads
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-14,menu-item,,Download ZIP package
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-15,menu-item,,Generate joint test coupon
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-16,menu-item,,Undo plan edit
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-17,menu-item,,Redo plan edit
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-18,menu-item,,Fit model in view
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-19,menu-item,,Show Model presentation
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-20,menu-item,,Show Cuts presentation
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-21,menu-item,,Show Parts presentation
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-22,menu-item,,Show Plates presentation
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-23,menu-item,,Switch to guided mode
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-24,menu-item,,Show object list
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-25,menu-item,,Delete C1
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-26,menu-item,,Add a pin on the selected cut face
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-27,menu-item,,Printer and clearances
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-28,menu-item,,Joint style for all contacts
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-29,menu-item,,Open the large joint editor
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-30,menu-item,,Reset settings to defaults
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-31,menu-item,,Quick help
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-32,menu-item,,Open the guide
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-33,menu-item,,Select C1
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-34,menu-item,,Select Part P1
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-35,menu-item,,Select Part P2
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-36,menu-item,,Select C1 · P1↔P2
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-37,menu-item,,Select Joint J1
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-38,menu-item,,Select Joint J2
+rendered,desktop/13-palette #paletteDlg > #paletteTitle,heading,,Commands
+rendered,desktop/13-palette #paletteDlg > label.sr-only,text,,Find a command or object
+rendered,desktop/13-palette #paletteDlg > #paletteInput,placeholder,,"Search commands, cuts, parts and joints"
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-0,text,,Go to step 1: LoadStep
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-1,text,,Go to step 2: FitStep
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-2,text,,Go to step 3: SplitStep
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-3,text,,Go to step 4: JoinStep
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-4,text,,Go to step 5: ExportStep
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-5,text,,Open a model file…Load
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-6,text,,Load sample: bracket 320mmLoad
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-7,text,,Load sample: bowl shell 300mmLoad
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-8,text,,Load sample: cube300Load
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-9,text,,Load sample: bunny damagedLoad
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-10,text,,Plan cuts for Prusa CORE One / One+Split
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-11,text,,Auto-complete the remaining oversized partsAll parts already fit
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-12,text,,Build partsExport
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-13,text,,Prepare downloadsBuild parts first
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-14,text,,Download ZIP packagePrepare downloads first
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-15,text,,Generate joint test couponExport
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-16,text,,Undo plan editNothing to undo
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-17,text,,Redo plan editNothing to redo
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-18,text,,Fit model in viewF
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-19,text,,Show Model presentation1
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-20,text,,Show Cuts presentation2
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-21,text,,Show Parts presentationBuild parts first
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-22,text,,Show Plates presentationBuild parts first
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-23,text,,Switch to guided modeMode
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-24,text,,Show object listObjects
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-25,text,,Delete C1Delete
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-26,text,,Add a pin on the selected cut faceA
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-27,text,,Printer and clearancesFit
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-28,text,,Joint style for all contactsJoin
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-29,text,,Open the large joint editorJoin
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-30,text,,Reset settings to defaultsSettings
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-31,text,,Quick helpHelp
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-32,text,,Open the guideHelp
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-33,text,,Select C1Cuts
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-34,text,,Select Part P1Parts
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-35,text,,Select Part P2Parts
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-36,text,,Select C1 · P1↔P2Contacts & joints
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-37,text,,Select Joint J1Contacts & joints
+rendered,desktop/13-palette #paletteDlg > #paletteList > #cmd-38,text,,Select Joint J2Contacts & joints
+rendered,desktop/13-palette #paletteDlg > #paletteStatus,text,,39 commands
+rendered,desktop/14-export #flowNav > button.done,button,,Join
+rendered,desktop/14-export #flowNav > button.done,tooltip,,Join · Done
+rendered,desktop/14-export #flowNav > button.done,tooltip,,Export · Current
+rendered,desktop/14-export ul.filelist > li > a,link,,⬇ bracket_320mm_split.zip (everything)
+rendered,desktop/14-export ul.filelist > li > a,link,,📄 Assembly sheet
+rendered,desktop/14-export ul.filelist > li > a,link,,all_parts.3mf
+rendered,desktop/14-export ul.filelist > li > a,link,,assembled_preview.3mf
+rendered,desktop/14-export #exportInfo > details > summary.small,disclosure,,2 plate 3MF · 3 STL
+rendered,desktop/14-export #stepExport > details.coupon > summary,disclosure,,Test the fit first
+rendered,desktop/14-export #side > #stepExport > a.context-help,link,,Open in your slicer & assemble
+rendered,desktop/14-export div.stage > #viewerTools > #spreadParts,button,,Exploded
+rendered,desktop/14-export footer.flow-footer > #flowNext,button,,Download ZIP
+rendered,desktop/14-export footer.flow-footer > #flowNext,tooltip,,Download ZIP
+rendered,desktop/14-export #side > #stepExport > p.eyebrow,heading,,Step 5 of 5
+rendered,desktop/14-export #side > #stepExport > #exportHeading,heading,,From model to parts.
+rendered,desktop/14-export #side > #stepExport > p.eyebrow,text,,Step 5 of 5
+rendered,desktop/14-export #side > #stepExport > p.step-intro,text,,"Build the actual solids, check the result, then download your print package."
+rendered,desktop/14-export #side > #stepExport > #outputState,text,,Print package ready. Downloads match the current plan.
+rendered,desktop/14-export #buildInfo > div.ver-head > span.mute,text,,checked in 0.4 s
+rendered,desktop/14-export thead > tr > th,text,,Part
+rendered,desktop/14-export thead > tr > th.num,text,,Volume
+rendered,desktop/14-export thead > tr > th,text,,Solid
+rendered,desktop/14-export thead > tr > th.num,text,,Holes
+rendered,desktop/14-export tbody > tr > th,text,,P1
+rendered,desktop/14-export tbody > tr > td.num,text,,330.3 cm³
+rendered,desktop/14-export tbody > tr > td,text,,Closed
+rendered,desktop/14-export tbody > tr > td.num,text,,2
+rendered,desktop/14-export tbody > tr > th,text,,P2
+rendered,desktop/14-export tbody > tr > td.num,text,,112.3 cm³
+rendered,desktop/14-export tbody.ver-pins > tr > th,text,,Pin Ø8
+rendered,desktop/14-export tbody.ver-pins > tr > td.num,text,,24 mm long
+rendered,desktop/14-export tbody.ver-pins > tr > td,text,,× 2
+rendered,desktop/14-export #stepExport > #buildInfo > div.small,text,,Mating checks: max interference 0 mm³ passed · material added outside the model 0 mm³ · voids (holes + clearances) 0.6 %
+rendered,desktop/14-export #exportInfo > ul.filelist > li,text,,⬇ bracket_320mm_split.zip (everything)
+rendered,desktop/14-export #exportInfo > ul.filelist > li,text,,📄 Assembly sheet
+rendered,desktop/14-export #exportInfo > ul.filelist > li,text,,all_parts.3mf
+rendered,desktop/14-export #exportInfo > ul.filelist > li,text,,assembled_preview.3mf
+rendered,desktop/14-export #side > #stepExport > a.context-help,text,,Open in your slicer & assemble (new tab)
+rendered,desktop/14-export div.stage > #toast,text,,Export ready
+rendered,phone/01-load-empty #empty > div.empty-card > p.empty-phone,text,,Choose a file or the sample below.
+rendered,phone/04-fit-over #side > #sheetPeek > #sheetToggle,button,,Why?
+rendered,phone/04-fit-over div.stage > #viewerTools > #expandView,button,,Enlarge view
+rendered,phone/04-fit-over div.stage > #viewerTools > #expandView,tooltip,,Enlarge the 3D view (Esc returns)
+rendered,phone/04-fit-over #side > #sheetPeek > #sheetSummary,text,,Doesn’t fit: 76.0 mm too wideNo orientation fits whole · Plan cuts proposes pieces
+rendered,phone/05-fit-over-details #side > #sheetPeek > #sheetToggle,button,,Less
+rendered,phone/05-fit-over-details #side > #loadedStrip > #replaceCompact,button,,Replace
+rendered,phone/06-fit-turn #side > #sheetPeek > #sheetSummary,text,,Fits in one piece after a 90° turnCurrent placement is 256.0 mm too wide
+rendered,phone/07-fit-turned #side > #sheetPeek > #sheetSummary,text,,"Fits in one pieceW, D and H all within usable · no cut needed"
+rendered,phone/08-join #side > #sheetPeek > #sheetSummary,text,,2 parts · all fit · 2 pins
+rendered,phone/10-split-cut-selected #side > #sheetPeek > #sheetSummary,text,,Cut 1 selected · drag it in the view
+rendered,phone/11-split-expert #side > #sheetPeek > #sheetSummary,text,,C1 selected · drag it in the view
+rendered,phone/14-export #side > #sheetPeek > #sheetSummary,text,,Downloads ready.

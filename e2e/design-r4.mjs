@@ -9,7 +9,7 @@
 //     first orbit;
 //  4. phone: real-density canvas, distinct named viewport icon buttons (Enlarge
 //     keeps its glyph and swaps to Close), discless triad with ≥ 12 px letters;
-//  5. after "Turn 90° to fit": headline, labels, primary and Undo.
+//  5. after "Turn 90°": headline, labels, primary and Undo.
 // axe 0 in every captured state.
 // node e2e/design-r4.mjs URL [OUTDIR]
 import fs from 'node:fs';
@@ -109,7 +109,7 @@ try {
     s = await panel(`${dev} A`);
     ok(s.heading === 'Fits in one piece after a 90° turn', `${dev} A: headline names the one-piece outcome`);
     ok(/Custom 70 × 330 × 230 mm/.test(s.row), `${dev} A: printer row follows the selection (${s.row})`);
-    ok(s.next === 'Turn 90° to fit', `${dev} A: primary is the turn`);
+    ok(s.next === 'Turn 90°', `${dev} A: primary is the turn`);
     await axe(p, `${dev} A fit (panel)`);
     await shot(p, `${dev}-A-fit`);
     await closeSheet();
@@ -134,7 +134,7 @@ try {
     await p.click('#flowNext');
     await p.waitForFunction(() => document.getElementById('fitHeading').textContent === 'Fits in one piece', null, {timeout: 60000}); await idle(p); await p.waitForTimeout(500);
     s = await panel(`${dev} A turned`);
-    ok(s.next === 'Export as one piece' && s.undo, `${dev} A turned: primary "Export as one piece", Undo turn offered`);
+    ok(s.next === 'Export one piece' && s.undo, `${dev} A turned: primary "Export one piece", Undo turn offered`);
     await axe(p, `${dev} A turned (panel)`);
     await shot(p, `${dev}-A-turned`);
     await closeSheet();

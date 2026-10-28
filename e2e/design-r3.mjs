@@ -1,5 +1,5 @@
 // Design round 3 contract: the Fit decision in both branches (a quarter turn
-// fits → "Turn 90° to fit" is the only primary, then "Export as one piece";
+// fits → "Turn 90°" is the only primary, then "Export one piece";
 // nothing fits → split-first), ≤ 1 primary in every view of both branches,
 // dimension labels in their own slots (off every dimension line and
 // arrowhead, apart, inside the view), the in-panel scroll cue, and the
@@ -111,7 +111,7 @@ try {
     v = await verdict(p);
     ok(/^Fits in one piece after a 90° turn/.test(v), `${dev} A: headline names the one-piece outcome (${v.split('\n')[0]})`);
     ok(/Current placement is [\d.]+ mm too wide \([\d.]+ \/ [\d.]+ mm\)/.test(v), `${dev} A: sub-line gives the current overage with numbers`);
-    ok(/^Turn 90° to fit$/.test((await p.locator('#flowNext').innerText()).trim()), `${dev} A: footer primary is "Turn 90° to fit"`);
+    ok(/^Turn 90°$/.test((await p.locator('#flowNext').innerText()).trim()), `${dev} A: footer primary is "Turn 90°"`);
     ok(await p.locator('[data-fit-plan]').isVisible() && !(await p.locator('[data-fit-plan]').evaluate(e => e.classList.contains('primary'))), `${dev} A: "Plan cuts anyway" is offered as a secondary`);
     pr = await onePrimary(p, `${dev} A fit`); ok(pr[0] === 'flowNext', `${dev} A: the only primary is the turn`);
     if (dev === 'phone') { await closeSheet(); ok(/^Fits in one piece after a 90° turn/.test(await p.locator('#sheetSummary').innerText()), 'phone A: summary row carries the turn outcome'); await onePrimary(p, 'phone A fit (peek)'); }
@@ -127,7 +127,7 @@ try {
     await openSheet();
     v = await verdict(p);
     ok(/Within usable: W [\d.]+ · D [\d.]+ · H [\d.]+ mm/.test(v), `${dev} A turned: W/D/H all within usable`);
-    ok(/^Export as one piece$/.test((await p.locator('#flowNext').innerText()).trim()), `${dev} A turned: primary moves on to "Export as one piece"`);
+    ok(/^Export one piece$/.test((await p.locator('#flowNext').innerText()).trim()), `${dev} A turned: primary moves on to "Export one piece"`);
     ok(await p.locator('[data-fit-restore]').isVisible() && await p.locator('[data-fit-plan]').count() === 0, `${dev} A turned: Undo turn offered; no cut-anyway prompt`);
     pr = await onePrimary(p, `${dev} A turned`); ok(pr[0] === 'flowNext', `${dev} A turned: the primary is the footer action`);
     await closeSheet(); await p.waitForTimeout(300);
@@ -141,19 +141,19 @@ try {
     await p.click('[data-fit-restore]');
     await p.waitForFunction(() => /after a 90° turn/.test(document.querySelector('#fitVerdict').innerText), null, {timeout: 60000}); await idle(p);
     ok((await p.evaluate(() => window.__ps.model.size.slice())).every((x, i) => Math.abs(x - before[i]) < .01), `${dev} A: Undo turn restores the file orientation`);
-    ok(/^Turn 90° to fit$/.test((await p.locator('#flowNext').innerText()).trim()), `${dev} A: after Undo the turn is primary again`);
+    ok(/^Turn 90°$/.test((await p.locator('#flowNext').innerText()).trim()), `${dev} A: after Undo the turn is primary again`);
     if (dev === 'desktop') {
       // Plan cuts anyway → Split review, one primary.
       await p.click('[data-fit-plan]'); await p.waitForFunction(() => window.__ps.plan, null, {timeout: 600000}); await idle(p);
       ok(await p.evaluate(() => ['split', 'join'].includes(document.body.dataset.step)), 'desktop A: Plan cuts anyway opens the cut review');
       await onePrimary(p, `desktop A after Plan cuts anyway (${await p.evaluate(() => document.body.dataset.step)})`);
       await p.click('#flowNav [data-step="fit"]'); await p.waitForTimeout(200);
-      // Turn → Export as one piece → one fitting part, downloads ready.
-      await p.click('#flowNext'); await p.waitForFunction(() => /^Export as one piece$/.test(document.querySelector('#flowNext').innerText.trim()), null, {timeout: 60000}); await idle(p);
+      // Turn → Export one piece → one fitting part, downloads ready.
+      await p.click('#flowNext'); await p.waitForFunction(() => /^Export one piece$/.test(document.querySelector('#flowNext').innerText.trim()), null, {timeout: 60000}); await idle(p);
       await p.click('#flowNext');
       await p.waitForFunction(() => window.__ps.export && document.body.dataset.step === 'export', null, {timeout: 600000}); await idle(p);
       const parts = await p.evaluate(() => window.__ps.plan.leaves.filter(l => !l.empty).map(l => l.fits));
-      ok(parts.length === 1 && parts[0], `desktop A: Export as one piece builds a single fitting part (${parts.length})`);
+      ok(parts.length === 1 && parts[0], `desktop A: Export one piece builds a single fitting part (${parts.length})`);
       ok(await p.evaluate(() => window.__ps.built.parts.every(x => x.status === 'NoError')), 'desktop A: single part builds without error');
       await onePrimary(p, 'desktop A export');
       await shot(p, 'desktop-A-export');

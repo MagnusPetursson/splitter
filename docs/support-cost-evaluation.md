@@ -1,4 +1,4 @@
-# Support-aware splitting — evaluation
+# Support-aware splitting: evaluation
 
 
 ## Result
@@ -29,7 +29,7 @@ Fixture SHA-256: `c22e015cb086555b34517031b00082e829c389cf16018a98b39ce16bb8c05d
 - Bounded candidate search: up to five offset bands per normal, at most 30 shortlisted cuts. Representative hulls rank orientations, then exact hulls confirm feasibility.
 - **Fewer parts ↔ Less support** slider, Balanced default `0.5`. Zero retains the original parts-first objective; the far-right endpoint still charges for additional parts. The API clamps the weight, and the CLI supports `-support-weight`.
 - Per-part `supportVolume` in mm³; UI aggregate in cm³, explicitly labelled a **proxy**. Consecutive auto plans show the previous part count/proxy when the other settings are unchanged.
-- Preference persists, including zero. Reset restores Balanced. Changing the slider does not replace cuts silently; a pending notice asks for Auto split. Manual trees and Auto-complete do not gain support-only cuts. Keep upright remains authoritative.
+- Preference persists, including zero. Reset restores Balanced. Changing the slider does not replace cuts silently; a pending notice asks for Plan cuts. Manual trees and Auto-complete do not gain support-only cuts. Keep upright remains authoritative.
 
 The default's proxy penalty is 100 score units per 100 cm³ saved, versus 100 per extra estimated part, before seam penalties. The weight enters quadratically. This calibration is inspectable in `supportCost`, not trained on invented material data.
 

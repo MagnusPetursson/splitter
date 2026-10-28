@@ -38,7 +38,7 @@ heap grows until the call returns. Measured before the fix:
 |---|---|
 | plan 226k triangles | 1.8 GB (live data ≈ 0.2 GB) |
 | load 3.6M triangles | 3.7 GB, then the tab died |
-| plan 1.8M triangles | the tab died during Auto split |
+| plan 1.8M triangles | the tab died during Plan cuts |
 
 The planner now runs a blocking collection at checkpoints (every progress
 step, at most every 0.75 s, and between repair stages). It also keeps
@@ -112,7 +112,7 @@ that this was almost certainly memory, not the file.
 ## Progress, time estimates and cancel
 
 Loading shows its stages (read, parse, repair, simplify, measure, index,
-geometry kernel); Auto split shows the cut being searched ("Cut 2 of ~3"),
+geometry kernel); Plan cuts shows the cut being searched ("Cut 2 of ~3"),
 the candidate planes evaluated and support checks done for that cut, then
 cut-face analysis and joint placement, with elapsed and estimated
 remaining time. Estimates come from the measurements above (≈ 0.1 ms per

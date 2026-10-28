@@ -130,7 +130,7 @@ try {
   await p2.goto(url, { waitUntil: 'networkidle' });
   await p2.waitForFunction(() => !document.getElementById('loadNote').classList.contains('hidden'), null, { timeout: 30000 });
   const crash = await p2.locator('#loadNote').textContent();
-  check(/stopped the tab/.test(crash) && /running out of memory/.test(crash) && /1\.80 M/.test(crash), 'crash note after a tab died mid-plan');
+  check(/tab crashed/.test(crash) && /running out of memory/.test(crash) && /1\.80 M/.test(crash), 'crash note after a tab died mid-plan');
   await p2.screenshot({ path: path.join(out, '05-crash-note.png') });
   await p2.close();
 

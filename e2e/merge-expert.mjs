@@ -84,7 +84,7 @@ try {
       assert.equal(await p.evaluate(() => document.body.dataset.step), 'fit');
       if (device === 'phone') {
         assert.equal(await p.getAttribute('#sheetToggle', 'aria-expanded'), 'false', 'phone sheet starts as a peek on Fit');
-        assert.equal(await p.locator('#sheetToggle').innerText(), 'Why?', 'over-size verdict is behind Why?');
+        assert.equal(await p.locator('#sheetToggle').innerText(), 'Details', 'over-size verdict is behind Details');
         assert.match(await p.locator('#sheetSummary').innerText(), /too (wide|deep|tall)/);
         await audit(p, `${tag}-fit-peek`);
         await p.click('#sheetToggle'); assert.ok(await p.locator('#fitReadout').isVisible());
@@ -123,7 +123,7 @@ try {
       await openSheet(p);
       await p.click('#flowNext'); await p.waitForFunction(() => window.__ps.export, null, {timeout: 600000}); await idle(p);
       await audit(p, `${tag}-export`);
-      assert.match(await p.locator('#outputState').innerText(), /Downloads match the current plan/);
+      assert.match(await p.locator('#outputState').innerText(), /exported from the current plan/);
       for (const dlg of ['helpDlg', 'licDlg']) { await p.evaluate(id => document.getElementById(id).showModal(), dlg); await audit(p, `${tag}-${dlg}`); await p.keyboard.press('Escape'); }
       await p.keyboard.press('Control+k'); assert.ok(await p.locator('#paletteDlg').isVisible(), 'Ctrl K opens commands in both modes');
       await audit(p, `${tag}-palette`); await p.keyboard.press('Escape');
@@ -147,7 +147,7 @@ try {
     assert.notEqual(await p.locator('#triadLines').innerHTML(), triad0, 'triad follows the camera');
     // palette: unavailable commands explain why; Enter runs an available one
     await p.keyboard.press('Control+k'); await p.keyboard.type('download zip');
-    assert.match(await p.locator('#paletteList [role=option]').first().innerText(), /Prepare downloads first/);
+    assert.match(await p.locator('#paletteList [role=option]').first().innerText(), /Export files first/);
     await p.keyboard.press('Enter'); assert.ok(await p.locator('#paletteDlg').isVisible(), 'disabled command does not run');
     await p.fill('#paletteInput', 'plan cuts'); await p.keyboard.press('Enter');
     await p.waitForFunction(() => window.__ps.plan); await idle(p);
@@ -175,9 +175,9 @@ try {
     report.checks.offset = {before: d0, after: await p.evaluate(() => window.__ps.plan.tree.nodes.find(n => n.cut && n.locked).cut.d)};
     assert.equal(await p.locator('#flowNav [data-step="export"] small').innerText(), 'Rebuild needed');
     await p.click('#flowNav [data-step="export"]');
-    assert.match(await p.locator('#outputState').innerText(), /Changes since last build/);
+    assert.match(await p.locator('#outputState').innerText(), /Plan changed since the last build/);
     assert.match(await p.locator('#buildBtn').innerText(), /Rebuild parts/);
-    assert.match(await p.locator('#flowNext').innerText(), /Rebuild & prepare downloads/);
+    assert.match(await p.locator('#flowNext').innerText(), /Rebuild and export/);
     await audit(p, 'desktop-expert-stale');
     // tilt through the orange-ring field, then undo restores the axis-aligned cut
     await p.click('#flowNav [data-step="split"]'); await p.locator('[data-cut]').first().click();

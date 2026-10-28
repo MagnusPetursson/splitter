@@ -58,7 +58,7 @@ try {
     await shot(p, `${dev}-fit`, 1200);
     metrics[dev + '-fit'] = await measure(p);
     if (dev === 'phone' && await p.locator('#sheetToggle[aria-expanded=false]').isVisible()) { await p.click('#sheetToggle'); await shot(p, `${dev}-fit-sheet`); metrics[dev + '-fit-sheet'] = await measure(p); await p.click('#sheetToggle'); }
-    const rot = p.locator('[data-fit-rotate]'), turnNext = /to fit$/.test(await p.locator('#flowNext').innerText());
+    const rot = p.locator('[data-fit-rotate]'), turnNext = /^(Turn 90°|Lay on side)$/.test(await p.locator('#flowNext').innerText());
     if (turnNext || await rot.count()) {
       await (turnNext ? p.locator('#flowNext') : rot.first()).evaluate(e => e.click());
       await p.waitForTimeout(300); await idle(p); await p.evaluate(() => { document.getElementById('side').scrollTop = 0; });
