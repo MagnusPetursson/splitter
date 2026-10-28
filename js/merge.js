@@ -3,10 +3,10 @@
 // It owns no planner state; every action calls the same app functions the
 // step panels use, so simple and expert modes always edit one plan.
 import * as THREE from 'three';
-import {readiness} from './readiness.js?v=59e3b4e';
+import {readiness} from './readiness.js?v=0a51340';
 
 const $ = id => document.getElementById(id);
-import {plural,ico} from './icons.js?v=59e3b4e';
+import {plural,ico} from './icons.js?v=0a51340';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toLocaleString('en-US', {maximumFractionDigits: d});
 const phone = () => matchMedia('(max-width:760px)').matches;
@@ -87,18 +87,18 @@ export class MergeLayer {
   }
   summary() {
     const S = this.S, step = document.body.dataset.step;
-    if (!S.model) return 'Load a model to begin.';
+    if (!S.model) return 'No model loaded.';
     if (step === 'fit') {
       return $('fitVerdict').dataset.summary || 'Fits as placed.';
     }
-    if (!S.plan) return 'Ready to plan cuts.';
+    if (!S.plan) return 'No cuts planned.';
     const parts = S.plan.leaves.filter(l => !l.empty), bad = parts.filter(l => !l.fits).length;
     if (step === 'split' || step === 'join') {
       if (S.sel.joint != null) { const j = S.plan.joints.find(x => x.id === S.sel.joint); if (j) return `${this.a.jointName(j)} · Ø${fmt(j.d || 0, 2)} mm`; }
       if (S.sel.cut != null && S.plan.tree.nodes[S.sel.cut]?.cut) return `${this.a.cutName(S.sel.cut)} selected · drag it in the view`;
       return `${parts.length} parts · ${bad ? bad + ' do not fit' : 'all fit'} · ${S.plan.joints.length} pins`;
     }
-    if (step === 'export') return S.export ? 'Downloads ready.' : S.built ? 'Parts built. Prepare downloads.' : this.stale ? 'Changes since last build. Rebuild.' : 'Build parts, then download.';
+    if (step === 'export') return S.export ? 'Export ready.' : S.built ? 'Parts built, not exported.' : this.stale ? 'Plan changed since the last build.' : 'Parts not built.';
     return '';
   }
 
@@ -130,16 +130,16 @@ export class MergeLayer {
     else if (!btn.firstChild) btn.textContent = label + ' ';
     btn.classList.toggle('primary', needsPlan); btn.classList.toggle('wide', !show);
     $('flowNext').hidden = needsPlan && document.body.dataset.sheet !== 'peek';
-    const intro = $('stepSplit').querySelector('.step-intro'), whole = S.plan && S.plan.leaves?.length === 1, introText = S.plan && !S.settingsDirty ? (whole ? 'No cut needed: it prints in one piece in the orientation shown. Add a cut only if you want one; otherwise continue.' : 'Plan first, build later. Review the suggested cuts; drag the highlighted arrow to move one, or use Tilt cut.') : S.plan ? 'Settings changed since these cuts were planned. Plan cuts again to apply them.' : 'Choose what matters more, then Plan cuts. You review the proposed cuts here before anything is built.';
+    const intro = $('stepSplit').querySelector('.step-intro'), whole = S.plan && S.plan.leaves?.length === 1, introText = S.plan && !S.settingsDirty ? (whole ? 'No cut needed: the model prints in one piece as shown.' : 'Drag the blue arrow to move a cut, or use Tilt cut.') : S.plan ? 'Settings changed since these cuts were planned. Plan cuts again to apply them.' : 'Choose a preference, then Plan cuts.';
     if (intro.textContent !== introText) intro.textContent = introText;
-    const help = $('stepSplit').querySelector('.context-help'), helpText = S.plan && !whole ? 'Why these cuts?' : 'How cuts are chosen';
+    const help = $('stepSplit').querySelector('.context-help'), helpText = 'How splitting works';
     if (help.firstChild.textContent !== helpText) help.firstChild.textContent = helpText;
     if (!show) return;
     const parts = S.plan.leaves.filter(l => !l.empty), bad = parts.filter(l => !l.fits).length;
     const cuts = S.plan.tree.nodes.filter(n => n.cut).length, seams = S.plan.patches.filter(p => p.seam && p.seam.kind !== 'none').length;
     const warn = S.plan.patches.filter(p => p.fallback || p.single).length;
-    $('resultTitle').textContent = `Auto split: ${parts.length} part${parts.length === 1 ? '' : 's'}${bad ? `, ${bad} still too big` : ', all fit'}`;
-    $('resultText').textContent = `${cuts} cut${cuts === 1 ? '' : 's'} · ${S.plan.joints.length} pins${seams ? ` · ${seams} seams` : ''}${warn ? ` · ${warn} joint warning${warn === 1 ? '' : 's'} to review` : ''}. Adjust a cut in the view, or regenerate with the current settings.`;
+    $('resultTitle').textContent = `Planned: ${parts.length} part${parts.length === 1 ? '' : 's'}${bad ? `, ${bad} still too big` : ', all fit'}`;
+    $('resultText').textContent = `${cuts} cut${cuts === 1 ? '' : 's'} · ${S.plan.joints.length} pins${seams ? ` · ${seams} seams` : ''}${warn ? ` · ${warn} joint warning${warn === 1 ? '' : 's'}` : ''}.`;
   }
 
   // ---------- selected cut values in the viewport ----------
@@ -226,10 +226,10 @@ export class MergeLayer {
     const on = document.body.dataset.expert === 'true' && !!S.plan && ['split', 'join'].includes(document.body.dataset.step);
     el.hidden = !on; if (!on) return;
     let title = 'Nothing selected', facts = 'Select a cut, part, contact or joint in the view, the Objects list or with Ctrl K.';
-    if (S.sel.joint != null) { const j = S.plan.joints.find(x => x.id === S.sel.joint); if (j) { title = this.a.jointName(j); facts = `${j.kind} · Ø${fmt(j.d || 0, 2)} mm · depth ${fmt(j.holeNeg || 0, 1)} / ${fmt(j.holePos || 0, 1)} mm into each part · clearance ${fmt(j.clear || 0, 2)} mm. Edit it in the pin card below.`; } }
-    else if (S.sel.leaf != null) { const l = S.plan.leaves.find(x => x.id === S.sel.leaf); if (l) { title = `Part ${l.label}`; facts = `${l.extent.map(x => fmt(x, 1)).join(' × ')} mm · ${l.fits ? 'fits' : 'does not fit'} · ${l.printFace} down. Add a cut through it below.`; } }
-    else if (document.body.dataset.step === 'join' && S.sel.patch != null && S.plan.patches[S.sel.patch]) { const p = S.plan.patches[S.sel.patch]; title = `Contact ${this.a.contactName(p)}`; facts = `${fmt(p.area || 0, 0)} mm² · ${S.plan.joints.filter(j => j.patch === p.id).length} pins${p.fallback ? ' · ' + p.fallback.reason : ''}. Joint settings are below.`; }
-    else if (S.sel.cut != null && S.plan.tree.nodes[S.sel.cut]?.cut) { const n = S.plan.tree.nodes[S.sel.cut]; title = this.a.cutName(n.id); facts = `${n.locked ? 'Manual' : 'Automatic'} · offset ${fmt(n.cut.d, 1)} mm · ${n.reason || 'placed by you'}. Precise values are below; drag it in the view.`; }
+    if (S.sel.joint != null) { const j = S.plan.joints.find(x => x.id === S.sel.joint); if (j) { title = this.a.jointName(j); facts = `${j.kind} · Ø${fmt(j.d || 0, 2)} mm · depth ${fmt(j.holeNeg || 0, 1)} / ${fmt(j.holePos || 0, 1)} mm into each part · clearance ${fmt(j.clear || 0, 2)} mm.`; } }
+    else if (S.sel.leaf != null) { const l = S.plan.leaves.find(x => x.id === S.sel.leaf); if (l) { title = `Part ${l.label}`; facts = `${l.extent.map(x => fmt(x, 1)).join(' × ')} mm · ${l.fits ? 'fits' : 'does not fit'} · ${l.printFace} down.`; } }
+    else if (document.body.dataset.step === 'join' && S.sel.patch != null && S.plan.patches[S.sel.patch]) { const p = S.plan.patches[S.sel.patch]; title = `Contact ${this.a.contactName(p)}`; facts = `${fmt(p.area || 0, 0)} mm² · ${S.plan.joints.filter(j => j.patch === p.id).length} pins${p.fallback ? ' · ' + p.fallback.reason : ''}.`; }
+    else if (S.sel.cut != null && S.plan.tree.nodes[S.sel.cut]?.cut) { const n = S.plan.tree.nodes[S.sel.cut]; title = this.a.cutName(n.id); facts = `${n.locked ? 'Manual' : 'Automatic'} · offset ${fmt(n.cut.d, 1)} mm · ${n.reason || 'placed by you'}.`; }
     if ($('inspectorTitle').textContent !== title) $('inspectorTitle').textContent = title;
     facts = plural(facts); if ($('inspectorFacts').textContent !== facts) $('inspectorFacts').textContent = facts;
   }
@@ -242,7 +242,7 @@ export class MergeLayer {
     if (!S.plan) { this.stale = false; this.hadBuild = false; }
     if (S.outputStale !== this.stale) { S.outputStale = this.stale; queueMicrotask(() => this.a.FLOW.sync()); }
     const el = $('outputState');
-    const text = S.export ? 'Print package ready. Downloads match the current plan.' : S.built ? 'Parts are built from the current plan. Downloads are not prepared yet.' : this.stale ? 'Changes since last build. Rebuild to update the parts and downloads.' : '';
+    const text = S.export ? 'Files exported from the current plan.' : S.built ? 'Parts built from the current plan; files not exported yet.' : this.stale ? 'Plan changed since the last build. Rebuild the parts.' : '';
     el.hidden = !text; if (el.textContent !== text) el.textContent = text; el.dataset.state = S.export ? 'current' : S.built ? 'built' : this.stale ? 'stale' : '';
     const build = $('buildBtn'), label = this.stale && !S.built ? 'Rebuild parts' : 'Build parts';
     if (build.firstChild?.nodeType === 3 && build.firstChild.textContent.trim() !== label) build.firstChild.textContent = label + ' ';
@@ -274,30 +274,30 @@ export class MergeLayer {
     const {S, FLOW} = this.a, busy = !$('busy').classList.contains('hidden'), ready = readiness(S), out = [];
     const add = (label, run, why = null, hint = '') => out.push({label, run, why: busy ? 'Busy' : why, hint});
     const steps = [['load','Load'],['fit','Fit'],['split','Split'],['join','Join'],['export','Export']];
-    steps.forEach(([s, name], i) => add(`Go to step ${i + 1}: ${name}`, () => FLOW.go(s), FLOW.allowed(s) ? null : (S.model ? 'Find cuts first' : 'Load a model first'), 'Step'));
-    add('Open a model file…', () => $('fileInput').click(), null, 'Load');
-    for (const b of document.querySelectorAll('[data-sample]')) if (!out.some(c => c.sample === b.dataset.sample)) { add(`Load sample: ${b.dataset.sample.replace(/_/g, ' ').replace(/\.stl$/, '')}`, () => b.click(), null, 'Load'); out.at(-1).sample = b.dataset.sample; }
-    add(`Plan cuts for ${FLOW.printerName()}`, () => { FLOW.go('split', {focus: false}); $('autoSplit').click(); }, S.model ? null : 'Load a model first', 'Split');
-    add('Auto-complete the remaining oversized parts', () => $('autoComplete')?.click(), S.plan && !S.plan.fits && $('autoComplete') ? null : 'All parts already fit', 'Split');
-    add(this.stale ? 'Rebuild parts' : 'Build parts', () => { FLOW.go('export', {focus: false}); $('buildBtn').click(); }, !S.plan ? 'Find cuts first' : !ready.ok ? ready.text : null, 'Export');
-    add('Prepare downloads', () => { FLOW.go('export', {focus: false}); $('exportBtn').click(); }, S.built ? null : 'Build parts first', 'Export');
-    add('Download ZIP package', () => document.querySelector('#exportInfo a[download$=".zip"]')?.click(), S.export ? null : 'Prepare downloads first', 'Export');
-    add('Generate joint test coupon', () => { FLOW.go('export', {focus: false}); $('couponBtn').click(); }, S.workerReady ? null : 'Geometry engine still loading', 'Export');
-    add('Undo plan edit', () => $('editUndo').click(), $('editUndo').disabled ? 'Nothing to undo' : null, 'Ctrl Z');
-    add('Redo plan edit', () => $('editRedo').click(), $('editRedo').disabled ? 'Nothing to redo' : null, 'Ctrl Shift Z');
-    add('Fit model in view', () => this.v.frameCurrent(), S.model ? null : 'Load a model first', 'F');
-    for (const [v, name, k] of [['model','Model',1],['cuts','Cuts',2],['parts','Parts',3],['plates','Plates',4]]) add(`Show ${name} presentation`, () => this.a.setView(v), (v === 'cuts' && !S.plan) || (['parts','plates'].includes(v) && !S.built) ? (v === 'cuts' ? 'Find cuts first' : 'Build parts first') : !S.model ? 'Load a model first' : null, String(k));
-    add(document.body.dataset.expert === 'true' ? 'Switch to guided mode' : 'Switch to expert mode', () => $('expertMode').click(), null, 'Mode');
+    steps.forEach(([s, name], i) => add(`Go to ${name}`, () => FLOW.go(s), FLOW.allowed(s) ? null : (S.model ? 'Plan cuts first' : 'Load a model first'), `Step ${i + 1}`));
+    add('Open model…', () => $('fileInput').click(), null, 'Load');
+    for (const b of document.querySelectorAll('[data-sample]')) if (!out.some(c => c.sample === b.dataset.sample)) { add(`Load ${b.textContent.trim().toLowerCase()}`, () => b.click(), null, 'Load'); out.at(-1).sample = b.dataset.sample; }
+    add('Plan cuts', () => { FLOW.go('split', {focus: false}); $('autoSplit').click(); }, S.model ? null : 'Load a model first', `Split · ${FLOW.printerName()}`);
+    add('Auto-complete', () => $('autoComplete')?.click(), S.plan && !S.plan.fits && $('autoComplete') ? null : 'All parts already fit', 'Split');
+    add(this.stale ? 'Rebuild parts' : 'Build parts', () => { FLOW.go('export', {focus: false}); $('buildBtn').click(); }, !S.plan ? 'Plan cuts first' : !ready.ok ? ready.text : null, 'Export');
+    add('Export files', () => { FLOW.go('export', {focus: false}); $('exportBtn').click(); }, S.built ? null : 'Build parts first', 'Export');
+    add('Download ZIP', () => document.querySelector('#exportInfo a[download$=".zip"]')?.click(), S.export ? null : 'Export files first', 'Export');
+    add('Generate coupon', () => { FLOW.go('export', {focus: false}); $('couponBtn').click(); }, S.workerReady ? null : 'Geometry engine still loading', 'Export');
+    add('Undo edit', () => $('editUndo').click(), $('editUndo').disabled ? 'Nothing to undo' : null, 'Ctrl Z');
+    add('Redo edit', () => $('editRedo').click(), $('editRedo').disabled ? 'Nothing to redo' : null, 'Ctrl Shift Z');
+    add('Fit view', () => this.v.frameCurrent(), S.model ? null : 'Load a model first', 'F');
+    for (const [v, name, k] of [['model','Model',1],['cuts','Cuts',2],['parts','Parts',3],['plates','Plates',4]]) add(`Show ${name.toLowerCase()}`, () => this.a.setView(v), (v === 'cuts' && !S.plan) || (['parts','plates'].includes(v) && !S.built) ? (v === 'cuts' ? 'Plan cuts first' : 'Build parts first') : !S.model ? 'Load a model first' : null, String(k));
+    add(document.body.dataset.expert === 'true' ? 'Exit expert mode' : 'Enter expert mode', () => $('expertMode').click(), null, 'Mode');
     add('Show object list', () => { this.outlinerOpen = true; FLOW.mode(true); this.sync(); $('outlinerTree').querySelector('button')?.focus(); }, S.model ? null : 'Load a model first', 'Objects');
     if (S.sel.cut != null && S.sel.joint == null && S.plan?.tree.nodes[S.sel.cut]?.cut) add(`Delete ${this.a.cutName(S.sel.cut)}`, () => this.a.deleteCut(S.sel.cut), null, 'Delete');
     if (S.sel.joint != null) { const j = S.plan?.joints.find(x => x.id === S.sel.joint); if (j) add(`Delete ${this.a.jointName(j)}`, () => this.a.deleteJoint(j.id), null, 'Delete'); }
-    add('Add a pin on the selected cut face', () => { FLOW.go('join', {focus: false}); $('viewAddJoint').click(); }, S.plan && S.face != null ? null : 'Find cuts first', 'A');
-    add('Printer and clearances', () => { FLOW.go('fit'); $('printerAdvanced').open = true; $('printer').focus(); }, S.model ? null : 'Load a model first', 'Fit');
-    add('Joint style for all contacts', () => { FLOW.go('join'); $('jointStyle').focus(); }, S.plan ? null : 'Find cuts first', 'Join');
-    add('Open the large joint editor', () => $('openEditor').click(), S.plan && S.face != null ? null : 'Find cuts first', 'Join');
-    add('Reset settings to defaults', () => $('resetDefaults').click(), null, 'Settings');
-    add('Quick help', () => $('helpBtn').click(), null, 'Help');
-    add('Open the guide', () => window.open('guide.html', '_blank', 'noopener'), null, 'Help');
+    add('Add pin', () => { FLOW.go('join', {focus: false}); $('viewAddJoint').click(); }, S.plan && S.face != null ? null : 'Plan cuts first', 'A');
+    add('Printer settings', () => { FLOW.go('fit'); $('printerAdvanced').open = true; $('printer').focus(); }, S.model ? null : 'Load a model first', 'Fit');
+    add('Joint style', () => { FLOW.go('join'); $('jointStyle').focus(); }, S.plan ? null : 'Plan cuts first', 'Join');
+    add('Open joint editor', () => $('openEditor').click(), S.plan && S.face != null ? null : 'Plan cuts first', 'Join');
+    add('Reset defaults', () => $('resetDefaults').click(), null, 'Settings');
+    add('Help', () => $('helpBtn').click(), null, 'Help');
+    add('Open guide', () => window.open('guide.html', '_blank', 'noopener'), null, 'Help');
     for (const o of this.objects()) if (o.obj.type !== 'model') add(`Select ${o.label}`, () => this.choose(o.obj), null, o.group);
     return out;
   }
@@ -339,7 +339,7 @@ export class MergeLayer {
     document.body.dataset.sheet = phone() && S.model && document.body.dataset.step !== 'load' ? (open ? 'open' : 'peek') : 'full';
     $('sheetToggle').setAttribute('aria-expanded', String(open));
     const why = document.body.dataset.step === 'fit' && $('fitVerdict').classList.contains('over');
-    $('sheetToggle').textContent = open ? 'Less' : why ? 'Why?' : 'Details';
+    $('sheetToggle').textContent = open ? 'Less' : 'Details';
     const sum = this.summary(), el = $('sheetSummary');
     if (el.dataset.t !== sum) { el.dataset.t = sum; const [h, sub] = sum.split('\n'); el.replaceChildren(); const b = document.createElement('b'); b.textContent = h; el.append(b); if (sub) { const s2 = document.createElement('span'); s2.textContent = sub; el.append(s2); } el.dataset.lines = sub ? '2' : '1'; el.dataset.tone = document.body.dataset.step === 'fit' && $('fitVerdict').classList.contains('over') ? 'over' : ''; }
     const ol = this.isOutlinerOpen();

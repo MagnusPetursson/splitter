@@ -1,14 +1,15 @@
 // print-splitter UI controller.
-import { Viewer, partColor, KIND_COLORS } from './viewer.js?v=59e3b4e';
-import { JointMap } from './jointmap.js?v=59e3b4e';
-import { JointEditor } from './jointeditor.js?v=59e3b4e';
-import { createBackend } from './backend.js?v=59e3b4e';
-import { GuidedFlow } from './flow.js?v=59e3b4e';
-import { DirectEditor } from './direct-editor.js?v=59e3b4e';
-import { MergeLayer } from './merge.js?v=59e3b4e';
-import { ico, plural } from './icons.js?v=59e3b4e';
-import { PlanHistory, readiness } from './readiness.js?v=59e3b4e';
-import { LIMITS, estimateTris, estimateMemMB, estimateLoadSec, estimatePlanSec, fmtTris, fmtDur, fmtMem, msgText, Progress, LOAD_STAGES, PLAN_STAGES, crumbSet, crumbClear, crumbTake } from './progress.js?v=59e3b4e';
+import { Viewer, partColor, KIND_COLORS } from './viewer.js?v=0a51340';
+import { JointMap } from './jointmap.js?v=0a51340';
+import { JointEditor } from './jointeditor.js?v=0a51340';
+import { createBackend } from './backend.js?v=0a51340';
+import { GuidedFlow } from './flow.js?v=0a51340';
+import { DirectEditor } from './direct-editor.js?v=0a51340';
+import { MergeLayer } from './merge.js?v=0a51340';
+import { ico, plural } from './icons.js?v=0a51340';
+import { PlanHistory, readiness } from './readiness.js?v=0a51340';
+import { ProfileControls } from './profile-controls.js?v=0a51340';
+import { LIMITS, estimateTris, estimateMemMB, estimateLoadSec, estimatePlanSec, fmtTris, fmtDur, fmtMem, msgText, Progress, LOAD_STAGES, PLAN_STAGES, crumbSet, crumbClear, crumbTake } from './progress.js?v=0a51340';
 
 const $ = (id) => document.getElementById(id);
 const api = (p) => new URL(p, document.baseURI).href;
@@ -51,17 +52,25 @@ let FLOW = null;
 const history=new PlanHistory();
 let DIRECT=null;
 let MERGE=null;
-function save() {
-  const s = {
+let PROFILES=null;
+function captureSettings() {
+  return {
     printer: $('printer').value, bedX: $('bedX').value, bedY: $('bedY').value, bedZ: $('bedZ').value,
     margin: $('margin').value, nozzle: $('nozzle').value, minPiece: $('minPiece').value, style: $('jointStyle').value,
     upright: $('upright').checked, tilted: $('tilted').checked, supportWeight: $('supportWeight').value,
     fits: Object.fromEntries([...document.querySelectorAll('[data-fit]')].map((i) => [i.dataset.fit, i.value])),
   };
-  localStorage.setItem('ps.settings', JSON.stringify(s));
+}
+function save() {
+  try { localStorage.setItem('ps.settings', JSON.stringify(captureSettings())); }
+  catch { toast('Could not save last-used settings in this browser.', true); }
+  settingsChanged();
+}
+function settingsChanged() {
+  PROFILES?.sync();
   if (S.plan) {
     const next=settings(), old=S.plan.settings;
-    S.settingsDirty=['bed','margin','nozzle','minPiece','upright','tilted','fits'].some(k=>JSON.stringify(next[k])!==JSON.stringify(old[k]));
+    S.settingsDirty=['bed','margin','nozzle','minPiece','jointStyle','upright','tilted','fits'].some(k=>JSON.stringify(next[k])!==JSON.stringify(old[k]));
     FLOW?.sync();
   }
 }
@@ -69,8 +78,18 @@ function load() {
   try { return JSON.parse(localStorage.getItem('ps.settings') || 'null'); } catch (_) { return null; }
 }
 
+function applyProfile(s) {
+  $('printer').value = s.printer;
+  if (s.printer !== 'custom') applyPrinter(false);
+  else $('printerSource').textContent = '';
+  for (const k of ['bedX','bedY','bedZ','margin','nozzle','minPiece']) $(k).value = s[k];
+  $('jointStyle').value = s.style;
+  for (const i of document.querySelectorAll('[data-fit]')) i.value = s.fits[i.dataset.fit];
+  updateBed();save();FLOW?.sync();
+}
+
 // ---------------- worker ----------------
-const worker = new Worker(new URL('./worker.js?v=59e3b4e', import.meta.url), { type: 'module' });
+const worker = new Worker(new URL('./worker.js?v=0a51340', import.meta.url), { type: 'module' });
 const pending = {};
 worker.onmessage = (e) => {
   const m = e.data;
@@ -154,15 +173,21 @@ async function init() {
   DEFAULTS = { margin: $('margin').value, minPiece: $('minPiece').value, style: 'glued' };
   const bv = $('buildVer');
   if (bv.dataset.v.startsWith('__')) bv.textContent = 'dev build';
-  const saved = load();
+  PROFILES = new ProfileControls({printers:S.printers,capture:captureSettings,apply:applyProfile,notify:toast,openFits:()=>{
+    FLOW.go('fit');
+    if ($('sheetToggle').getAttribute('aria-expanded') === 'false') $('sheetToggle').click();
+    $('printerAdvanced').open = true;document.querySelector('.fits').open = true;
+    document.querySelector('[data-fit]').focus();
+  }});
+  const saved = PROFILES.last || load();
   $('restoredNote').classList.toggle('hidden', !saved);
   if (saved) {
-    sel.value = saved.printer || 'prusa-core-one';
-    for (const k of ['bedX', 'bedY', 'bedZ', 'margin', 'nozzle', 'minPiece']) if (saved[k]) $(k).value = saved[k];
+    sel.value = S.printers.some(p=>p.id===saved.printer) ? saved.printer : 'custom';
+    for (const k of ['bedX', 'bedY', 'bedZ', 'margin', 'nozzle', 'minPiece']) if (saved[k] != null) $(k).value = saved[k];
     if (saved.style) $('jointStyle').value = saved.style;
     if (saved.supportWeight != null && Number.isFinite(+saved.supportWeight)) $('supportWeight').value = saved.supportWeight;
     $('upright').checked = !!saved.upright; $('tilted').checked = !!saved.tilted;
-    for (const i of document.querySelectorAll('[data-fit]')) if (saved.fits && saved.fits[i.dataset.fit]) i.value = saved.fits[i.dataset.fit];
+    for (const i of document.querySelectorAll('[data-fit]')) if (saved.fits && saved.fits[i.dataset.fit] != null) i.value = saved.fits[i.dataset.fit];
     if (sel.value !== 'custom') applyPrinter(false);
   } else {
     sel.value = 'prusa-core-one';
@@ -170,6 +195,7 @@ async function init() {
   }
   updateBed();
   updateSupportPreference();
+  PROFILES.sync();
   bind();
   DIRECT=new DirectEditor({syncFlow:()=>FLOW?.sync(),S,viewer,jmap,jed,history,setView,build,selectJoint,selectFace,setAddMode,protoJoint,moveJoint,addJoint,deleteJoint,jointName,restore:restorePlan,editJoint:j=>{Object.assign(S.plan.joints.find(x=>x.id===j.id),j);updateJoint(S.plan.joints.find(x=>x.id===j.id));}});
   FLOW = new GuidedFlow({ S, viewer, setView, split:()=>runPlan('auto'), prepare:async()=>{if(!S.built)await build();if(S.built&&S.built.parts.every(p=>p.status==='NoError'))await exportPkg();},onSync:()=>{DIRECT?.sync();MERGE?.sync();} });
@@ -188,6 +214,7 @@ function resetDefaults() {
   applyPrinter(true);
   updateBed();
   $('restoredNote').classList.add('hidden');
+  settingsChanged();
   toast(`Defaults restored: ${styleLabel(DEFAULTS.style)}, ${$('printer').selectedOptions[0].textContent}`);
   if (S.plan && changed) runPlan('joints');
 }
@@ -211,7 +238,7 @@ function applyPrinter(resetFits) {
   const p = S.printers.find((x) => x.id === $('printer').value);
   if (!p) return;
   $('bedX').value = p.x; $('bedY').value = p.y; $('bedZ').value = p.z;
-  $('nozzle').value = String(p.nozzle);
+  if (resetFits) $('nozzle').value = String(p.nozzle);
   $('printerSource').innerHTML = `Volume per <a href="${esc(p.source)}" target="_blank" rel="noopener">manufacturer spec</a>${p.note ? ' · ' + esc(p.note) : ''}`;
   if (resetFits) setFits();
 }
@@ -307,7 +334,7 @@ async function upload(file, opts = {}) {
     const simpMem = estimateMemMB(est.tris, file.size, true);
     const canSimp = !simplify && simpMem <= LIMITS.refuseMB;
     showLoadNote(`${esc(file.name)} is too large for this browser tab`,
-      `${est.exact ? '' : 'About '}${fmtTris(est.tris)} triangles (${est.format}, ${fmt(file.size / 1e6, 0)} MB). ${simplify ? 'Even simplified, loading' : 'Planning it at full detail'} needs an estimated ${fmtMem(mem)} of memory; a tab gets ~${fmtMem(LIMITS.refuseMB)} reliably, and running out would stop the tab without a word.`
+      `${est.exact ? '' : 'About '}${fmtTris(est.tris)} triangles (${est.format}, ${fmt(file.size / 1e6, 0)} MB). ${simplify ? 'Even simplified, loading' : 'Planning it at full detail'} needs an estimated ${fmtMem(mem)} of memory; a tab gets ~${fmtMem(LIMITS.refuseMB)} reliably, and running out would crash the tab without an error message.`
       + (canSimp ? ' Simplified for planning it needs ≈ ' + fmtMem(simpMem) + '.' : ' Reduce it first (e.g. Blender Decimate, Meshmixer Reduce) or use the command-line planner (<code>print-splitter plan</code>), which has no browser memory limit.'),
       canSimp ? [['Simplify and load', () => upload(file, { full: false })]] : []);
     if (canSimp) S.fullDetail[fileKey(file)] = false;
@@ -386,7 +413,7 @@ function showLoadNote(title, html, actions = [], tone = 'warn') {
   const n = $('loadNote');
   const all = [...actions, ['Choose a file', () => $('fileInput').click()]];
   n.dataset.tone = tone;
-  n.innerHTML = `<div class="note-head">${ico(tone === 'error' ? 'error' : 'alert')}<h4>${title}</h4></div><p>${html}</p><div class="btns">${all.map((a, i) => `<button class="${i === 0 && actions.length ? 'primary' : ''}" data-act="${i}">${esc(a[0])}</button>`).join('')}<a class="context-help" href="guide.html#faq" target="_blank" rel="noopener">How to fix a model${ico('external')}<span class="sr-only"> (new tab)</span></a></div>`;
+  n.innerHTML = `<div class="note-head">${ico(tone === 'error' ? 'error' : 'alert')}<h4>${title}</h4></div><p>${html}</p><div class="btns">${all.map((a, i) => `<button class="${i === 0 && actions.length ? 'primary' : ''}" data-act="${i}">${esc(a[0])}</button>`).join('')}<a class="context-help" href="guide.html#faq" target="_blank" rel="noopener">Troubleshooting${ico('external')}<span class="sr-only"> (new tab)</span></a></div>`;
   all.forEach((a, i) => n.querySelector(`[data-act="${i}"]`).addEventListener('click', a[1]));
   n.classList.remove('hidden');
   n.scrollIntoView({ block: 'nearest' });
@@ -397,8 +424,8 @@ function hideNote(id) { $(id).classList.add('hidden'); }
 function crashNote(c) {
   if (!c) return;
   const what = c.what === 'plan' ? 'planning' : 'loading';
-  showLoadNote(`The last ${what} of ${esc(c.name)} stopped the tab`,
-    `It was ${what} ${fmtTris(c.tris)} triangles${c.full ? ' at full detail' : ''} and the tab ended before it finished. That is almost always the browser running out of memory; a file problem would have shown an explanation instead. ${c.full ? 'Load it again with simplification (the default above ' + fmtTris(LIMITS.threshold) + ' triangles).' : 'Close other tabs, or plan it with the command-line tool.'}`);
+  showLoadNote(`The tab crashed while ${what} ${esc(c.name)}`,
+    `${cap1(what)} ${fmtTris(c.tris)} triangles${c.full ? ' at full detail' : ''} ended the tab before it finished, almost certainly by running out of memory (a file problem shows an error instead). ${c.full ? 'Load it again with simplification (the default above ' + fmtTris(LIMITS.threshold) + ' triangles).' : 'Close other tabs, or plan it with the command-line tool.'}`);
 }
 async function loadSample(name) {
   busy(`Fetching sample ${name}`);
@@ -440,7 +467,7 @@ async function onModel(info, o = {}) {
   $('faceList').innerHTML = ''; $('mapWrap').classList.add('hidden');
   $('buildInfo').classList.add('hidden'); $('exportInfo').classList.add('hidden');
   hud();
-  if(o.restore) { FLOW?.sync(); FLOW?.say('Model restored after cancellation. You can try the split again.'); }
+  if(o.restore) { FLOW?.sync(); FLOW?.say('Model restored after cancel.'); }
   else FLOW?.loaded();
 }
 
@@ -458,18 +485,18 @@ function renderMeshNote(loadSec) {
   if (sm && !sm.failed) {
     html = `<h4>Simplified for planning: ${fmtTris(sm.inputTris)} → ${fmtTris(sm.outputTris)} triangles</h4>
       <p>Measured deviation from your file: <span class="num">max ${fmt(sm.maxDev, 3)} mm</span>, <span class="num">mean ${fmt(sm.meanDev, 4)} mm</span> over ${fmtTris(sm.samples)} sample points${sm.maxDev < 0.1 ? `, well under one ${fmt(+$('nozzle').value, 1)} mm nozzle line` : ''}. ${sm.limited ? `Stopped at ${fmtTris(sm.outputTris)} to stay within ${fmt(LIMITS.maxError, 2)} mm. ` : ''}Cuts and joints are planned on the simplified mesh; ${m.originalKept ? 'parts are cut from your <b>full-detail original</b> with the same planes and joints (step 5).' : 'the original is too large to keep, so <b>exports are cut from the simplified mesh</b>.'}</p>
-      <p class="small mute">Took ${fmtDur(sm.seconds)}. Auto split ≈ ${fmtDur(planEst)} now; at full detail ≈ ${fmtDur(fullPlan)} and ≈ ${fmtMem(fullMem)} of memory.</p>`;
+      <p class="small mute">Took ${fmtDur(sm.seconds)}. Planning ≈ ${fmtDur(planEst)} now; at full detail ≈ ${fmtDur(fullPlan)} and ≈ ${fmtMem(fullMem)} of memory.</p>`;
     if (fullMem <= LIMITS.refuseMB) btns.push(['Use full detail', () => { if (confirm(`Plan on all ${fmtTris(sm.inputTris)} triangles?\n\nLoading and planning will take about ${fmtDur(estimateLoadSec(sm.inputTris, false) + fullPlan)} and need about ${fmtMem(fullMem)} of memory. If the browser runs out, the tab stops and you will have to reload the page.`)) { S.fullDetail[fileKey(S.file)] = true; upload(S.file, { full: true }); } }, `≈ ${fmtDur(fullPlan)} to plan, ≈ ${fmtMem(fullMem)}`]);
     else btns.push(['Use full detail', null, `needs ≈ ${fmtMem(fullMem)}: more than a tab can reliably get`]);
   } else if (sm && sm.failed) {
     cls = 'warn';
-    html = `<h4>Large mesh: ${fmtTris(m.tris)} triangles, not simplified</h4><p>Simplification could not keep the mesh closed (${esc(sm.failed)}), so the planner uses every triangle. Auto split ≈ ${fmtDur(planEst)}; you can cancel it.</p>`;
+    html = `<h4>Large mesh: ${fmtTris(m.tris)} triangles, not simplified</h4><p>Simplification could not keep the mesh closed (${esc(sm.failed)}), so the planner uses every triangle. Planning ≈ ${fmtDur(planEst)}; it can be cancelled.</p>`;
   } else if (local && S.file && est.tris > LIMITS.threshold) {
     cls = 'warn';
-    html = `<h4>Full detail: ${fmtTris(m.tris)} triangles</h4><p>Auto split ≈ ${fmtDur(planEst)} and ≈ ${fmtMem(estimateMemMB(m.tris, S.file.size, false))} of memory. Simplifying first keeps the deviation to a few hundredths of a mm and plans much faster.</p>`;
+    html = `<h4>Full detail: ${fmtTris(m.tris)} triangles</h4><p>Planning ≈ ${fmtDur(planEst)} and ≈ ${fmtMem(estimateMemMB(m.tris, S.file.size, false))} of memory. Simplifying first keeps the deviation to a few hundredths of a mm and plans much faster.</p>`;
     btns.push(['Simplify for planning', () => { S.fullDetail[fileKey(S.file)] = false; upload(S.file, { full: false }); }]);
   } else if (planEst > 30) {
-    html = `<h4>Large mesh: ${fmtTris(m.tris)} triangles</h4><p>Auto split takes ≈ ${fmtDur(planEst)} in this browser; progress is shown step by step and you can cancel it.</p>`;
+    html = `<h4>Large mesh: ${fmtTris(m.tris)} triangles</h4><p>Planning takes ≈ ${fmtDur(planEst)} in this browser; progress is shown and it can be cancelled.</p>`;
   } else { n.classList.add('hidden'); return; }
   n.className = 'meshnote ' + cls;
   n.innerHTML = html + (btns.length ? `<div class="btns">${btns.map((b, i) => `<button class="small" data-mb="${i}" ${b[1] ? '' : 'disabled'} ${b[2] ? `title="${esc(b[2])}"` : ''}>${esc(b[0])}</button>${b[2] ? `<span class="small mute">${esc(b[2])}</span>` : ''}`).join('')}</div>` : '');
@@ -646,7 +673,7 @@ async function runPlan(mode, opts = {}) {
     if (seq !== S.planSeq) return;
     PROG.end();
     onPlan(plan, mode === 'auto');
-    if(mode!=='auto'){viewer.camera.position.copy(camera);viewer.controls.target.copy(target);viewer.camera.up.copy(up);viewer.faceFocus=faceFocus;viewer.cameraState(cameraPose);viewer.controls.update();DIRECT?.sync();viewer.dirty();DIRECT?.feedback('Edit applied · select a pin to inspect its diameter and depth into both pieces.');}
+    if(mode!=='auto'){viewer.camera.position.copy(camera);viewer.controls.target.copy(target);viewer.camera.up.copy(up);viewer.faceFocus=faceFocus;viewer.cameraState(cameraPose);viewer.controls.update();DIRECT?.sync();viewer.dirty();DIRECT?.feedback('Edit applied.');}
     if(focusAfter)requestAnimationFrame(()=>{const e=$(focusAfter);if(e?.checkVisibility()&&!e.closest('[inert]'))e.focus({preventScroll:true});});
   } catch (err) {
     crumbClear();
@@ -720,8 +747,8 @@ function renderPlan() {
   const fallbackNote = fbs.length ? `<div class="fblist">${fbs.map((x) => `<button class="fbitem ${x.fallback ? '' : 'single'}" data-fbpatch="${x.id}" title="${esc(x.fallback ? x.fallback.why : (x.notes || []).join('; '))}">${ico('alert')}${cutName(x.node)} ${contactName(x)}: ${x.fallback ? `${esc(fbText(x.fallback))}` : esc(singleNote(x))}</button>`).join('')}</div>` : '';
   $('planSummary').innerHTML = `${fallbackNote}<div><span class="big">${leaves.length}</span> part${leaves.length === 1 ? '' : 's'} · ${bad.length ? `<span class="badc">${bad.length} do not fit</span> <button class="small" id="autoComplete">Auto-complete</button>` : '<span class="okc">all fit</span>'} · calculated in ${fmt(p.timing.total, 1)} s</div>
     <div class="support-estimate"><b>Support proxy ≈ ${fmt(leaves.reduce((a, l) => a + (l.supportVolume || 0), 0) / 1000, 0)} cm³</b><br><span class="small mute">Downward faces steeper than 45° × height to bed. Before joints; excludes bridges and support density.<br>${esc(supportPreference(p.settings.supportWeight ?? 0.5))} · verify in your slicer.</span>${previous}</div>
-    <div class="small mute" style="margin-top:6px">Parts (click to select, then add a cut through it)</div><div class="partlist">${chips}</div>
-    <div class="small mute" style="margin-top:6px">Cuts (click, then drag the arrow in the 3D view or edit below)</div><div class="partlist">${cutChips || '<span class="mute small">none — the model fits as one part</span>'}</div>`;
+    <div class="small mute" style="margin-top:6px">Parts</div><div class="partlist">${chips}</div>
+    <div class="small mute" style="margin-top:6px">Cuts</div><div class="partlist">${cutChips || '<span class="mute small">none — the model fits as one part</span>'}</div>`;
   $('planSummary').classList.remove('hidden');
   for (const c of $('planSummary').querySelectorAll('[data-leaf]')) c.addEventListener('click', () => { select({ leaf: +c.dataset.leaf }); $('partEditor').querySelector('button')?.focus(); });
   for (const c of $('planSummary').querySelectorAll('[data-cut]')) c.addEventListener('click', () => { select({ cut: +c.dataset.cut }); $('cutEditor').setAttribute('tabindex','-1');$('cutEditor').focus(); });
@@ -807,7 +834,7 @@ function renderCutEditor() {
       <label class="ring-a"><span><i aria-hidden="true"></i>Tilt A · orange ring (°)</span><input id="tiltA" type="number" step="1" value="0"></label><label class="ring-b"><span><i aria-hidden="true"></i>Tilt B · mint ring (°)</span><input id="tiltB" type="number" step="1" value="0"></label></div>
     <div class="btns"><button class="small" data-ax="x">⟂ X</button><button class="small" data-ax="y">⟂ Y</button><button class="small" data-ax="z">⟂ Z</button>
       <button class="small confirm" id="cutApply">Apply</button><button class="small danger" id="cutDelete">Delete cut</button></div>
-    </details><p class="small mute">Drag the blue arrow in 3D to slide. Choose Tilt cut for rotation arcs. Release to apply; Esc cancels. Precise values provides the keyboard alternative.</p>`;
+    </details><p class="small mute">Drag the blue arrow to move the cut, or choose Tilt cut to rotate it. Release applies; Esc cancels.</p>`;
   el.classList.remove('hidden');
   $('cutOffset').addEventListener('input', (e) => { $('cutOffsetNum').value = fmt(+e.target.value, 2); previewCut(n.id, +e.target.value); });
   $('cutOffset').addEventListener('change', (e) => setCut(n.id, null, +e.target.value));
@@ -1047,16 +1074,16 @@ function minWall() { return Math.max(1.2, 2 * +$('nozzle').value * 1.05); }
 // badge + actions for a contact that did not get the chosen style
 function fallbackBlock(p) {
   const fb = p.fallback;
-  const own = p.style || p.force ? `<button class="small" data-pstyle="" data-force="0">Back to automatic (${esc(styleLabel($('jointStyle').value))})</button>` : '';
+  const own = p.style || p.force ? `<button class="small" data-pstyle="" data-force="0" title="Use the automatic style: ${esc(styleLabel($('jointStyle').value))}">Reset to automatic</button>` : '';
   if (fb) {
     const btn = fb.forced
       ? `<div class="small why">Forcing ${esc(fb.want.toLowerCase())} does not work here either.</div>`
-      : `<button class="small" data-pstyle="${esc(p.style || '')}" data-force="1" title="Try ${esc(fb.want.toLowerCase())} again with relaxed limits (2 mm minimum hole depth, 2-perimeter walls)">Use ${esc(fb.want.toLowerCase())} here anyway</button>`;
+      : `<button class="small" data-pstyle="${esc(p.style || '')}" data-force="1" title="Retry ${esc(fb.want.toLowerCase())} with relaxed limits (2 mm minimum hole depth, 2-perimeter walls)">Force ${esc(fb.want.toLowerCase())}</button>`;
     return `<div class="fb small"><div class="head">${ico('alert')}${esc(fbText(fb))}</div><div class="why">${esc(fb.why)}</div><div class="btns">${btn}${own}</div></div>`;
   }
   if (p.single) {
     return `<div class="fb small"><div class="head">${ico('alert')}${esc(singleNote(p))}</div><div class="why">One pin is a pivot: the parts can rotate about it. Keyed pegs or a seam stop that.</div>
-      <div class="btns"><button class="small" data-pstyle="seam" data-force="0">Use seam here</button><button class="small" data-pstyle="keyed" data-force="0">Use keyed peg here</button>${own}</div></div>`;
+      <div class="btns"><button class="small" data-pstyle="seam" data-force="0">Use seam</button><button class="small" data-pstyle="keyed" data-force="0">Use keyed peg</button>${own}</div></div>`;
   }
   return own ? `<div class="btns">${own}</div>` : '';
 }
@@ -1148,7 +1175,7 @@ async function build() {
   busy(false);
   $('buildBtn').disabled = false;
   FLOW?.sync();
-  if (S.built) FLOW?.say('Parts built. Review the geometry checks, then prepare downloads.');
+  if (S.built) FLOW?.say('Parts built. Review the checks, then export.');
 }
 
 function renderBuild(res, ms) {
@@ -1185,12 +1212,12 @@ function linkList(res) {
     else groups.other.push(f);
   }
   const li = (f, label) => { const dl = res.download(f); return `<li><a href="${res.href(f)}" ${dl ? `download="${esc(dl)}"` : ''} ${f.endsWith('.html') ? 'target="_blank" rel="noopener"' : ''}>${esc(label || nice(f))}</a></li>`; };
-  return `<ul class="filelist">${li(res.zip, '⬇ ' + res.zip + ' (everything)')}${li('assembly.html', '📄 Assembly sheet')}${groups.other.filter((f) => f.endsWith('.3mf')).map((f) => li(f)).join('')}</ul>
+  return `<ul class="filelist">${li(res.zip, '⬇ ' + res.zip + ' (all files)')}${li('assembly.html', '📄 Assembly sheet')}${groups.other.filter((f) => f.endsWith('.3mf')).map((f) => li(f)).join('')}</ul>
     <details><summary class="small">${groups.plates.length} plate 3MF · ${groups.parts.length} STL</summary><ul class="filelist">${groups.plates.map((f) => li(f)).join('')}${groups.parts.map((f) => li(f)).join('')}</ul></details>`;
 }
 
 async function exportPkg() {
-  if (!S.built||!readiness(S).ok||!S.built.parts.every(p=>p.status==='NoError')) {toast('Resolve geometry warnings and build before exporting.',true);return;}
+  if (!S.built||!readiness(S).ok||!S.built.parts.every(p=>p.status==='NoError')) {toast('Resolve the warnings and build the parts before exporting.',true);return;}
   $('exportBtn').disabled = true;
   busy('Packaging: orienting parts, packing plates, writing 3MF/STL and the assembly sheet', null);
   try {
@@ -1212,7 +1239,7 @@ async function exportPkg() {
   busy(false);
   $('exportBtn').disabled = false;
   FLOW?.sync();
-  if (S.export) FLOW?.say('Downloads ready. The package contains parts, plates and an assembly sheet.');
+  if (S.export) FLOW?.say('Export ready: parts, plates and assembly sheet.');
 }
 
 async function coupon() {

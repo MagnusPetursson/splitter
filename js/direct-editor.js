@@ -1,7 +1,7 @@
 // Direct manipulation is an input adapter over the application's accepted plan.
 // The preview is disposable; only pointer release submits a geometry request.
 import * as THREE from 'three';
-import {SceneContext,depthProfile} from './scene-context.js?v=59e3b4e';
+import {SceneContext,depthProfile} from './scene-context.js?v=0a51340';
 const $=id=>document.getElementById(id);
 const v3=a=>new THREE.Vector3(...a);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -28,7 +28,7 @@ export class DirectEditor {
     document.addEventListener('keydown',e=>{
       if(app.jed.open||e.target.matches('input,textarea,select')||e.target.closest('dialog,[role="dialog"]'))return;
       if(e.key==='Escape'&&(this.drag||app.S.addMode||this.v.tc.dragging)){
-        e.preventDefault();e.stopImmediatePropagation();this.cancel();app.setAddMode(false);this.v.cancelCut();this.feedback('Edit cancelled. Nothing changed.');return;
+        e.preventDefault();e.stopImmediatePropagation();this.cancel();app.setAddMode(false);this.v.cancelCut();this.feedback('Edit cancelled.');return;
       }
       if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){
         e.preventDefault();if(this.active()&&!this.drag&&!this.v.tc.dragging)app.restore(e.shiftKey?'redo':'undo');

@@ -38,7 +38,7 @@ function died(err) {
   return {
     kind: oom ? 'memory' : 'crash',
     error: oom
-      ? 'The planner ran out of memory (the browser gives one tab only a few GB). The file itself may be fine: let it simplify the mesh, or plan it with the command-line tool.'
+      ? 'The planner ran out of memory (the browser gives one tab only a few GB). The file may be fine: simplify the mesh, or plan it with the command-line tool.'
       : `The planner stopped unexpectedly: ${(err && err.message) || log.split('\n').slice(-3).join(' ') || 'no message'}`,
   };
 }

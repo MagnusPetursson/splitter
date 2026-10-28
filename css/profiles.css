@@ -1,0 +1,17 @@
+/* Profiles extend the existing Configure surface, not the model workflow. */
+.profile-row { display:flex; gap:var(--s-2); align-items:center; margin:var(--s-2) 0 0; }
+.profile-row select { flex:1; min-width:0; width:0; text-overflow:ellipsis; }
+.profile-row button { flex:none; padding:0 var(--s-3); }
+.profile-status { margin:var(--s-1) 0 0; }
+.profile-dialog { width:min(440px, calc(100vw - 32px)); box-sizing:border-box; max-height:calc(100dvh - 32px); }
+.profile-dialog [hidden] { display:none !important; }
+.profile-dialog p { overflow-wrap:anywhere; }
+.profile-dialog input, .profile-dialog select { box-sizing:border-box; width:100%; margin:var(--s-2) 0 var(--s-4); }
+.profile-dialog input[type=file] { min-height:var(--target); font-size:var(--fs-14); }
+.profile-dialog input::file-selector-button { min-height:var(--target); background:var(--surface-2); border:1px solid var(--border-strong); border-radius:var(--r-sm); color:var(--text); font:inherit; margin-right:var(--s-2); padding:0 var(--s-3); }
+.profile-actions { display:grid; grid-template-columns:1fr 1fr; gap:var(--s-2); }
+#profileDelete { grid-column:1/-1; justify-self:start; margin-top:var(--s-3); }
+.profile-current { font-weight:var(--fw-medium); }
+#profileDialogError:empty, #profileImportStatus:empty { display:none; }
+#profileCancel { margin-top:var(--s-3); }
+#saveMeasuredFits { margin-bottom:var(--s-3); }
