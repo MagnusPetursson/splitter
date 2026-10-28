@@ -17,7 +17,6 @@ type Printer struct {
 // All lists the presets. Sources were checked 2026-10-25.
 var All = []Printer{
 	{ID: "prusa-mini", Name: "Prusa MINI / MINI+", Maker: "Prusa", X: 180, Y: 180, Z: 180, Nozzle: 0.4, Source: "https://www.prusa3d.com/product/original-prusa-mini-semi-assembled-3d-printer-4/"},
-	{ID: "prusa-mini-06", Name: "Prusa MINI+ (0.6 nozzle)", Maker: "Prusa", X: 180, Y: 180, Z: 180, Nozzle: 0.6, Source: "https://www.prusa3d.com/product/original-prusa-mini-semi-assembled-3d-printer-4/"},
 	{ID: "prusa-mk4s", Name: "Prusa MK4 / MK4S", Maker: "Prusa", X: 250, Y: 210, Z: 220, Nozzle: 0.4, Source: "https://www.prusa3d.com/product/original-prusa-mk4s-3d-printer-5/"},
 	{ID: "prusa-core-one", Name: "Prusa CORE One / One+", Maker: "Prusa", X: 250, Y: 220, Z: 270, Nozzle: 0.4, Source: "https://www.prusa3d.com/product/prusa-core-one/"},
 	{ID: "prusa-xl", Name: "Prusa XL", Maker: "Prusa", X: 360, Y: 360, Z: 360, Nozzle: 0.4, Source: "https://www.prusa3d.com/product/original-prusa-xl-assembled-single-toolhead-3d-printer/"},
