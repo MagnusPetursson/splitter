@@ -76,6 +76,16 @@ test('names and unknown properties are inert data, not markup or prototype assig
   const r=api.importProfiles(JSON.stringify(payload),{version:1,activeId:null,profiles:[]},printers);
   assert.equal(r.state.profiles[0].name,'<img src=x onerror=alert(1)>');assert.equal({}.polluted,undefined);assert.equal(Object.hasOwn(r.state.profiles[0].settings,'__proto__'),false);
 });
+test('broken legacy fields cannot disable valid saved profiles or overwrite the legacy source',()=>{
+  const state={version:1,activeId:'a',profiles:[{id:'a',name:'Saved',settings}]};
+  for(const raw of ['not json',JSON.stringify({...settings,margin:-5,nozzle:'broken',fits:{...settings.fits,glue:null}})]) {
+    const store=memory({'ps.profiles':JSON.stringify(state),'ps.settings':raw});
+    const r=api.readProfiles(store,printers);
+    assert.equal(r.state.profiles[0].name,'Saved');assert.equal(r.last.margin,3);assert.equal(r.last.nozzle,.4);assert.equal(r.last.fits.glue,.15);
+    assert.equal(store.getItem('ps.settings'),raw);
+  }
+});
+
 test('corrupt or future storage is not silently overwritten',()=>{
   const store=memory({'ps.profiles':'{"version":99,"profiles":[]}'});
   assert.throws(()=>api.readProfiles(store,printers),/version/i);assert.equal(store.getItem('ps.profiles'),'{"version":99,"profiles":[]}');
