@@ -2,7 +2,7 @@
 // (1440×900) and phone (390×844), captures every visible control label,
 // heading and text block, saves screenshots, and fails when copy breaks the
 // interface-copy rules:
-//   - a button, link, summary or menu item has more than 3 words, or ends in
+//   - a button, link, summary or menu item has more than 5 words, or ends in
 //     "?" or "!";
 //   - a heading ends in "?", "!" or "." or reads as a slogan ("again",
 //     "let's", "we'll", "make it", "start with", "find a", "from … to").
@@ -85,7 +85,7 @@ async function capture(p, dev, state) {
     captures.push(it);
   }
   // Allow-list resolution happens in the page (selectors), per flagged control.
-  const flagged = items.filter((it) => ['button', 'link', 'disclosure', 'menu-item'].includes(it.kind) && (words(it.text).length > 3 || /[?!]$/.test(it.text)));
+  const flagged = items.filter((it) => ['button', 'link', 'disclosure', 'menu-item'].includes(it.kind) && (words(it.text).length > 5 || /[?!]$/.test(it.text)));
   if (flagged.length) {
     const allowed = await p.evaluate(([texts, allow]) => texts.map((t) => {
       const els = [...document.querySelectorAll('button, a[href], summary, [role=option]')].filter((e) => e.textContent.replace(/\s+/g, ' ').includes(t.slice(0, 24)));

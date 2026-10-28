@@ -111,7 +111,7 @@ try {
     v = await verdict(p);
     ok(/^Fits in one piece after a 90° turn/.test(v), `${dev} A: headline names the one-piece outcome (${v.split('\n')[0]})`);
     ok(/Current placement is [\d.]+ mm too wide \([\d.]+ \/ [\d.]+ mm\)/.test(v), `${dev} A: sub-line gives the current overage with numbers`);
-    ok(/^Turn 90°$/.test((await p.locator('#flowNext').innerText()).trim()), `${dev} A: footer primary is "Turn 90°"`);
+    ok(/^Turn 90° to fit$/.test((await p.locator('#flowNext').innerText()).trim()), `${dev} A: footer primary is "Turn 90°"`);
     ok(await p.locator('[data-fit-plan]').isVisible() && !(await p.locator('[data-fit-plan]').evaluate(e => e.classList.contains('primary'))), `${dev} A: "Plan cuts anyway" is offered as a secondary`);
     pr = await onePrimary(p, `${dev} A fit`); ok(pr[0] === 'flowNext', `${dev} A: the only primary is the turn`);
     if (dev === 'phone') { await closeSheet(); ok(/^Fits in one piece after a 90° turn/.test(await p.locator('#sheetSummary').innerText()), 'phone A: summary row carries the turn outcome'); await onePrimary(p, 'phone A fit (peek)'); }
@@ -141,7 +141,7 @@ try {
     await p.click('[data-fit-restore]');
     await p.waitForFunction(() => /after a 90° turn/.test(document.querySelector('#fitVerdict').innerText), null, {timeout: 60000}); await idle(p);
     ok((await p.evaluate(() => window.__ps.model.size.slice())).every((x, i) => Math.abs(x - before[i]) < .01), `${dev} A: Undo turn restores the file orientation`);
-    ok(/^Turn 90°$/.test((await p.locator('#flowNext').innerText()).trim()), `${dev} A: after Undo the turn is primary again`);
+    ok(/^Turn 90° to fit$/.test((await p.locator('#flowNext').innerText()).trim()), `${dev} A: after Undo the turn is primary again`);
     if (dev === 'desktop') {
       // Plan cuts anyway → Split review, one primary.
       await p.click('[data-fit-plan]'); await p.waitForFunction(() => window.__ps.plan, null, {timeout: 600000}); await idle(p);

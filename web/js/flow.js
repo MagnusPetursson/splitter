@@ -27,7 +27,7 @@ export function fitAssess(size,u,upright=false){
   const how=resolve==='turn'?'after a 90° turn':'laid on its side';
   // When a quarter turn fits the whole model, the turn is the answer and the
   // current placement is the detail.
-  if(p)return{over,resolve,rot,how,act:resolve==='turn'?'Turn 90°':'Lay on side',head:`Fits in one piece ${how}`,metric:`Current placement is ${short} (${pair})`,
+  if(p)return{over,resolve,rot,how,act:resolve==='turn'?'Turn 90° to fit':'Lay on side to fit',head:`Fits in one piece ${how}`,metric:`Current placement is ${short} (${pair})`,
     short:`Current placement is ${short}`,next:'Turning keeps the size; only the orientation on the bed changes.'};
   const any=upright?'No upright orientation':'No orientation';
   return{over,resolve,head:`Doesn’t fit: ${short}`,metric:`${metric} usable`,short:`${any} fits whole · Plan cuts proposes pieces`,
@@ -161,7 +161,7 @@ export class GuidedFlow {
     $('flowBack').disabled=busy||i===0;
     const canAct=i===0?!!S.model:i<=2?!!S.model:i>=3?ready.ok:false;
     $('flowNext').disabled=busy||!canAct;
-    {const fz=i===1&&this.fit,nt=i===0?(S.model?'Check printer fit':busy?'Loading…':'Next'):fz&&fz.rot?fz.act:fz&&!fz.over.length?'Export one piece':i===1||i===2&&(!S.plan||S.settingsDirty)?`Plan cuts for ${this.printerName()}`:i===2?'Review joints':!ready.ok?(S.pendingPin?'Apply pin edits':'Resolve warnings'):S.export?'Download ZIP':S.built?'Export files':S.outputStale?'Rebuild and export':'Build and export';const m=/^Plan cuts for (.+)$/.exec(nt);if($('flowNext').dataset.t!==nt){$('flowNext').dataset.t=nt;$('flowNext').title=nt==='Export one piece'?'Plan the print orientation, build the part and export the files':fz&&fz.rot&&nt===fz.act?'Turn the model on the bed so it fits in one piece (Undo restores)':S.pendingPin&&i>=3&&!ready.ok?'Apply or discard the pin edits first':nt;$('flowNext').textContent=m?'Plan cuts':nt;}}
+    {const fz=i===1&&this.fit,nt=i===0?(S.model?'Check printer fit':busy?'Loading…':'Next'):fz&&fz.rot?fz.act:fz&&!fz.over.length?'Export one piece':i===1||i===2&&(!S.plan||S.settingsDirty)?`Plan cuts for ${this.printerName()}`:i===2?'Review joints':!ready.ok?(S.pendingPin?'Apply or discard pin edits':'Resolve warnings'):S.export?'Download ZIP':S.built?'Export files':S.outputStale?'Rebuild and export':'Build and export';const m=/^Plan cuts for (.+)$/.exec(nt);if($('flowNext').dataset.t!==nt){$('flowNext').dataset.t=nt;$('flowNext').title=nt==='Export one piece'?'Plan the print orientation, build the part and export the files':fz&&fz.rot&&nt===fz.act?'Turn the model on the bed so it fits in one piece (Undo restores)':S.pendingPin&&i>=3&&!ready.ok?'Apply or discard the pin edits first':nt;$('flowNext').textContent=m?'Plan cuts':nt;}}
     const editing=!$('jointDlg').classList.contains('hidden');
     $('side').inert=busy||editing||!!this.expanded;
     for(const el of document.querySelectorAll('.top, #flowNav, .flow-footer'))el.inert=editing||!!this.expanded;
