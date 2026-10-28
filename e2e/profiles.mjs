@@ -17,8 +17,8 @@ const legacy={printer:'prusa-mini',bedX:'180',bedY:'180',bedZ:'180',nozzle:'0.6'
 try{
 for(const [device,viewport] of [['desktop',{width:1440,height:900}],['phone',{width:390,height:844}]]){
  const ctx=await b.newContext({viewport,isMobile:device==='phone',hasTouch:device==='phone',reducedMotion:'reduce',acceptDownloads:true});
- const p=await ctx.newPage();p.setDefaultTimeout(15000);p.on('pageerror',e=>report.errors.push(device+': '+e.message));
- await p.goto(url);await p.waitForFunction(()=>window.__ps?.workerReady&&document.querySelector('#printer').options.length>5);
+ const p=await ctx.newPage();const requests=[];p.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});p.setDefaultTimeout(15000);p.on('pageerror',e=>report.errors.push(device+': '+e.message));
+ await p.goto(url);await p.waitForFunction(()=>document.querySelector('#printer').options.length>5);
  ok(await p.locator('#profilePicker').count()===1,`${device}: profile picker exists`);
  await p.click('[data-sample="bracket_320mm.stl"]');await p.waitForFunction(()=>document.body.dataset.step==='fit'&&document.querySelector('#busy.hidden'));
  const sheet=async()=>{if(await p.locator('#sheetToggle[aria-expanded=false]').isVisible())await p.click('#sheetToggle');};await sheet();
@@ -27,60 +27,78 @@ for(const [device,viewport] of [['desktop',{width:1440,height:900}],['phone',{wi
   await p.addScriptTag({content:axeSrc});const v=await p.evaluate(async()=>(await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa','best-practice']}})).violations.map(v=>v.id+':'+v.nodes.length));ok(!v.length,`${device}/${n}: axe zero (${v})`);
   ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${device}/${n}: no horizontal page overflow`);
  };
- const menu=async()=>{await p.click('#profileManage');await p.locator('#profileDialog').waitFor({state:'visible'});};
- const name=async(action,value)=>{await menu();await p.click(action);await p.fill('#profileName',value);await p.click('#profileNameSubmit');};
+ const tabTo=async id=>{for(let i=0;i<120;i++){if(await p.evaluate(id=>document.activeElement?.id===id,id))return;await p.keyboard.press('Tab');}throw Error(`Keyboard could not reach ${id}`);};
+ const menu=async()=>{await tabTo('profileManage');await p.keyboard.press('Enter');await p.locator('#profileDialog').waitFor({state:'visible'});};
+ const name=async(action,value)=>{await menu();await p.click(action);await p.fill('#profileName',value);await p.keyboard.press('Enter');};
  ok(await p.locator('#profilePicker option').count()===1,`${device}: no shipped profiles`);
  await p.locator('#printerAdvanced > summary').click();await p.selectOption('#printer','prusa-mini');await p.selectOption('#nozzle','0.6');
  await name('#profileSaveAs','MINI · 0.6 · PETG');
  let state=await saved(p),id=state.activeId;ok(state.profiles.length===1&&state.profiles[0].settings.nozzle===.6,`${device}: saves manufacturer preset with separate nozzle`);
  await shot('picker');await audit('picker');
- await menu();await shot('menu');await audit('menu');await p.keyboard.press('Escape');
+ await menu();await shot('menu');await audit('menu');for(let i=0;i<9;i++){await p.keyboard.press('Tab');ok(await p.evaluate(()=>!!document.activeElement.closest('#profileDialog')),`${device}: dialog traps Tab ${i+1}`);}await p.keyboard.press('Escape');
  ok(await p.locator('#profileManage').evaluate(e=>e===document.activeElement),`${device}: Escape returns focus to opener`);
  await p.fill('#margin','5');await p.locator('#margin').press('Tab');
  ok((await p.locator('#profileStatus').innerText()).includes('Modified'),`${device}: editing marks profile modified`);
  await p.click('#profileSave');ok((await saved(p)).profiles[0].settings.margin===5,`${device}: Save commits edits`);
- await p.fill('#margin','6');await p.locator('#margin').press('Tab');await p.reload();await p.waitForFunction(()=>window.__ps?.workerReady);
+ await p.fill('#margin','6');await p.locator('#margin').press('Tab');await p.reload();await p.waitForFunction(()=>document.querySelector('#printer').options.length>5);
  ok(await p.inputValue('#nozzle')==='0.6'&&await p.inputValue('#margin')==='6',`${device}: reload keeps unsaved last-used values and independent nozzle`);
  ok((await saved(p)).profiles[0].settings.margin===5,`${device}: unsaved edit never overwrites profile`);
  await p.click('[data-sample="bracket_320mm.stl"]');await p.waitForFunction(()=>document.body.dataset.step==='fit'&&document.querySelector('#busy.hidden'));await sheet();
  ok((await p.locator('#profileStatus').innerText()).includes('Modified'),`${device}: modified state survives reload`);
  await p.selectOption('#profilePicker','');await p.selectOption('#profilePicker',id);ok(await p.inputValue('#margin')==='5',`${device}: selection applies saved values`);
+ const beforeTransfer=requests.length;
  await name('#profileRename','PETG calibrated');ok((await saved(p)).profiles[0].name==='PETG calibrated',`${device}: rename persists`);
  await menu();await p.click('#profileExport');
  const download=p.waitForEvent('download');await p.click('#profileDownload');const dl=await download;
  ok(dl.suggestedFilename()==='splitter-profiles.json',`${device}: export filename`);const exportPath=path.join(out,device+'-export.json');await dl.saveAs(exportPath);
  const data=JSON.parse(fs.readFileSync(exportPath,'utf8'));ok(data.version===1&&data.profiles.length===1&&data.profiles[0].settings.fits.snap===.3,`${device}: exported saved profile JSON`);
+ assert.deepEqual(data.profiles[0].settings,{printer:'prusa-mini',bedX:180,bedY:180,bedZ:180,nozzle:.6,margin:5,minPiece:15,style:'glued',fits:{press:.1,glue:.2,slip:.25,snap:.3,seam:.2}});ok(true,`${device}: export preserves every printer/material field`);
  ok(!JSON.stringify(data).includes('upright')&&!JSON.stringify(data).includes('activeId'),`${device}: export excludes model state and storage identifiers`);
- await p.keyboard.press('Escape');
- const upload=async text=>{await menu();await p.click('#profileImport');await p.locator('#profileFile').setInputFiles({name:'profiles.json',mimeType:'application/json',buffer:Buffer.from(text)});};
+ await p.selectOption('#profileExportScope','all');const allDownload=p.waitForEvent('download');await p.click('#profileDownload');const allDL=await allDownload;const allPath=path.join(out,device+'-all-export.json');await allDL.saveAs(allPath);ok(JSON.parse(fs.readFileSync(allPath,'utf8')).profiles.length===1,`${device}: all-profiles export works`);await p.keyboard.press('Escape');
+ const upload=async text=>{await menu();await p.click('#profileImport');await p.locator('#profileFile').setInputFiles({name:'profiles.json',mimeType:'application/json',buffer:Buffer.from(text)});await p.waitForFunction(()=>document.querySelector('#profileImportStatus').textContent.length>0);};
  await upload('not JSON');ok((await p.locator('#profileImportStatus').innerText()).includes('Invalid JSON'),`${device}: malformed JSON rejected visibly`);ok((await saved(p)).profiles.length===1,`${device}: malformed import does not change profiles`);await shot('import-error');await audit('import-error');await p.keyboard.press('Escape');
  await upload(JSON.stringify({...data,profiles:[data.profiles[0],{name:'Custom test',settings:{...data.profiles[0].settings,printer:'not-a-printer',bedX:99999}}]}));
  ok((await p.locator('#profileImportStatus').innerText()).includes('Imported 2 profiles'),`${device}: import reports count`);
  ok((await p.locator('#profileImportStatus').innerText()).includes('Adjusted'),`${device}: import reports normalisation`);
  state=await saved(p);ok(state.profiles.length===3&&state.profiles[2].settings.bedX===2000&&state.profiles[2].settings.printer==='custom',`${device}: unknown printer becomes custom and out-of-range volume clamps`);
- ok(state.profiles[1].name==='PETG calibrated (2)'&&state.activeId===id,`${device}: import does not overwrite or apply`);await shot('import');await audit('import');await p.keyboard.press('Escape');
- await p.selectOption('#profilePicker',state.profiles[2].id);ok(await p.inputValue('#bedX')==='2000',`${device}: imported custom profile applies`);await p.selectOption('#profilePicker',id);
+ ok(state.profiles[1].name==='PETG calibrated (2)'&&state.activeId===id,`${device}: import does not overwrite or apply`);ok(await p.locator('#profileCancel').innerText()==='Done',`${device}: successful import offers Done, not Cancel`);await p.locator('#profileImportAdjustments summary').click();await shot('import');await audit('import');await p.keyboard.press('Escape');
+ await menu();await p.click('#profileExport');await p.selectOption('#profileExportScope','all');const pack=p.waitForEvent('download');await p.click('#profileDownload');const packDL=await pack,packPath=path.join(out,device+'-all-export.json');await packDL.saveAs(packPath);ok(JSON.parse(fs.readFileSync(packPath,'utf8')).profiles.length===3,`${device}: all-profiles export includes all three records`);await p.keyboard.press('Escape');
+ await tabTo('profilePicker');await p.keyboard.press('End');ok(await p.inputValue('#bedX')==='2000',`${device}: keyboard selection applies imported custom profile`);await p.keyboard.press('Home');await p.keyboard.press('ArrowDown');ok(await p.inputValue('#bedX')==='180',`${device}: keyboard reselects saved printer`);
+ ok(requests.length===beforeTransfer,`${device}: rename, export, import and selection make no network requests`);
  // Real coupon generation, followed by the measured-clearance entry point.
- await p.click('#expertMode');await p.locator('.coupon > summary').click();await p.click('#couponBtn');await p.waitForSelector('#couponInfo a[download$=".zip"]',{timeout:120000});
+ await p.click('#flowNext');await p.waitForFunction(()=>window.__ps.plan&&!window.__ps.settingsDirty&&document.querySelector('#busy.hidden'),null,{timeout:120000});
+ await p.click('#flowNav [data-step="export"]');await sheet();await p.locator('.coupon > summary').click();await p.click('#couponBtn');await p.waitForSelector('#couponInfo a[download$=".zip"]',{timeout:120000});
  await p.click('#couponEnterFits');
  ok(await p.locator('.fits').getAttribute('open')!==null,`${device}: coupon opens fit clearance inputs`);
  await p.fill('[data-fit=press]','0.13');await p.fill('[data-fit=glue]','0.23');await p.locator('[data-fit=glue]').press('Tab');
  ok(await p.locator('#saveMeasuredFits').isVisible(),`${device}: measured fits offer profile save`);
  await p.click('#saveMeasuredFits');state=await saved(p);ok(state.profiles.find(x=>x.id===id).settings.fits.press===.13&&state.profiles.find(x=>x.id===id).settings.fits.glue===.23,`${device}: coupon measurements saved to current profile`);
- await shot('coupon-saved');
+ ok(await p.evaluate(()=>window.__ps.settingsDirty),`${device}: changed fits invalidate the existing plan`);await shot('coupon-saved');
  // Delete must require a second, explicit confirmation; cancelling changes nothing.
  await menu();await p.click('#profileDelete');await p.click('#profileCancel');ok((await saved(p)).profiles.length===3,`${device}: delete cancellation preserves profile`);
  await menu();await p.click('#profileDelete');await p.click('#profileDeleteConfirm');ok((await saved(p)).profiles.length===2&&(await saved(p)).activeId===null,`${device}: confirmed delete removes selected profile only`);
- await p.reload();await p.waitForFunction(()=>window.__ps?.workerReady);ok((await saved(p)).profiles.length===2,`${device}: deletion persists`);
+ await p.reload();await p.waitForFunction(()=>document.querySelector('#printer').options.length>5);ok((await saved(p)).profiles.length===2,`${device}: deletion persists`);
+ await p.click('[data-sample="bracket_320mm.stl"]');await p.waitForFunction(()=>document.body.dataset.step==='fit'&&document.querySelector('#busy.hidden'));await sheet();await p.click('#resetDefaults');
+ ok((await saved(p)).profiles.length===2,`${device}: Reset defaults keeps named profiles`);ok(await p.evaluate(()=>localStorage.getItem('ps.settings')===null),`${device}: Reset defaults preserves existing clear-last-used behaviour`);
  await ctx.close();
  // Migration on an independent browser context, before any profile record exists.
  const migration=await b.newContext({viewport});await migration.addInitScript(old=>{if(!sessionStorage.getItem('seeded')){localStorage.setItem('ps.settings',JSON.stringify(old));sessionStorage.setItem('seeded','1');}},legacy);
- const q=await migration.newPage();await q.goto(url);await q.waitForFunction(()=>window.__ps?.workerReady);
+ const q=await migration.newPage();await q.goto(url);await q.waitForFunction(()=>document.querySelector('#printer').options.length>5);
  ok(await q.inputValue('#nozzle')==='0.6'&&await q.inputValue('#margin')==='0'&&await q.inputValue('[data-fit=press]')==='0.11',`${device}: legacy migration retains nozzle, zero margin and measured fits`);
  ok(await q.isChecked('#upright')&&await q.inputValue('#supportWeight')==='0',`${device}: legacy model-specific preferences kept outside profiles`);
  ok(await q.evaluate(()=>localStorage.getItem('ps.settings')===JSON.stringify({printer:'prusa-mini',bedX:'180',bedY:'180',bedZ:'180',nozzle:'0.6',margin:'0',minPiece:'17',style:'press',upright:true,tilted:true,supportWeight:0,fits:{press:'0.11',glue:'0.21',slip:'0.26',snap:'0.31',seam:'0.22'}})),`${device}: migration leaves legacy record intact`);
  await migration.close();
 }
+// Storage failures must leave values usable, without claiming a successful save.
+const quota=await b.newContext({viewport:{width:390,height:844}});
+await quota.addInitScript(()=>{const set=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k==='ps.profiles')throw new DOMException('Full','QuotaExceededError');return set.call(this,k,v);};});
+const qp=await quota.newPage();await qp.goto(url);await qp.waitForFunction(()=>document.querySelector('#printer').options.length>5);await qp.click('[data-sample="bracket_320mm.stl"]');await qp.waitForFunction(()=>document.body.dataset.step==='fit'&&document.querySelector('#busy.hidden'));
+if(await qp.locator('#sheetToggle[aria-expanded=false]').isVisible())await qp.click('#sheetToggle');
+await qp.click('#profileManage');await qp.click('#profileSaveAs');await qp.fill('#profileName','Quota test');await qp.keyboard.press('Enter');
+ok((await qp.locator('#profileDialogError').innerText()).includes('Could not save profiles'),'quota failure is visible');ok(await qp.evaluate(()=>localStorage.getItem('ps.profiles')===null),'quota failure does not claim stored data');ok(await qp.locator('#profileDialog').isVisible(),'quota failure keeps form open for recovery');await quota.close();
+const corrupt=await b.newContext();await corrupt.addInitScript(()=>localStorage.setItem('ps.profiles','{"version":99,"profiles":[]}'));
+const cp=await corrupt.newPage();await cp.goto(url);await cp.waitForFunction(()=>document.querySelector('#printer').options.length>5);
+ok(await cp.locator('#profilePicker').isDisabled(),'future storage version is protected');ok(await cp.evaluate(()=>localStorage.getItem('ps.profiles')==='{"version":99,"profiles":[]}'),'unsupported storage is preserved exactly');await corrupt.close();
 ok(!report.errors.length,'no browser errors');
 }finally{fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));await b.close();}
 console.log(JSON.stringify(report,null,2));

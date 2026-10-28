@@ -17,6 +17,16 @@
 
 ![Cut planning: the bowl with its cut planes and the joint map for a ring-shaped section](docs/plan.png)
 
+## Profiles
+
+In Fit, use **Profiles… → Save as…** to name your printer and material settings. A profile stores the printer or custom volume, nozzle, margin, minimum piece size, joint style and all five fit clearances. It does not store a model, cuts, scale, orientation or support preference.
+
+Selecting a profile applies its saved values. Edits show **Modified · Save to keep**; **Save** updates the profile. Last-used settings still return after a reload, including unsaved edits. **Rename** changes the name; **Delete** asks for confirmation and leaves the current settings in place. Reset defaults does not delete profiles.
+
+After printing the joint coupon, choose **Enter measured fits**, fill in the clearances, then **Save fits to profile** (or save a new profile). A saved profile is not a physical fit guarantee.
+
+Profiles stay in this browser, on this site: no account, server or upload. **Export** downloads the current or all saved profiles as `splitter-profiles.json`; keep a copy before clearing browser data or moving devices. **Import** adds profiles without overwriting existing ones and reports adjusted values. Invalid files, negative/non-finite numbers and unknown joint styles are rejected; bounded values are normalised to the planner defaults and supported input ranges. Unknown printer ids keep their volume as a custom printer. The app ships with no saved profiles.
+
 ## Joint placement
 
 - Each cut face is rasterised and split into **contact patches**, one for each pair of parts that touch there.

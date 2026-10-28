@@ -66,7 +66,7 @@ try {
     const before = await p.evaluate(() => window.__ps.model.size.slice());
     // Round 3 supersedes the in-card turn button: the turn is the footer primary.
     ok(/^Fits in one piece after a 90° turn/.test(await p.locator('#sheetSummary').innerText()) || dev !== 'phone', `${dev}: phone summary names the quarter-turn fix`);
-    ok(/^Turn 90°$/.test((await p.locator('#flowNext').innerText()).trim()), `${dev}: offers the quarter turn`);
+    ok(/^Turn 90° to fit$/.test((await p.locator('#flowNext').innerText()).trim()), `${dev}: offers the quarter turn`);
     await p.click('#flowNext');
     await p.waitForFunction(() => /Within usable/.test(document.querySelector('#fitVerdict').innerText), null, {timeout: 60000}); await idle(p);
     const after = await p.evaluate(() => window.__ps.model.size.slice());

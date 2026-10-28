@@ -8,6 +8,7 @@ import { DirectEditor } from './direct-editor.js';
 import { MergeLayer } from './merge.js';
 import { ico, plural } from './icons.js';
 import { PlanHistory, readiness } from './readiness.js';
+import { ProfileControls } from './profile-controls.js';
 import { LIMITS, estimateTris, estimateMemMB, estimateLoadSec, estimatePlanSec, fmtTris, fmtDur, fmtMem, msgText, Progress, LOAD_STAGES, PLAN_STAGES, crumbSet, crumbClear, crumbTake } from './progress.js';
 
 const $ = (id) => document.getElementById(id);
@@ -51,22 +52,40 @@ let FLOW = null;
 const history=new PlanHistory();
 let DIRECT=null;
 let MERGE=null;
-function save() {
-  const s = {
+let PROFILES=null;
+function captureSettings() {
+  return {
     printer: $('printer').value, bedX: $('bedX').value, bedY: $('bedY').value, bedZ: $('bedZ').value,
     margin: $('margin').value, nozzle: $('nozzle').value, minPiece: $('minPiece').value, style: $('jointStyle').value,
     upright: $('upright').checked, tilted: $('tilted').checked, supportWeight: $('supportWeight').value,
     fits: Object.fromEntries([...document.querySelectorAll('[data-fit]')].map((i) => [i.dataset.fit, i.value])),
   };
-  localStorage.setItem('ps.settings', JSON.stringify(s));
+}
+function save() {
+  try { localStorage.setItem('ps.settings', JSON.stringify(captureSettings())); }
+  catch { toast('Could not save last-used settings in this browser.', true); }
+  settingsChanged();
+}
+function settingsChanged() {
+  PROFILES?.sync();
   if (S.plan) {
     const next=settings(), old=S.plan.settings;
-    S.settingsDirty=['bed','margin','nozzle','minPiece','upright','tilted','fits'].some(k=>JSON.stringify(next[k])!==JSON.stringify(old[k]));
+    S.settingsDirty=['bed','margin','nozzle','minPiece','jointStyle','upright','tilted','fits'].some(k=>JSON.stringify(next[k])!==JSON.stringify(old[k]));
     FLOW?.sync();
   }
 }
 function load() {
   try { return JSON.parse(localStorage.getItem('ps.settings') || 'null'); } catch (_) { return null; }
+}
+
+function applyProfile(s) {
+  $('printer').value = s.printer;
+  if (s.printer !== 'custom') applyPrinter(false);
+  else $('printerSource').textContent = '';
+  for (const k of ['bedX','bedY','bedZ','margin','nozzle','minPiece']) $(k).value = s[k];
+  $('jointStyle').value = s.style;
+  for (const i of document.querySelectorAll('[data-fit]')) i.value = s.fits[i.dataset.fit];
+  updateBed();save();FLOW?.sync();
 }
 
 // ---------------- worker ----------------
@@ -154,15 +173,21 @@ async function init() {
   DEFAULTS = { margin: $('margin').value, minPiece: $('minPiece').value, style: 'glued' };
   const bv = $('buildVer');
   if (bv.dataset.v.startsWith('__')) bv.textContent = 'dev build';
-  const saved = load();
+  PROFILES = new ProfileControls({printers:S.printers,capture:captureSettings,apply:applyProfile,notify:toast,openFits:()=>{
+    FLOW.go('fit');
+    if ($('sheetToggle').getAttribute('aria-expanded') === 'false') $('sheetToggle').click();
+    $('printerAdvanced').open = true;document.querySelector('.fits').open = true;
+    document.querySelector('[data-fit]').focus();
+  }});
+  const saved = PROFILES.last || load();
   $('restoredNote').classList.toggle('hidden', !saved);
   if (saved) {
-    sel.value = saved.printer || 'prusa-core-one';
-    for (const k of ['bedX', 'bedY', 'bedZ', 'margin', 'nozzle', 'minPiece']) if (saved[k]) $(k).value = saved[k];
+    sel.value = S.printers.some(p=>p.id===saved.printer) ? saved.printer : 'custom';
+    for (const k of ['bedX', 'bedY', 'bedZ', 'margin', 'nozzle', 'minPiece']) if (saved[k] != null) $(k).value = saved[k];
     if (saved.style) $('jointStyle').value = saved.style;
     if (saved.supportWeight != null && Number.isFinite(+saved.supportWeight)) $('supportWeight').value = saved.supportWeight;
     $('upright').checked = !!saved.upright; $('tilted').checked = !!saved.tilted;
-    for (const i of document.querySelectorAll('[data-fit]')) if (saved.fits && saved.fits[i.dataset.fit]) i.value = saved.fits[i.dataset.fit];
+    for (const i of document.querySelectorAll('[data-fit]')) if (saved.fits && saved.fits[i.dataset.fit] != null) i.value = saved.fits[i.dataset.fit];
     if (sel.value !== 'custom') applyPrinter(false);
   } else {
     sel.value = 'prusa-core-one';
@@ -170,6 +195,7 @@ async function init() {
   }
   updateBed();
   updateSupportPreference();
+  PROFILES.sync();
   bind();
   DIRECT=new DirectEditor({syncFlow:()=>FLOW?.sync(),S,viewer,jmap,jed,history,setView,build,selectJoint,selectFace,setAddMode,protoJoint,moveJoint,addJoint,deleteJoint,jointName,restore:restorePlan,editJoint:j=>{Object.assign(S.plan.joints.find(x=>x.id===j.id),j);updateJoint(S.plan.joints.find(x=>x.id===j.id));}});
   FLOW = new GuidedFlow({ S, viewer, setView, split:()=>runPlan('auto'), prepare:async()=>{if(!S.built)await build();if(S.built&&S.built.parts.every(p=>p.status==='NoError'))await exportPkg();},onSync:()=>{DIRECT?.sync();MERGE?.sync();} });
@@ -188,6 +214,7 @@ function resetDefaults() {
   applyPrinter(true);
   updateBed();
   $('restoredNote').classList.add('hidden');
+  settingsChanged();
   toast(`Defaults restored: ${styleLabel(DEFAULTS.style)}, ${$('printer').selectedOptions[0].textContent}`);
   if (S.plan && changed) runPlan('joints');
 }
@@ -211,7 +238,7 @@ function applyPrinter(resetFits) {
   const p = S.printers.find((x) => x.id === $('printer').value);
   if (!p) return;
   $('bedX').value = p.x; $('bedY').value = p.y; $('bedZ').value = p.z;
-  $('nozzle').value = String(p.nozzle);
+  if (resetFits) $('nozzle').value = String(p.nozzle);
   $('printerSource').innerHTML = `Volume per <a href="${esc(p.source)}" target="_blank" rel="noopener">manufacturer spec</a>${p.note ? ' · ' + esc(p.note) : ''}`;
   if (resetFits) setFits();
 }

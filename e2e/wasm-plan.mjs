@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 const [url,model]=process.argv.slice(2);
-const browser=await chromium.launch();
+const browser=await chromium.launch({args:process.env.SPLITTER_HOST_RESOLVER_RULES?['--host-resolver-rules='+process.env.SPLITTER_HOST_RESOLVER_RULES]:[]});
 const page=await browser.newPage();
 page.on('console',m=>console.log(m.type(),m.text()));
 page.on('pageerror',e=>console.error(e.stack));
