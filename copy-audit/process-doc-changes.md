@@ -55,4 +55,9 @@ These lines mention checks, tests or limits, but they describe how to use the pr
 
 ## Verification
 
-See the commit message for the commands that were run and their exit codes.
+| Target | copy-check | design-r3 | design-r4 | profiles |
+| --- | --- | --- | --- | --- |
+| Local static build (`scripts/build-static.sh`, served by `caddy file-server`) | PASS, exit 0 | PASS, 121 checks | PASS, 111 checks | PASS, 118 checks, 0 errors |
+| Tailnet preview `splitter-wip/copy/`, build `56a7d16` | PASS, exit 0 | PASS, 121 checks | PASS, 111 checks | PASS, 118 checks, 0 errors |
+
+A browser probe of the preview read back the new 3D view name, a seven-entry FAQ with no accessibility entry, the shortened footer and the five rewritten alt texts.
