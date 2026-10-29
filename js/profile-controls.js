@@ -1,4 +1,4 @@
-import {PROFILE_KEY, MAX_FILE_BYTES, FIT_KEYS, profileName, normalizeSettings, readProfiles, importProfiles, exportProfiles} from './profiles.js?v=0a51340';
+import {PROFILE_KEY, MAX_FILE_BYTES, FIT_KEYS, profileName, normalizeSettings, readProfiles, importProfiles, exportProfiles} from './profiles.js?v=30a0f0c';
 const $ = id => document.getElementById(id);
 
 export class ProfileControls {

@@ -227,7 +227,7 @@ export class Viewer {
     const dom = this.renderer.domElement;
     dom.tabIndex = 0;
     dom.setAttribute('role', 'img');
-    dom.setAttribute('aria-label', 'Interactive 3D model. Arrow keys orbit, Shift and arrows pan, plus and minus zoom, F fits. Cut and part buttons in Split provide an accessible selection alternative.');
+    dom.setAttribute('aria-label', 'Interactive 3D model. Arrow keys orbit, Shift and arrows pan, plus and minus zoom, F fits. To select a cut or part, use its button in Split.');
     dom.addEventListener('keydown', e => this.cameraKey(e));
     dom.addEventListener('pointerdown', (e) => { this._down = [e.clientX, e.clientY]; });
     dom.addEventListener('pointerup', (e) => {

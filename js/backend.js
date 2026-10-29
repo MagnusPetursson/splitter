@@ -79,7 +79,7 @@ function localBackend() {
   const pending = {};
   const fail = (err) => { for (const k of Object.keys(pending)) { pending[k].reject(err); delete pending[k]; } };
   function spawn() {
-    w = new Worker(new URL('./gowork.js?v=0a51340', import.meta.url), { type: 'module' });
+    w = new Worker(new URL('./gowork.js?v=30a0f0c', import.meta.url), { type: 'module' });
     w.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'goprogress') { if (onProgress) onProgress(m); return; }

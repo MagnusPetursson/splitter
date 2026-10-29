@@ -1,7 +1,7 @@
 // 2D joint map of one cut face: distance field, contact patches, joints.
 // The same class draws the small inline preview in the side panel and the
 // large zoomable editor overlay ({zoomable: true, fill: true}).
-import { partColor } from './viewer.js?v=0a51340';
+import { partColor } from './viewer.js?v=30a0f0c';
 
 function b64(s) {
   const bin = atob(s);

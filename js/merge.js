@@ -3,10 +3,10 @@
 // It owns no planner state; every action calls the same app functions the
 // step panels use, so simple and expert modes always edit one plan.
 import * as THREE from 'three';
-import {readiness} from './readiness.js?v=0a51340';
+import {readiness} from './readiness.js?v=30a0f0c';
 
 const $ = id => document.getElementById(id);
-import {plural,ico} from './icons.js?v=0a51340';
+import {plural,ico} from './icons.js?v=30a0f0c';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toLocaleString('en-US', {maximumFractionDigits: d});
 const phone = () => matchMedia('(max-width:760px)').matches;

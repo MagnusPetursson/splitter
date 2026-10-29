@@ -1,15 +1,15 @@
 // print-splitter UI controller.
-import { Viewer, partColor, KIND_COLORS } from './viewer.js?v=0a51340';
-import { JointMap } from './jointmap.js?v=0a51340';
-import { JointEditor } from './jointeditor.js?v=0a51340';
-import { createBackend } from './backend.js?v=0a51340';
-import { GuidedFlow } from './flow.js?v=0a51340';
-import { DirectEditor } from './direct-editor.js?v=0a51340';
-import { MergeLayer } from './merge.js?v=0a51340';
-import { ico, plural } from './icons.js?v=0a51340';
-import { PlanHistory, readiness } from './readiness.js?v=0a51340';
-import { ProfileControls } from './profile-controls.js?v=0a51340';
-import { LIMITS, estimateTris, estimateMemMB, estimateLoadSec, estimatePlanSec, fmtTris, fmtDur, fmtMem, msgText, Progress, LOAD_STAGES, PLAN_STAGES, crumbSet, crumbClear, crumbTake } from './progress.js?v=0a51340';
+import { Viewer, partColor, KIND_COLORS } from './viewer.js?v=30a0f0c';
+import { JointMap } from './jointmap.js?v=30a0f0c';
+import { JointEditor } from './jointeditor.js?v=30a0f0c';
+import { createBackend } from './backend.js?v=30a0f0c';
+import { GuidedFlow } from './flow.js?v=30a0f0c';
+import { DirectEditor } from './direct-editor.js?v=30a0f0c';
+import { MergeLayer } from './merge.js?v=30a0f0c';
+import { ico, plural } from './icons.js?v=30a0f0c';
+import { PlanHistory, readiness } from './readiness.js?v=30a0f0c';
+import { ProfileControls } from './profile-controls.js?v=30a0f0c';
+import { LIMITS, estimateTris, estimateMemMB, estimateLoadSec, estimatePlanSec, fmtTris, fmtDur, fmtMem, msgText, Progress, LOAD_STAGES, PLAN_STAGES, crumbSet, crumbClear, crumbTake } from './progress.js?v=30a0f0c';
 
 const $ = (id) => document.getElementById(id);
 const api = (p) => new URL(p, document.baseURI).href;
@@ -89,7 +89,7 @@ function applyProfile(s) {
 }
 
 // ---------------- worker ----------------
-const worker = new Worker(new URL('./worker.js?v=0a51340', import.meta.url), { type: 'module' });
+const worker = new Worker(new URL('./worker.js?v=30a0f0c', import.meta.url), { type: 'module' });
 const pending = {};
 worker.onmessage = (e) => {
   const m = e.data;

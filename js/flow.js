@@ -1,6 +1,6 @@
 // Five workflow steps share one model and plan. No duplicated planner state.
-import {readiness} from './readiness.js?v=0a51340';
-import {ico} from './icons.js?v=0a51340';
+import {readiness} from './readiness.js?v=30a0f0c';
+import {ico} from './icons.js?v=30a0f0c';
 const $ = id => document.getElementById(id);
 const steps = ['load','fit','split','join','export'];
 const panels = ['stepModel','stepPrinter','stepSplit','stepJoints','stepExport'];

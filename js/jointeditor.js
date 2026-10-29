@@ -1,7 +1,7 @@
 // Pop-out joint editor: a large, zoomable view of one cut face on top of
 // the main window. It drives the same plan as the inline map (the app's
 // callbacks), so every change also shows in the 3D view.
-import { JointMap } from './jointmap.js?v=0a51340';
+import { JointMap } from './jointmap.js?v=30a0f0c';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

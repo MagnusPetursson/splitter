@@ -1,7 +1,7 @@
 // Direct manipulation is an input adapter over the application's accepted plan.
 // The preview is disposable; only pointer release submits a geometry request.
 import * as THREE from 'three';
-import {SceneContext,depthProfile} from './scene-context.js?v=0a51340';
+import {SceneContext,depthProfile} from './scene-context.js?v=30a0f0c';
 const $=id=>document.getElementById(id);
 const v3=a=>new THREE.Vector3(...a);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));

@@ -1,6 +1,6 @@
 // Geometry worker: owns the Manifold WASM instance so the UI never blocks.
 import Module from '../vendor/manifold/manifold.js';
-import { createBuilder } from './builder.js?v=0a51340';
+import { createBuilder } from './builder.js?v=30a0f0c';
 
 let wasm = null, B = null, M = null;
 // above this many triangles the post-build checks are limited to slabs
