@@ -1,4 +1,4 @@
-// Design round 4 contract, at 1440×900, 1280×720
+// Layout contract at 1440×900, 1280×720
 // and 390×844 (phone at DPR 3), first visit so the viewer hint is showing:
 //  1. the Fit verdict is the step headline (largest panel text) and the
 //     printer is a compact "Printer: <name> · Change" row on the native select;
