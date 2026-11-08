@@ -37,7 +37,7 @@ async function audit(p, name, {axe = true} = {}) {
       if (a.left < -1 || a.right > innerWidth + 1 || a.top < -1 || a.bottom > innerHeight + 1) collide.push(`${boxes[i].id} off-screen`);
       for (let j = i + 1; j < boxes.length; j++) { const b = boxes[j].r, w = Math.min(a.right, b.right) - Math.max(a.left, b.left), h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top); if (w > 2 && h > 2) collide.push(`${boxes[i].id} × ${boxes[j].id}`); }
     }
-    // One primary per view (DESIGN.md V7). An open modal dialog is its own view.
+    // One primary per view. An open modal dialog is its own view.
     const modal = document.querySelector('dialog[open]'), scope = modal || document;
     const primaries = [...scope.querySelectorAll('.primary')].filter(vis).filter(e => modal || !e.closest('dialog')).map(e => e.id || e.textContent.trim().slice(0, 30));
     return {primaries, collide, leaks: text.split('\n').filter(t => /\[object|\bundefined\b|\bNaN\b/.test(t)).slice(0, 5), overflow: document.documentElement.scrollWidth > innerWidth + 1, small};

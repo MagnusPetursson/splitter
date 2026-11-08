@@ -18,7 +18,7 @@ export function fitAssess(size,u,upright=false){
   // Quarter-turn taking old axis p[i] to new axis i; one row is negated when
   // the permutation is odd, so it is a rotation (det +1), never a mirror.
   let rot=null;if(p){rot=[0,0,0,0,0,0,0,0,0];p.forEach((a,i)=>rot[i*3+a]=1);const odd=(p[0]>p[1])+(p[0]>p[2])+(p[1]>p[2]);if(odd%2)rot[0*3+p[0]]=-1;}
-  // Round 3: a fitting model is a decision, not a warning. The headline names
+  // A fitting model is a decision, not a warning. The headline names
   // the outcome; the metric line proves it axis by axis.
   if(!over.length)return{over,resolve,head:'Fits in one piece',metric:`Within usable: W ${mm(size[0])} · D ${mm(size[1])} · H ${mm(size[2])} mm`,
     short:'W, D and H all within usable · no cut needed',next:''};
@@ -89,7 +89,7 @@ export class GuidedFlow {
   printerName() {return this.S.printers.find(p=>p.id===$('printer').value)?.name||'custom printer';}
   async next() {
     if(this.step==='load'){this.go('fit');return;}
-    // Fit branches (round 3): a quarter turn that fits is the step's action;
+    // Fit branches: a quarter turn that fits is the step's action;
     // a fitting model continues straight to a one-piece export.
     if(this.step==='fit'&&this.fit?.rot){this.turn();return;}
     if(this.step==='fit'&&this.fit&&!this.fit.over.length){await this.continueWhole();return;}
@@ -193,7 +193,7 @@ export class GuidedFlow {
       $('fitVerdict').querySelector('[data-fit-restore]')?.addEventListener('click',()=>dispatchEvent(new CustomEvent('ps-rotate',{detail:'restore'})));$('fitVerdict').querySelectorAll('.pn').forEach(e=>e.textContent=pn);}}
     $('fitVerdict').classList.toggle('over',!!f&&f.over.length>0&&!f.rot);$('fitVerdict').classList.toggle('turnable',!!f?.rot);$('fitVerdict').classList.toggle('fits',!!f&&!f.over.length);
     $('fitVerdict').dataset.resolve=f?f.resolve:'';
-    // Round 4: the verdict is the step's headline; the printer is a compact
+    // The verdict is the step's headline; the printer is a compact
     // subordinate row and the "nothing is scaled" note joins the usable note.
     {const h=$('fitHeading'),t=f?f.head:'Printer fit';if(h.textContent!==t)h.textContent=t;h.dataset.tone=!f?'':f.rot?'turn':f.over.length?'over':'fits';$('fitIntro').hidden=!!f;const pv=$('printerValue'),pn=$('printer').value==='custom'?`Custom ${['bedX','bedY','bedZ'].map(i=>+$(i).value||0).join(' × ')} mm`:this.printerName().replace(/\s+—\s+[\d.×]+$/,'');if(pv.textContent!==pn)pv.textContent=pn;}
     const simp=S.model?.simplified;$('fitMeshNote').hidden=!simp;

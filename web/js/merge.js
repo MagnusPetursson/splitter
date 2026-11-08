@@ -26,10 +26,10 @@ export class MergeLayer {
     const hint = $('gestureHint');
     hint.hidden = store('ps.gestureHint') === '0';
     $('dismissGesture').addEventListener('click', () => { hint.hidden = true; store('ps.gestureHint', '0'); this.v.renderer.domElement.focus(); });
-    // Round 4: the hint has done its job once the user has orbited; it then
+    // The hint has done its job once the user has orbited; it then
     // leaves for good instead of covering the lower edge of the view.
     this.v.controls.addEventListener('start', () => { if (hint.hidden) return; clearTimeout(this.hintT); this.hintT = setTimeout(() => { hint.hidden = true; store('ps.gestureHint', '0'); }, 600); });
-    // Cut drags snap to 1 mm / 5°; hold Shift for 0.1 mm / 1° (lane A).
+    // Cut drags snap to 1 mm / 5°; hold Shift for 0.1 mm / 1°.
     const snap = fine => { this.v.tc.setTranslationSnap(fine ? 0.1 : 1); this.v.tc.setRotationSnap((fine ? 1 : 5) * Math.PI / 180); };
     snap(false);
     addEventListener('keydown', e => { if (e.key === 'Shift') snap(true); });
@@ -55,11 +55,11 @@ export class MergeLayer {
     // Letters render at ≥ 12.5 CSS px whatever size the triad is drawn at.
     const tw = this.triadW || 64, fs = Math.max(19, Math.min(22, 12.5 * 74 / tw)), phone = innerWidth <= 760;
     const axes = [[1,0,0,'X','#ffa69c'],[0,1,0,'Y','#b6ed88'],[0,0,1,'Z','#a8d8ee']];
-    // Round 4 (phone): no disc, longer and heavier arms from a dot origin and
+    // Phone: no disc, longer and heavier arms from a dot origin and
     // letters well past each tip, so the three letters never cluster.
     const arm = phone ? 19 : 15, off = phone ? 9 : 10;
     $('triadLines').innerHTML = (phone ? '<circle cx="37" cy="37" r="2.6" fill="#dfe8e5"/>' : '') + axes.map(([x,y,z,name,color]) => {
-      // Round 3: shorter arms and larger, haloed letters placed past each tip;
+      // Shorter arms and larger, haloed letters placed past each tip;
       // an axis pointing away from the camera is drawn dimmer and behind.
       const n = new THREE.Vector3(x,y,z).applyQuaternion(q), px = 37 + n.x * arm, py = 37 - n.y * arm, len = Math.hypot(n.x, n.y) || 1, back = n.z < -0.2;
       const lx = 37 + n.x / len * Math.max(arm * len + off, 12), ly = 37 - n.y / len * Math.max(arm * len + off, 12);

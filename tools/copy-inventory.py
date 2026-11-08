@@ -2,7 +2,7 @@
 """Inventory user-visible copy from source (HTML text/attributes, JS string
 literals that look like prose, Markdown docs) into a CSV.
 
-  python3 tools/copy-inventory.py > copy-audit/inventory-source.csv
+  python3 tools/copy-inventory.py > inventory-source.csv
 
 Heuristic: a JS literal counts when it contains a letter and either a space or
 starts with a capital letter, and is not an obvious selector, path, CSS or

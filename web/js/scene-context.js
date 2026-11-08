@@ -60,7 +60,7 @@ export class SceneContext {
   fit(step,stage,top,bottom){
     const svg=$('fitDimensions'),v=this.v,show=step==='fit'&&v.view==='model'&&v.box&&v.bed;hide(svg,!show);
     const legend=$('fitLegend');if(legend)hide(legend,!show);if(!show)return;
-    // Round 4: a bottom safe area. The viewer hint and the camera/enlarge
+    // A bottom safe area. The viewer hint and the camera/enlarge
     // controls own the lower band of the view; labels stay above it and
     // also clear any other viewport chrome (legend, corner buttons).
     const sr=this.stage.getBoundingClientRect(),chrome=[];
@@ -70,7 +70,7 @@ export class SceneContext {
     if(band.length)bottom=Math.min(bottom,Math.min(...band.map(c=>c.t))-6);
     const g=v.fitGeometry(),size=v.box.getSize(new THREE.Vector3()),usable=[v.bed.x,v.bed.y,v.bed.z];
     const cen=this.project(g.all.getCenter(new THREE.Vector3())),edge=12,W=stage.width;
-    // Round 3: each label gets its own slot beside its dimension line, never
+    // Each label gets its own slot beside its dimension line, never
     // on it. Candidates step along the line on the side away from the scene
     // centre (then the other side); the first slot that clears every
     // dimension line and arrowhead (4 px) and the other labels (6 px) wins.

@@ -1,5 +1,5 @@
-/* Merge layer: viewer-first stage (lane A) on the guided five-step frame (lane B),
-   plus the expert outliner, inspector and command palette (lane C).
+/* Merge layer: viewer-first stage on the guided five-step frame,
+   plus the expert outliner, inspector and command palette.
    Loaded after flow.css; only overrides what the merge changes. */
 
 /* ---------- desktop frame: slimmer chrome, full-bleed viewer ---------- */
@@ -27,7 +27,7 @@ body[data-outliner=true] #viewport { left:288px; }
 body[data-outliner=true] .viewer-tools { left:296px; }
 .viewer-tools button,.viewer-tools select { background:color-mix(in srgb, var(--surface-2) 90%, transparent); }
 
-/* Dismissible gesture hint (lane A) */
+/* Dismissible gesture hint */
 .gesture-hint { position:absolute;right:24px;bottom:18px;display:flex;align-items:center;gap:2px;padding-left:12px;background:color-mix(in srgb, var(--surface-1) 88%, transparent);border:1px solid var(--line);border-radius:6px;z-index:4; }
 .gesture-hint .viewer-hint,#viewerHint { position:static;color:var(--mute);font-size:var(--fs-14);margin:0;pointer-events:none; }
 .gesture-hint button { background:transparent;border:0;font-size:var(--fs-20);line-height:1;color:var(--mute); }
@@ -36,7 +36,7 @@ body[data-outliner=true] .viewer-tools { left:296px; }
 /* Fit legend lives with the verdict, not over the model */
 .fit-legend { background:none;padding:12px 0 0;width:auto; }
 
-/* Selected cut values in the viewport (lane A); colours match the gizmo rings */
+/* Selected cut values in the viewport; colours match the gizmo rings */
 .cut-fields { position:absolute;right:24px;top:72px;z-index:5;display:grid;gap:8px;width:208px;padding:12px;background:color-mix(in srgb, var(--surface-2) 95%, transparent);border:1px solid var(--border-strong);border-radius:6px; }
 .cut-fields label { display:flex;flex-direction:column;gap:4px;font-size:var(--fs-14); }
 .cut-fields p { margin:0;color:var(--mute);font-size:var(--fs-12); }
@@ -44,13 +44,13 @@ body[data-outliner=true] .viewer-tools { left:296px; }
 .ring-b i { border-color:var(--accent-hover); }
 .ring-a span,.ring-b span { display:inline; }
 
-/* Result card after automatic split (lane A) */
+/* Result card after automatic split */
 .result-card { border:1px solid var(--border-strong);border-radius:6px;padding:14px 16px;margin:0 0 20px;background:var(--surface-3); }
 .result-card h2 { margin:0 0 4px;font-size:var(--fs-16);color:var(--acc); }
 .result-card p { margin:0 0 10px; }
 .result-card .btns { display:flex;gap:8px;flex-wrap:wrap; }
 
-/* One authoritative output state (lane C) */
+/* One authoritative output state */
 .output-state { padding:10px 12px;border-radius:5px;border:1px solid var(--border-strong);color:var(--acc);margin:0 0 14px; }
 .output-state[data-state=stale] { border-color:var(--warn-line);background:var(--warn-tint);color:var(--warn); }
 

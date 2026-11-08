@@ -8,7 +8,7 @@
 //     "let's", "we'll", "make it", "start with", "find a", "from … to").
 // Word counting ignores numbers, units and symbols ("Turn 90°" is 2 words;
 // "&" counts as a word). Allowlisted composites are generated object names and
-// data readouts, not labels; see ALLOW below and copy-audit/changes.md.
+// data readouts, not labels; see ALLOW below.
 //
 // node e2e/copy-check.mjs URL OUTDIR [--capture-only]
 import fs from 'node:fs';

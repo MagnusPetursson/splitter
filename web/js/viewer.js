@@ -48,7 +48,7 @@ function outOfBedMaterial(color) {
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWorldP;\nuniform vec3 boxMin;\nuniform vec3 boxMax;')
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
         bool outside = any(lessThan(vWorldP, boxMin)) || any(greaterThan(vWorldP, boxMax));
-        // Round 4: signed distance outside the usable box gives a crisp,
+        // Signed distance outside the usable box gives a crisp,
         // screen-width boundary line where the surface crosses the limit;
         // the overflow itself is a light salmon tint with a soft hatch.
         vec3 dOut = vec3(max(boxMin.xy - vWorldP.xy, vWorldP.xy - boxMax.xy), vWorldP.z - boxMax.z); // the floor is never a limit
@@ -157,13 +157,10 @@ export class Viewer {
     this.controls.addEventListener('change', () => this.dirty());
     this.controls.addEventListener('start',()=>this.cameraState('custom'));
     // S1: warm key from the front-left (above), cool fill from the camera's right, cool rim from behind, low sky fill.
-    // Round 2: lower sky fill and a lower key so up-facing surfaces (helmet
-    // tops) keep a gradient instead of saturating; the rim separates the
-    // silhouette. Four analytic lights, no shadow maps: cheap on an iGPU.
-    // Round 3: one stronger, higher directional key and a restrained fill, so
-    // the crown and face relief read through shading rather than tint.
-    // Round 4: a touch more key contrast (key up, sky fill down) so relief
-    // on the front reads on a small screen.
+    // The low sky fill keeps a gradient on up-facing surfaces (helmet tops)
+    // instead of saturating; the strong key makes relief read through shading,
+    // also on a small screen; the rim separates the silhouette. Four analytic
+    // lights, no shadow maps: cheap on an iGPU.
     const hemi = new THREE.HemisphereLight('#dbe7e2', '#3a342c', 0.34);
     hemi.position.set(0, 0, 1);
     this.scene.add(hemi);
@@ -322,7 +319,7 @@ export class Viewer {
     this.controls.update();this.dirty();
   }
 
-  // Round 4: phones (DPR 3) render at their real density when the canvas is
+  // Phones (DPR 3) render at their real density when the canvas is
   // small; large canvases stay capped at 2 and a ~4.5 MP budget.
   pixelRatio(w = this.el?.clientWidth || 800, h = this.el?.clientHeight || 600) {
     const d = window.devicePixelRatio || 1;

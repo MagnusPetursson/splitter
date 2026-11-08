@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Before/after pairs for docs/ux/DESIGN.md. Usage:
+"""Before/after screenshot pairs. Usage:
 python3 tools/design_pairs.py BEFORE_DIR AFTER_DIR OUT_DIR name[,name...]"""
 import sys, pathlib
 from PIL import Image, ImageDraw, ImageFont

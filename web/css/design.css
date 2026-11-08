@@ -355,7 +355,7 @@ dialog p, dialog li { color:var(--text-muted); }
 @media (min-width:761px) { .stage:has(#cutFields:not([hidden])) .direct-tools { right:256px; max-width:none; } }
 @media (max-width:760px) { .tool-row button:not(#editUndo):not(#editRedo) .i { display:none; } .tool-row button { padding:0 var(--s-2); } }
 
-/* ---- round 2 fixes (re-critique) ---- */
+/* ---- loading state and step nav ---- */
 body:not([data-loaded=true]) :is(.view-corner, #gestureHint, .gesture-hint) { display:none !important; }
 .flow-nav small { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 .flow-nav button { position:relative; }
@@ -419,7 +419,7 @@ button:disabled, button.primary:disabled { background:transparent; border-color:
 #helpDlg p { font-size:var(--fs-14); line-height:var(--lh-body); }
 @media(max-width:760px) { .dialog-head { top:-22px; } }
 
-/* ================= design round 2 (control review of fb606e0) ================= */
+/* ================= type scale and supporting text ================= */
 :root { --fs-13: 13px; }
 /* R2.5 supporting text one step up and one contrast step up */
 .small, .info .small, .step .small, .pin-popover .small { font-size:var(--fs-13); }
@@ -483,7 +483,7 @@ button.confirm { background:transparent; border-color:var(--accent); color:var(-
 button.confirm:hover:not(:disabled) { background:color-mix(in srgb, var(--accent) 14%, transparent); }
 button.confirm:disabled { border-color:var(--border); color:var(--text-inactive); }
 
-/* ================= design round 3 (control review of afcf8cc) ================= */
+/* ================= fit decision ================= */
 /* R3.1 fit decision: a quarter turn that fits reads as the answer, not a warning */
 .fit-card.turnable { border-color:var(--accent-line); background:var(--accent-tint); }
 .fit-card.turnable > .i, .fit-card.fits > .i { color:var(--accent); }
@@ -544,7 +544,7 @@ body:has(#fitVerdict.turnable) .fit-legend-chip .over-only { display:flex; }
 .fit-card .fit-alt { display:flex; align-items:center; gap:var(--s-1); margin:var(--s-2) 0 0; padding-top:var(--s-2); border-top:1px solid color-mix(in srgb, var(--accent-line) 45%, transparent); font-size:var(--fs-13); color:var(--text-muted); }
 .fit-card .fit-alt .linkish { margin-left:0; }
 
-/* ================= design round 4 (control review of e28b747) ================= */
+/* ================= fit verdict and layout ================= */
 /* R4.1 the verdict is the Fit headline; the printer is a subordinate row */
 #fitHeading[data-tone=over] { color:var(--warn); }
 #fitHeading { margin-bottom:var(--s-2); }

@@ -46,9 +46,9 @@ Profiles stay in this browser, on this site: no account, server or upload. **Exp
 
 Clearances are radial, per side, and editable. The defaults for a 0.4 mm nozzle are: press 0.05, glue 0.15, slip 0.20, snap 0.25, seam 0.15 mm. A 0.6 mm nozzle adds 0.05 mm.
 
-## Limits and caveats
+## Limits
 
-- **Physical fit is untested until you print the coupon.** The clearances are geometric. Your printer, filament and slicer decide the real fit. Step 5 generates a **joint test coupon** with six graded clearances. Print it first, then enter the loosest step that still holds.
+- **Physical fit depends on your printer.** The clearances are geometric. Your printer, filament and slicer decide the real fit. Step 5 generates a **joint test coupon** with six graded clearances. Print it first, then enter the loosest step that still holds.
 - **Support is a geometric proxy, not slicer material or print time.** It ignores bridging, support density, supports resting on the model, tree supports, and joint geometry. The coarse raster can miss small features. "Allow tilted" can save parts but usually adds support. Always inspect the exported orientation and supports in your slicer.
 - No STEP import. The 3MF files contain geometry only, with no slicer profiles.
 - Very large meshes (millions of triangles) are slow in the browser and use a lot of memory.
@@ -58,7 +58,7 @@ Clearances are radial, per side, and editable. The defaults for a 0.4 mm nozzle 
 
 Each signed print orientation is scored using a 40 × 40 raster over the part's projected footprint. Only downward-facing surfaces steeper than 45° count. A covered pixel contributes its height above the bed, multiplied by its estimated **surface** area (projected pixel area divided by the normal's cosine). Overlapping columns take the maximum rather than being counted twice. Bed contact within 0.6 mm is ignored. Original triangles are clipped to the BSP cell; cut caps retain their holes.
 
-This produces `supportVolume` in **mm³ of geometric proxy**, shown as cm³ in the UI. It is deliberately not named support grams. The cost added to both cut selection and print orientation is:
+This produces `supportVolume` in **mm³ of geometric proxy**, shown as cm³ in the UI. It is a volume, not a support mass in grams. The cost added to both cut selection and print orientation is:
 
 ```
 supportCost = supportVolume_mm3 × 0.004 × supportWeight²
